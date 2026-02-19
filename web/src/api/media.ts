@@ -30,6 +30,37 @@ export const getEncryptedMediaURL = (mxc?: string): string | undefined => {
 
 const FALLBACK_COLOR_COUNT = 10
 
+// Custom user color storage
+const CUSTOM_COLORS_KEY = "gomuks_custom_user_colors"
+
+function loadCustomColors(): Record<string, string> {
+	try {
+		const stored = localStorage.getItem(CUSTOM_COLORS_KEY)
+		return stored ? JSON.parse(stored) : {}
+	} catch {
+		return {}
+	}
+}
+
+let customUserColors: Record<string, string> = loadCustomColors()
+
+export const getCustomUserColor = (userID: UserID): string | null => {
+	return customUserColors[userID] || null
+}
+
+export const setCustomUserColor = (userID: UserID, color: string | null) => {
+	if (color) {
+		customUserColors[userID] = color
+	} else {
+		delete customUserColors[userID]
+	}
+	localStorage.setItem(CUSTOM_COLORS_KEY, JSON.stringify(customUserColors))
+}
+
+export const getAllCustomUserColors = (): Record<string, string> => {
+	return { ...customUserColors }
+}
+
 export const getUserColorIndex = (userID: UserID) =>
 	userID.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) % FALLBACK_COLOR_COUNT
 
@@ -45,6 +76,11 @@ function initFallbackColors(): string[] {
 let fallbackColors: string[]
 
 export const getUserColor = (userID: UserID) => {
+	// Check for custom color first
+	const customColor = getCustomUserColor(userID)
+	if (customColor) {
+		return customColor
+	}
 	if (!fallbackColors) {
 		fallbackColors = initFallbackColors()
 	}

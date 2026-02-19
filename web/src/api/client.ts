@@ -51,8 +51,8 @@ export default class Client {
 			queueMicrotask(() => this.#handleEmoteRoomsChange()))
 	}
 
-	async #reallyStart(signal: AbortSignal) {
-		if (!await this.rpc.doAuth(signal)) {
+	async #reallyStart(signal: AbortSignal, credentials?: { username: string; password: string }) {
+		if (!await this.rpc.doAuth(signal, credentials)) {
 			return
 		}
 		if (signal.aborted) {
@@ -61,6 +61,12 @@ export default class Client {
 		console.log("Successfully authenticated, connecting to websocket")
 		this.rpc.start()
 		this.requestNotificationPermission()
+	}
+
+	retryAuthWithCredentials(username: string, password: string) {
+		const abort = new AbortController()
+		this.#reallyStart(abort.signal, { username, password })
+		return () => abort.abort()
 	}
 
 	async #reallyStartAndroid(signal: AbortSignal) {

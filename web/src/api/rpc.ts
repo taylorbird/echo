@@ -134,12 +134,28 @@ export default abstract class RPCClient {
 		throw new Error("Media upload not supported by this RPC client")
 	}
 
-	async doAuth(signal: AbortSignal): Promise<boolean> {
+	async doAuth(signal: AbortSignal, credentials?: { username: string; password: string }): Promise<boolean> {
 		try {
+			const headers: Record<string, string> = {}
+			if (credentials) {
+				headers["Authorization"] = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
+			}
+
 			const resp = await fetch("_gomuks/auth", {
 				method: "POST",
+				headers,
 				signal,
 			})
+
+			if (resp.status === 401 && !signal.aborted) {
+				this.connect.emit({
+					connected: false,
+					reconnecting: false,
+					error: credentials ? "Invalid credentials" : "AUTH_REQUIRED",
+				})
+				return false
+			}
+
 			if (!resp.ok && !signal.aborted) {
 				this.connect.emit({
 					connected: false,

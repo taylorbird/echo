@@ -90,6 +90,7 @@ div.timeline-event {
 		> span.event-time {
 			font-size: .7rem;
 			color: var(--secondary-text-color);
+			opacity: 0.5;
 		}
 	}
 
@@ -99,6 +100,7 @@ div.timeline-event {
 		align-items: end;
 		font-size: .7rem;
 		color: var(--secondary-text-color);
+		opacity: 0.5;
 		max-height: 1.25rem;
 		margin-left: .25rem;
 	}

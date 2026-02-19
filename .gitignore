@@ -16,3 +16,6 @@ deb/usr
 *.dll
 *.dylib
 *.so
+
+# Claude Code work state (optional - remove if you want to track)
+# .claude/work/

@@ -620,6 +620,8 @@ const MessageComposer = () => {
 			doUploadFile(file, file.name, { voice_message: isVoice, encode_to: encTo })
 		}
 	}
+	// Register file drop handler for RoomView drag/drop
+	roomCtx.onFileDropped = openFileUploadModal
 	const onPaste = (evt: React.ClipboardEvent<HTMLTextAreaElement>) => {
 		const file = evt.clipboardData?.files?.[0]
 		const text = evt.clipboardData.getData("text/plain")
@@ -662,6 +664,39 @@ const MessageComposer = () => {
 			return
 		}
 		evt.preventDefault()
+	}
+	const [isDragging, setIsDragging] = useState(false)
+	const dragCounter = useRef(0)
+	const onDrop = (evt: React.DragEvent<HTMLDivElement>) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		setIsDragging(false)
+		dragCounter.current = 0
+		const file = evt.dataTransfer?.files?.[0]
+		if (file) {
+			openFileUploadModal(file)
+		}
+	}
+	const onDragOver = (evt: React.DragEvent<HTMLDivElement>) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		evt.dataTransfer.dropEffect = "copy"
+	}
+	const onDragEnter = (evt: React.DragEvent<HTMLDivElement>) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		dragCounter.current++
+		if (evt.dataTransfer?.types?.includes("Files")) {
+			setIsDragging(true)
+		}
+	}
+	const onDragLeave = (evt: React.DragEvent<HTMLDivElement>) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		dragCounter.current--
+		if (dragCounter.current === 0) {
+			setIsDragging(false)
+		}
 	}
 	const resolvePreview = useCallback((url: string) => {
 		setState(s => ({ loadingPreviews: [...s.loadingPreviews, url]}))
@@ -961,7 +996,7 @@ const MessageComposer = () => {
 				/>
 			</ErrorBoundary>
 		</div> : null}
-		<div className="message-composer" ref={composerRef}>
+		<div className={`message-composer ${isDragging ? "dragging" : ""}`} ref={composerRef} onDrop={onDrop} onDragOver={onDragOver} onDragEnter={onDragEnter} onDragLeave={onDragLeave}>
 			{replyToEvt && <ReplyBody
 				roomCtx={roomCtx}
 				event={replyToEvt}

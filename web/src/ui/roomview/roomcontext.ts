@@ -34,6 +34,7 @@ export class RoomContextData {
 	public readonly isEditing = new NonNullCachedEventDispatcher<boolean>(false)
 	public scrolledToBottom = true
 	public setForceViewType: (viewType: RoomType | null) => void = noop("setForceViewType")
+	public onFileDropped: (file: File) => void = noop("onFileDropped")
 
 	constructor(
 		public readonly store: RoomStateStore,

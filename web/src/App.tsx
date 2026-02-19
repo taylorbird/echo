@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import Client from "./api/client.ts"
 import RPCClient from "./api/rpc.ts"
@@ -25,6 +25,7 @@ import ClientContext from "./ui/ClientContext.ts"
 import MainScreen from "./ui/MainScreen.tsx"
 import { LoginScreen, VerificationScreen } from "./ui/login"
 import { LightboxWrapper } from "./ui/modal"
+import WebAuthLogin from "./ui/WebAuthLogin.tsx"
 import { useEventAsState } from "./util/eventdispatcher.ts"
 
 function makeRPCClient(): RPCClient {
@@ -41,11 +42,13 @@ function App() {
 	const client = useMemo(() => new Client(makeRPCClient()), [])
 	const connState = useEventAsState(client.rpc.connect)
 	const clientState = useEventAsState(client.state)
+	const [authError, setAuthError] = useState<string | undefined>()
 	useEffect(() => {
 		window.client = client
 		return client.start()
 	}, [client])
 
+	const needsWebAuth = connState?.error === "AUTH_REQUIRED" || connState?.error === "Invalid credentials"
 	const afterConnectError = Boolean(connState?.error && connState.reconnecting && clientState?.is_verified)
 	useEffect(() => {
 		if (afterConnectError) {
@@ -60,6 +63,21 @@ function App() {
 			}
 		}
 	}, [afterConnectError])
+
+	// Handle web auth login
+	if (needsWebAuth) {
+		return <div className="pre-main">
+			<WebAuthLogin
+				onSubmit={(username, password) => {
+					setAuthError(undefined)
+					client.retryAuthWithCredentials(username, password)
+				}}
+				onCancel={() => setAuthError("Authentication cancelled")}
+				error={connState?.error === "Invalid credentials" ? "Invalid credentials" : authError}
+			/>
+		</div>
+	}
+
 	const errorOverlay = connState?.error ? <div
 		className={`connection-error-wrapper ${afterConnectError ? "post-connect" : ""}`}
 		tabIndex={-1}

@@ -14,22 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, use, useCallback, useState } from "react"
+import { HexColorPicker } from "react-colorful"
 import { createPortal } from "react-dom"
-import { getAvatarThumbnailURL, getMediaURL, getUserColorIndex } from "@/api/media.ts"
+import { getAvatarThumbnailURL, getMediaURL, getUserColorIndex, getCustomUserColor, setCustomUserColor } from "@/api/media.ts"
 import {
 	RoomStateStore,
 	applyPerMessageSender,
 	maybeRedactMemberEvent,
 	useRoomMember,
 } from "@/api/statestore"
-import { MemDBEvent, URLPreview as URLPreviewType, UnreadType } from "@/api/types"
+import { MemDBEvent, URLPreview as URLPreviewType, UnreadType, UserID } from "@/api/types"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { getDisplayname, getRelatesTo, isEventID } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { EventFixedMenu, EventFullMenu, EventHoverMenu, getModalStyleFromMouse } from "../menu"
-import { ModalContext, NestableModalContext, modals } from "../modal"
+import { ModalCloseContext, ModalContext, NestableModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import URLPreview from "../urlpreview/URLPreview.tsx"
 import { jumpToEventInView } from "../util/jumpToEvent.tsx"
@@ -99,6 +100,94 @@ const EventSendStatus = ({ evt }: { evt: MemDBEvent }) => {
 	} else {
 		return <div title="Event sent and remote echo received" className="event-send-status sent"><SentIcon/></div>
 	}
+}
+
+interface UserColorCardProps {
+	userID: UserID
+	displayName: string
+	avatarUrl?: string
+	style: React.CSSProperties
+	onColorChange: () => void
+}
+
+const UserColorCard = ({ userID, displayName, avatarUrl, style, onColorChange }: UserColorCardProps) => {
+	const closeModal = use(ModalCloseContext)
+	const [currentColor, setCurrentColor] = useState(getCustomUserColor(userID) || "#fecdb2")
+	const [showPicker, setShowPicker] = useState(false)
+
+	const presetColors = [
+		{ name: "Red", value: "#e06b75" },
+		{ name: "Orange", value: "#ffa07a" },
+		{ name: "Yellow", value: "#f5d76e" },
+		{ name: "Green", value: "#b1b695" },
+		{ name: "Teal", value: "#1fc090" },
+		{ name: "Blue", value: "#7aacf4" },
+		{ name: "Purple", value: "#ad9cfe" },
+		{ name: "Pink", value: "#f6b6c9" },
+		{ name: "Peach", value: "#fecdb2" },
+	]
+
+	const handleColorSelect = (color: string | null) => {
+		setCustomUserColor(userID, color)
+		setCurrentColor(color || "#fecdb2")
+		onColorChange()
+	}
+
+	const savedColor = getCustomUserColor(userID)
+	const isCustomColor = savedColor && !presetColors.some(c => c.value === savedColor)
+
+	return <div className="context-menu user-color-card" style={style}>
+		<div className="user-card-header">
+			<img className="avatar" src={avatarUrl} alt="" />
+			<div className="user-card-info">
+				<div className="user-display-name">{displayName}</div>
+				<div className="user-id">{userID}</div>
+			</div>
+			<button className="close-button" onClick={closeModal} title="Close">×</button>
+		</div>
+		<hr />
+		<div className="color-picker-section">
+			<div className="color-picker-label">Name Color</div>
+			{showPicker ? (
+				<div className="color-wheel-container">
+					<HexColorPicker color={currentColor} onChange={(color) => {
+						setCurrentColor(color)
+						handleColorSelect(color)
+					}} />
+					<button className="back-to-presets" onClick={() => setShowPicker(false)}>
+						← Back to presets
+					</button>
+				</div>
+			) : (
+				<div className="color-picker-grid">
+					{presetColors.map(c => (
+						<button
+							key={c.name}
+							className={`color-swatch ${savedColor === c.value ? "selected" : ""}`}
+							onClick={() => handleColorSelect(c.value)}
+							style={{ backgroundColor: c.value }}
+							title={c.name}
+						/>
+					))}
+					<button
+						className={`color-swatch custom ${isCustomColor ? "selected" : ""}`}
+						title="Custom color picker"
+						style={isCustomColor ? { backgroundColor: savedColor } : undefined}
+						onClick={() => setShowPicker(true)}
+					>
+						🎨
+					</button>
+					<button
+						className={`color-swatch reset ${!savedColor ? "selected" : ""}`}
+						onClick={() => handleColorSelect(null)}
+						title="Reset to default"
+					>
+						↺
+					</button>
+				</div>
+			)}
+		</div>
+	</div>
 }
 
 const EventURLPreviews = ({ event, room }: {
@@ -176,6 +265,27 @@ const TimelineEvent = ({
 			mainScreen.setActiveRoom(evt.room_id, { openEventID: evt.event_id })
 		}
 	}
+	const [, forceUpdate] = useState(0)
+	const onSenderContextMenu = useCallback((mouseEvt: React.MouseEvent) => {
+		mouseEvt.preventDefault()
+		const userID = mouseEvt.currentTarget.getAttribute("data-target-user") as UserID
+		if (!userID) return
+
+		const displayName = mouseEvt.currentTarget.textContent || userID
+		const member = roomCtx.store.getStateEvent("m.room.member", userID)
+		const avatarUrl = getAvatarThumbnailURL(userID, member?.content as import("@/api/types").UserProfile | undefined)
+
+		const style = getModalStyleFromMouse(mouseEvt, 280)
+		openModal({
+			content: <UserColorCard
+				userID={userID}
+				displayName={displayName}
+				avatarUrl={avatarUrl}
+				style={style}
+				onColorChange={() => forceUpdate(n => n + 1)}
+			/>,
+		})
+	}, [openModal, roomCtx.store])
 	const openEditHistory = () => {
 		openNestableModal(modals.eventEditHistory(roomCtx, evt))
 	}
@@ -338,9 +448,11 @@ const TimelineEvent = ({
 		{!eventTimeOnly ? <div className="event-sender-and-time">
 			<span
 				className={`event-sender sender-color-${getUserColorIndex(perMessageSender?.id ?? evt.sender)}`}
-				data-target-user={evt.sender}
+				data-target-user={perMessageSender?.id ?? evt.sender}
 				onClick={perMessageSender ? undefined : roomCtx.appendMentionToComposer}
-				title={perMessageSender ? perMessageSender.id : evt.sender}
+				onContextMenu={onSenderContextMenu}
+				title={`${perMessageSender ? perMessageSender.id : evt.sender} (right-click for color)`}
+				style={getCustomUserColor(perMessageSender?.id ?? evt.sender) ? { color: getCustomUserColor(perMessageSender?.id ?? evt.sender)! } : undefined}
 			>
 				{getDisplayname(evt.sender, renderMemberEvtContent)}
 			</span>
@@ -350,7 +462,9 @@ const TimelineEvent = ({
 					className={`event-sender sender-color-${getUserColorIndex(evt.sender)}`}
 					data-target-user={evt.sender}
 					onClick={roomCtx.appendMentionToComposer}
-					title={evt.sender}
+					onContextMenu={onSenderContextMenu}
+					title={`${evt.sender} (right-click for color)`}
+					style={getCustomUserColor(evt.sender) ? { color: getCustomUserColor(evt.sender)! } : undefined}
 				>
 					{getDisplayname(evt.sender, memberEvtContent)}
 				</span>

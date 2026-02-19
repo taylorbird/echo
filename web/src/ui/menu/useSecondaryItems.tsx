@@ -30,7 +30,6 @@ import ReportIcon from "@/icons/report.svg?react"
 import RestoreTrashIcon from "@/icons/restore-trash.svg?react"
 import ShareIcon from "@/icons/share.svg?react"
 import UnpinIcon from "@/icons/unpin.svg?react"
-
 export const useSecondaryItems = (
 	client: Client,
 	roomCtx: RoomContextData,
@@ -113,6 +112,13 @@ export const useSecondaryItems = (
 		openModal(modals.shareEvent(roomCtx, evt))
 	}
 
+	const showMediaPreviews = roomCtx.store.preferences.show_media_previews
+	const onClickToggleImages = () => {
+		closeModal()
+		// Toggle the device-local preference
+		client.store.localPreferenceCache.show_media_previews = !showMediaPreviews
+	}
+
 	const [isPending, pendingTitle] = getPending(evt)
 	useRoomState(roomCtx.store, "m.room.power_levels", "")
 	// We get pins from getPinnedEvents, but use the hook anyway to subscribe to changes
@@ -133,6 +139,7 @@ export const useSecondaryItems = (
 	return <>
 		<button onClick={onClickViewSource}><ViewSourceIcon/>{names && "View source"}</button>
 		<button onClick={onClickShareEvent}><ShareIcon/>{names && "Share"}</button>
+		<button onClick={onClickToggleImages}><ViewSourceIcon/>{names && (showMediaPreviews ? "Hide images" : "Show images")}</button>
 		{ownPL >= pinPL && (pins.includes(evt.event_id)
 			? <button onClick={onClickPin(false)}>
 				<UnpinIcon/>{names && "Unpin message"}

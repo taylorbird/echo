@@ -1,6 +1,6 @@
 :root {
 	color-scheme: light;
-	--font-stack: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	--font-stack: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 	--monospace-font-stack: "Fira Code", monospace;
 
 	--window-top-margin: env(safe-area-inset-top, 0px);
@@ -42,7 +42,7 @@
 	--timeline-soft-failed-bg-color: rgba(255, 0, 0, .3);
 	--timeline-policy-server-spammy-bg-color: rgba(255, 0, 75, .2);
 
-	--room-list-background: linear-gradient(in hsl longer hue, red 0 0, magenta);
+	--room-list-background: #232125;
 	--room-list-background-overlay: hsla(0, 0%, 96%, .9);
 	--room-list-search-background-overlay: var(--room-list-background-overlay);
 	--space-list-background-overlay: hsla(0, 0%, 96%, .8);
@@ -89,8 +89,8 @@
 	--timeline-avatar-size: 2.5rem;
 	--timeline-avatar-gap: .5rem;
 	--timeline-avatar-total-size: calc(var(--timeline-avatar-size) + var(--timeline-avatar-gap));
-	--timeline-message-gap: .5rem;
-	--timeline-message-gap-same-sender: calc(var(--timeline-message-gap) / 2);
+	--timeline-message-gap: 1.5rem;
+	--timeline-message-gap-same-sender: .35rem;
 	--timeline-message-gap-small-event: 0;
 	--timeline-message-gap-same-thread: 0;
 	--timeline-sender-name-timestamp-gap: .25rem;
@@ -111,75 +111,78 @@
 
 	@media (prefers-color-scheme: dark) {
 		color-scheme: dark;
-		--background-color: #000;
-		--login-background-color: #111;
-		--text-color: #fff;
+		/* Ferra theme colors */
+		--background-color: #2b292d;
+		--login-background-color: #383539;
+		--text-color: #fecdb2;
 		--inverted-text-color: var(--background-color);
-		--secondary-text-color: #888;
-		--semisecondary-text-color: #bbb;
-		--link-text-color: #4187eb;
+		--secondary-text-color: #d1d1e0;
+		--semisecondary-text-color: #ffa07a;
+		--link-text-color: #ffa07a;
 
-		--code-background-color: rgba(255, 255, 255, 0.1);
-		--media-placeholder-default-background: rgba(255, 255, 255, .1);
-		--media-placeholder-button-background: rgba(0, 0, 0, .5);
+		--code-background-color: rgba(56, 53, 57, 0.8);
+		--media-placeholder-default-background: rgba(254, 205, 178, .1);
+		--media-placeholder-button-background: rgba(43, 41, 45, .7);
 
-		--primary-color: #00b24a;
-		--primary-color-dark: #00c853;
-		--error-color: red;
+		--primary-color: #fecdb2;
+		--primary-color-dark: #e6b89c;
+		--error-color: #e06b75;
 
-		--border-color: #222;
-		--pill-background-color: #222;
-		--disabled-input-background-color: #222;
-		--url-preview-background-color: #222;
-		--button-hover-color: rgba(255, 255, 255, .2);
-		--light-hover-color: rgba(255, 255, 255, .1);
+		--border-color: #4d424b;
+		--pill-background-color: #6f5d63;
+		--disabled-input-background-color: #383539;
+		--url-preview-background-color: #383539;
+		--button-hover-color: rgba(254, 205, 178, .2);
+		--light-hover-color: rgba(254, 205, 178, .1);
 
-		--composer-background-color: #0a0a0a;
+		--composer-background-color: #383539;
 
-		--timeline-hover-bg-color: #111;
-		--timeline-highlight-bg-color: rgba(255, 255, 0, .1);
-		--timeline-highlight-hover-bg-color: #331;
-		--timeline-jump-bg-color: rgba(0, 255, 0, .2);
-		--timeline-jump-hover-bg-color: #131;
+		--timeline-hover-bg-color: #383539;
+		--timeline-highlight-bg-color: rgba(245, 215, 110, .15);
+		--timeline-highlight-hover-bg-color: #4d424b;
+		--timeline-jump-bg-color: rgba(177, 182, 149, .2);
+		--timeline-jump-hover-bg-color: #4d424b;
 
-		--room-list-background-overlay: hsla(0, 0%, 4%, .8);
-		--space-list-background-overlay: hsla(0, 0%, 4%, .7);
-		--room-list-scrollbar-color: rgba(255, 255, 255, .4) rgba(255, 255, 255, .1);
-		--room-list-entry-hover-color: rgba(255, 255, 255, 0.075);
-		--room-list-entry-selected-color: rgba(255, 255, 255, 0.125);
+		--room-list-background-overlay: #232125;
+		--space-list-background-overlay: #1a181c;
+		--room-list-scrollbar-color: rgba(254, 205, 178, .4) rgba(254, 205, 178, .1);
+		--room-list-entry-hover-color: rgba(254, 205, 178, 0.1);
+		--room-list-entry-selected-color: rgba(254, 205, 178, 0.15);
 
-		--modal-box-shadow-color: rgba(255, 255, 255, 0.04);
-		--popout-widget-box-shadow-color: rgba(255, 255, 255, 0.2);
+		--modal-box-shadow-color: rgba(0, 0, 0, 0.3);
+		--popout-widget-box-shadow-color: rgba(0, 0, 0, 0.5);
 
-		--emoji-selected-border-color: #131;
-		--image-pack-editor-selected-color: #131;
+		--emoji-selected-border-color: #6f5d63;
+		--image-pack-editor-selected-color: #6f5d63;
 
-		--unread-counter-message-bg: rgba(255, 255, 255, 0.5);
-		--unread-counter-notification-bg: rgba(150, 255, 0, 0.7);
-		--unread-counter-highlight-bg: rgba(255, 50, 50, 0.7);
-		--space-unread-counter-message-bg: rgb(200, 200, 200, 0.8);
-		--space-unread-counter-notification-bg: rgb(150, 255, 0);
-		--space-unread-counter-highlight-bg: rgb(255, 50, 50);
+		--unread-counter-message-bg: rgba(209, 209, 224, 0.6);
+		--unread-counter-notification-bg: rgba(177, 182, 149, 0.8);
+		--unread-counter-highlight-bg: rgba(224, 107, 117, 0.8);
+		--space-unread-counter-message-bg: rgba(209, 209, 224, 0.8);
+		--space-unread-counter-notification-bg: #b1b695;
+		--space-unread-counter-highlight-bg: #e06b75;
 
-		--sender-color-0: #ff877c;
-		--sender-color-1: #f6913d;
-		--sender-color-2: #db9f00;
-		--sender-color-3: #56c02c;
-		--sender-color-4: #1fc090;
-		--sender-color-5: #21bacd;
-		--sender-color-6: #7aacf4;
-		--sender-color-7: #ad9cfe;
-		--sender-color-8: #d991de;
-		--sender-color-9: #fe84a2;
+		/* Ferra username colors */
+		--sender-color-0: #e06b75;
+		--sender-color-1: #f5d76e;
+		--sender-color-2: #ffa07a;
+		--sender-color-3: #f6b6c9;
+		--sender-color-4: #b1b695;
+		--sender-color-5: #d1d1e0;
+		--sender-color-6: #fecdb2;
+		--sender-color-7: #e06b75;
+		--sender-color-8: #f5d76e;
+		--sender-color-9: #ffa07a;
 
-		--sent-ok-color: #444;
-		--blockquote-border-color: #444;
-		--lightbox-button-color: #ccc;
+		--sent-ok-color: #4d424b;
+		--blockquote-border-color: #4d424b;
+		--lightbox-button-color: #fecdb2;
 	}
 }
 
 body {
 	font-family: var(--font-stack);
+	font-weight: 400;
 	margin: 0;
 	padding: 0;
 	background-color: var(--background-color);
@@ -192,7 +195,30 @@ body {
 html {
 	touch-action: none;
 	background-color: var(--background-color);
-	font-size: 16px;
+	font-size: 14px;
+}
+
+/* Thin scrollbars */
+* {
+	scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--border-color);
+	border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--secondary-text-color);
 }
 
 #root {

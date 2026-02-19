@@ -63,7 +63,7 @@ export const preferences = {
 		displayName: "Show image and video previews",
 		description: "If disabled, images and videos will only be visible after clicking and will not be downloaded automatically. This will also disable images in URL previews.",
 		allowedContexts: anyContext,
-		defaultValue: false,
+		defaultValue: true,
 	}),
 	show_inline_images: new Preference<boolean>({
 		displayName: "Show inline images",
@@ -106,7 +106,7 @@ export const preferences = {
 		displayName: "Show hidden events",
 		description: "Whether hidden events should be visible in the room timeline.",
 		allowedContexts: anyContext,
-		defaultValue: true,
+		defaultValue: false,
 	}),
 	show_redacted_events: new Preference<boolean>({
 		displayName: "Show redacted event placeholders",
