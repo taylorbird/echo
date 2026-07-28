@@ -6,7 +6,7 @@ div.right-panel {
 	padding-top: var(--window-top-margin);
 
 	> div.right-panel-header {
-		height: 3.5rem;
+		height: var(--room-header-height);
 		border-bottom: 1px solid var(--border-color);
 		box-sizing: border-box;
 		display: flex;

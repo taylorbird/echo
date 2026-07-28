@@ -8,9 +8,9 @@ div.room-list-wrapper {
 	display: grid;
 	grid-template:
 		"spacebar search"   var(--window-top-margin)
-		"spacebar search"   3.5rem
+		"spacebar search"   var(--room-header-height)
 		"spacebar roomlist" 1fr
-		/ 4.5rem    1fr;
+		/ var(--space-bar-width) 1fr;
 }
 
 div.room-list {
@@ -22,6 +22,9 @@ div.room-list {
 div.space-bar {
 	background-color: var(--space-list-background-overlay);
 	grid-area: spacebar;
+	/* A hairline reads as a seam; a hard colour step reads as two separate slabs. */
+	border-right: 1px solid var(--hairline-color);
+	box-sizing: border-box;
 	overflow: auto;
 	scrollbar-width: none;
 	padding-top: var(--window-top-margin);
@@ -29,11 +32,13 @@ div.space-bar {
 	padding-right: .5rem;
 
 	> div.space-entry {
+		position: relative;
 		width: 2.5rem;
 		height: 2.5rem;
 		padding: .25rem;
-		margin: .25rem auto;
-		border-radius: .25rem;
+		margin: .3125rem auto;
+		border-radius: .625rem;
+		box-sizing: border-box;
 		cursor: var(--clickable-cursor);
 
 		&:hover, &:focus {
@@ -44,14 +49,34 @@ div.space-bar {
 			background-color: var(--room-list-entry-selected-color);
 		}
 
+		/* Active marker rides the rail edge instead of only filling the tile,
+		   so the current space is legible even when it shows a busy avatar. */
+		&.active::before {
+			content: "";
+			position: absolute;
+			left: -.75rem;
+			top: 50%;
+			translate: 0 -50%;
+			width: .1875rem;
+			height: 1.25rem;
+			border-radius: 999px;
+			background-color: var(--accent-glow-color);
+			box-shadow: 0 0 6px var(--accent-glow-near), 0 0 14px var(--accent-glow-far);
+		}
+
+		/* Sized well inside the tap target rather than filling it — a glyph at
+		   full tile size is what made the rail read as heavy blocks. */
 		> svg {
-			width: 100%;
-			height: 100%;
+			display: block;
+			width: 1.375rem;
+			height: 1.375rem;
+			margin: .3125rem auto 0;
 		}
 
 		> img.avatar {
-			border-radius: 0;
-			clip-path: url(#squircle);
+			display: block;
+			border-radius: .5rem;
+			clip-path: none;
 			width: 100%;
 			height: 100%;
 		}
@@ -77,7 +102,7 @@ div.room-search-wrapper {
 	width: 100%;
 	display: flex;
 	align-items: center;
-	height: 3.5rem;
+	height: var(--room-header-height);
 	background-color: var(--room-list-search-background-overlay);
 	grid-area: search;
 	padding-top: var(--window-top-margin);
@@ -101,13 +126,17 @@ div.room-search-wrapper {
 }
 
 div.room-entry {
-	width: 100%;
+	width: auto;
 	display: flex;
 	gap: .25rem;
 	user-select: none;
 	cursor: var(--clickable-cursor);
 	height: 3.5rem;
-	padding: .5rem .5rem .5rem .75rem;
+	padding: .5rem .5rem .5rem .5rem;
+	/* Inset rounded rows are the defining trait of a macOS sidebar; full-bleed
+	   rectangles are what made the list read as stacked blocks. */
+	margin-inline: var(--sidebar-inset);
+	border-radius: var(--sidebar-item-radius);
 	contain-intrinsic-height: 4.5rem;
 	content-visibility: auto;
 	contain: strict;
@@ -138,8 +167,16 @@ div.room-entry {
 		padding-top: .35rem;
 		gap: .125rem;
 
+		/*
+		 * Both lines step up slightly, with the leading tightened to pay for it.
+		 * The row is a fixed 3.5rem content box under `contain: strict`, so at
+		 * body leading the taller text would be clipped rather than overflow
+		 * visibly.
+		 */
 		> div.room-name {
 			font-weight: bold;
+			font-size: 1.0625rem;
+			line-height: 1.35;
 			overflow: hidden;
 			white-space: nowrap;
 			text-overflow: ellipsis;
@@ -149,7 +186,8 @@ div.room-entry {
 			text-overflow: ellipsis;
 			white-space: nowrap;
 			overflow: hidden;
-			font-size: .85rem;
+			font-size: .9rem;
+			line-height: 1.4;
 			opacity: 0.6;
 
 			> span.sender-name {
@@ -162,6 +200,74 @@ div.room-entry {
 				display: block;
 			}
 		}
+	}
+}
+
+/*
+ * Sidebar groups (Rooms / Direct messages). Headers carry full weight and an
+ * icon rather than being small uppercase labels, so a group reads as a real
+ * container you can act on instead of a caption floating above the rows.
+ */
+div.room-list-section {
+	padding-bottom: .5rem;
+}
+
+button.room-list-section-header {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	box-sizing: border-box;
+	width: auto;
+	height: 2.25rem;
+	margin-inline: var(--sidebar-inset);
+	padding: 0 .375rem 0 .5rem;
+	border: none;
+	background: none;
+	border-radius: var(--sidebar-item-radius);
+	color: var(--text-color);
+	font-family: inherit;
+	font-size: 1rem;
+	font-weight: 700;
+	cursor: var(--clickable-cursor);
+	user-select: none;
+
+	&:hover, &:focus-visible {
+		background-color: var(--room-list-entry-hover-color);
+	}
+
+	> svg.section-icon {
+		width: 1.125rem;
+		height: 1.125rem;
+		flex-shrink: 0;
+		opacity: .75;
+	}
+
+	> span.section-name {
+		flex: 1;
+		text-align: left;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	/* Points down when open, left when collapsed — the arrow tracks the state. */
+	> svg.section-chevron {
+		width: 1.125rem;
+		height: 1.125rem;
+		flex-shrink: 0;
+		opacity: .45;
+		transition: rotate .15s ease;
+
+		/* Skipped when the "Ignore reduce motion" preference is on. */
+		@media (prefers-reduced-motion: reduce) {
+			html:not([data-ignore-reduce-motion]) & {
+				transition: none;
+			}
+		}
+	}
+
+	&.collapsed > svg.section-chevron {
+		rotate: -90deg;
 	}
 }
 

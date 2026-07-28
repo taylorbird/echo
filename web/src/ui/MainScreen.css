@@ -25,8 +25,11 @@ main.matrix-main {
 		/* Note: this timeout must match the one in MainScreen.tsx */
 		transition: .3s;
 
+		/* Skipped when the "Ignore reduce motion" preference is on. */
 		@media (prefers-reduced-motion: reduce) {
-			transition: none;
+			html:not([data-ignore-reduce-motion]) & {
+				transition: none;
+			}
 		}
 
 		&.room-selected {
@@ -60,6 +63,34 @@ main.matrix-main {
 		background-color: var(--primary-color);
 		text-align: center;
 		text-wrap: nowrap;
+	}
+}
+
+/*
+ * Hidden outside Tauri: a browser tab has no window controls to seat, and the
+ * OS draws its own bar everywhere else. See the html[data-tauri] block in
+ * index.css for the values this uses.
+ */
+div.app-titlebar {
+	display: none;
+}
+
+html[data-tauri] {
+	& div.app-titlebar {
+		display: block;
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: var(--titlebar-height);
+		background-color: var(--titlebar-background);
+		/* Below modals (z-index 100) so dialogs still cover the whole window. */
+		z-index: 4;
+	}
+
+	/* The band occupies the top strip, so the app grid starts underneath it. */
+	& main.matrix-main {
+		top: var(--titlebar-height);
 	}
 }
 

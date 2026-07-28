@@ -13,12 +13,17 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { use, useCallback, useRef, useState } from "react"
+import React, { use, useCallback, useMemo, useRef, useState } from "react"
 import { BarLoader } from "react-spinners"
-import { RoomListFilter, Space as SpaceStore, SpaceUnreadCounts, usePreference } from "@/api/statestore"
+import {
+	RoomListEntry,
+	RoomListFilter,
+	Space as SpaceStore,
+	SpaceUnreadCounts,
+	usePreference,
+} from "@/api/statestore"
 import type { RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
-import reverseMap from "@/util/reversemap.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
@@ -29,8 +34,23 @@ import FakeSpace from "./FakeSpace.tsx"
 import Space from "./Space.tsx"
 import AddCircleIcon from "@/icons/add-circle.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
+import ChevronDownIcon from "@/icons/modern/chevron-down.svg?react"
+import UserIcon from "@/icons/modern/user.svg?react"
+import UsersIcon from "@/icons/modern/users.svg?react"
 import SearchIcon from "@/icons/search.svg?react"
 import "./RoomList.css"
+
+const collapsedSectionsKey = "seabug.collapsed_room_list_sections"
+
+function readCollapsedSections(): Set<string> {
+	try {
+		const raw = localStorage.getItem(collapsedSectionsKey)
+		return new Set(raw ? JSON.parse(raw) as string[] : [])
+	} catch {
+		// A corrupt or unreadable value shouldn't stop the room list from rendering.
+		return new Set()
+	}
+}
 
 interface RoomListProps {
 	activeRoomID: RoomID | null
@@ -128,6 +148,47 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 
 	const showInviteAvatars = usePreference(client.store, null, "show_invite_avatars")
 	const roomListFilter = client.store.roomListFilterFunc
+	// Group rooms from direct messages. dm_user_id is the same signal DirectChatSpace
+	// filters on, so the grouping here always agrees with the built-in DM space.
+	// roomList is ordered oldest-first, so walk it backwards to keep each group
+	// most-recent-first, matching the ungrouped list's ordering.
+	const sections = useMemo(() => {
+		const rooms: RoomListEntry[] = []
+		const directMessages: RoomListEntry[] = []
+		for (let i = roomList.length - 1; i >= 0; i--) {
+			const room = roomList[i]
+			if (room.dm_user_id) {
+				directMessages.push(room)
+			} else {
+				rooms.push(room)
+			}
+		}
+		return [
+			{ id: "rooms", name: "Rooms", icon: UsersIcon, entries: rooms },
+			{ id: "dms", name: "Direct messages", icon: UserIcon, entries: directMessages },
+		]
+	}, [roomList])
+	const [collapsedSections, setCollapsedSections] = useState(readCollapsedSections)
+	const toggleSection = useCallback((evt: React.MouseEvent<HTMLButtonElement>) => {
+		const sectionID = evt.currentTarget.getAttribute("data-section-id")
+		if (!sectionID) {
+			return
+		}
+		setCollapsedSections(prev => {
+			const next = new Set(prev)
+			if (next.has(sectionID)) {
+				next.delete(sectionID)
+			} else {
+				next.add(sectionID)
+			}
+			try {
+				localStorage.setItem(collapsedSectionsKey, JSON.stringify([...next]))
+			} catch {
+				// Remembering the collapse state is a convenience, not worth failing over.
+			}
+			return next
+		})
+	}, [])
 	return <div className="room-list-wrapper">
 		<div className="room-search-wrapper">
 			<input
@@ -168,15 +229,39 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		<div className="room-list">
 			{initComplete ? null
 				: <BarLoader cssOverride={{ backgroundColor: "unset" }} width="100%" color="var(--primary-color)" />}
-			{reverseMap(roomList, room =>
-				<Entry
-					key={room.room_id}
-					isActive={room.room_id === activeRoomID}
-					hidden={roomListFilter ? !roomListFilter(room) : false}
-					room={room}
-					hideAvatar={room.is_invite && !showInviteAvatars}
-				/>,
-			)}
+			{sections.map(section => {
+				// A header with nothing under it is noise, so drop the whole group
+				// once the search query filters out every room in it.
+				const hasVisibleEntries = roomListFilter
+					? section.entries.some(room => roomListFilter(room))
+					: section.entries.length > 0
+				if (!hasVisibleEntries) {
+					return null
+				}
+				const isCollapsed = collapsedSections.has(section.id)
+				return <div key={section.id} className="room-list-section">
+					<button
+						type="button"
+						className={`room-list-section-header ${isCollapsed ? "collapsed" : ""}`}
+						data-section-id={section.id}
+						onClick={toggleSection}
+						aria-expanded={!isCollapsed}
+					>
+						<section.icon className="section-icon" />
+						<span className="section-name">{section.name}</span>
+						<ChevronDownIcon className="section-chevron" />
+					</button>
+					{isCollapsed ? null : section.entries.map(room =>
+						<Entry
+							key={room.room_id}
+							isActive={room.room_id === activeRoomID}
+							hidden={roomListFilter ? !roomListFilter(room) : false}
+							room={room}
+							hideAvatar={room.is_invite && !showInviteAvatars}
+						/>,
+					)}
+				</div>
+			})}
 		</div>
 	</div>
 }

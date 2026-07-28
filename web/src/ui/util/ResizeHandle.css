@@ -1,5 +1,7 @@
 div.resize-handle-outer {
 	position: relative;
+	/* Above the panes so the glow reads over their shadows rather than under them. */
+	z-index: 2;
 
 	> div.resize-handle-inner {
 		position: absolute;
@@ -8,5 +10,40 @@ div.resize-handle-outer {
 		left: -.25rem;
 		right: -.25rem;
 		cursor: col-resize;
+
+		/*
+		 * The hit area stays wide and invisible; this is the thin bar that lights
+		 * up inside it, so the handle is easy to grab but shows nothing at rest.
+		 */
+		&::after {
+			content: "";
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 50%;
+			translate: -50% 0;
+			width: .125rem;
+			border-radius: 999px;
+			background-color: var(--accent-glow-color);
+			opacity: 0;
+			transition: opacity .15s ease, box-shadow .15s ease;
+
+			/* Skipped when the "Ignore reduce motion" preference is on. */
+			@media (prefers-reduced-motion: reduce) {
+				html:not([data-ignore-reduce-motion]) & {
+					transition: none;
+				}
+			}
+		}
+
+		&:hover::after {
+			opacity: .55;
+			box-shadow: 0 0 6px var(--accent-glow-far);
+		}
+	}
+
+	&.dragging > div.resize-handle-inner::after {
+		opacity: 1;
+		box-shadow: 0 0 8px var(--accent-glow-near), 0 0 20px var(--accent-glow-far);
 	}
 }

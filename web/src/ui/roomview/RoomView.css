@@ -6,7 +6,7 @@ div.room-view {
 	outline: none;
 	grid-template:
 		"header" var(--window-top-margin)
-		"header" 3.5rem
+		"header" var(--room-header-height)
 		"messageview" 1fr
 		"autocomplete" 0
 		"input" auto
@@ -55,7 +55,7 @@ div#mobile-event-menu-container {
 }
 
 div#mobile-thread-event-menu-container {
-	height: 3.5rem;
+	height: var(--room-header-height);
 	box-sizing: border-box;
 
 	&:not(:empty) + div.right-panel-header {

@@ -15,8 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
+import handleExternalLinks from "@/util/externallinks.ts"
 import App from "./App.tsx"
 import "./index.css"
+
+handleExternalLinks()
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>

@@ -13,9 +13,10 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { JSX, use, useCallback, useState } from "react"
+import React, { JSX, use, useCallback, useEffect, useRef, useState } from "react"
 import { HexColorPicker } from "react-colorful"
 import { createPortal } from "react-dom"
+import type Client from "@/api/client.ts"
 import { getAvatarThumbnailURL, getMediaURL, getUserColorIndex, getCustomUserColor, setCustomUserColor } from "@/api/media.ts"
 import {
 	RoomStateStore,
@@ -23,7 +24,15 @@ import {
 	maybeRedactMemberEvent,
 	useRoomMember,
 } from "@/api/statestore"
-import { MemDBEvent, URLPreview as URLPreviewType, UnreadType, UserID } from "@/api/types"
+import {
+	EventID,
+	MemDBEvent,
+	ReactionEventContent,
+	URLPreview as URLPreviewType,
+	UnreadType,
+	UserID,
+	UserProfile,
+} from "@/api/types"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { getDisplayname, getRelatesTo, isEventID } from "@/util/validation.ts"
@@ -72,20 +81,89 @@ const newSafeDate = (val: number) => {
 interface EventReactionsProps {
 	reactions: Record<string, number>
 	onRereact: (mouseEvt: React.MouseEvent) => void
+	client: Client
+	room: RoomStateStore
+	eventID: EventID
 }
 
-const EventReactions = ({ reactions, onRereact }: EventReactionsProps) => {
+const EventReactions = ({ reactions, onRereact, client, room, eventID }: EventReactionsProps) => {
 	const reactionEntries = Object.entries(reactions).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1])
+	// Senders are not part of the event's reaction data — the backend aggregates
+	// m.reaction events down to counts before sending them. The individual
+	// annotations have to be fetched separately, so it happens on first hover
+	// rather than for every reacted event in the timeline.
+	const [senders, setSenders] = useState<Map<string, UserID[]> | null>(null)
+	const [failed, setFailed] = useState(false)
+	const requested = useRef(false)
+	// Counts changing means someone reacted or unreacted, so any names already
+	// fetched are stale and the next hover should fetch again.
+	const countSignature = reactionEntries.map(([key, count]) => `${key}:${count}`).join(",")
+	useEffect(() => {
+		requested.current = false
+		setSenders(null)
+		setFailed(false)
+	}, [countSignature, eventID])
+	const loadSenders = () => {
+		if (requested.current) {
+			return
+		}
+		requested.current = true
+		client.getRelatedEvents(room, eventID, "m.annotation").then(
+			events => {
+				const bySender = new Map<string, UserID[]>()
+				for (const reactionEvt of events) {
+					if (reactionEvt.redacted_by) {
+						continue
+					}
+					const key = (reactionEvt.content as ReactionEventContent)?.["m.relates_to"]?.key
+					if (typeof key !== "string") {
+						continue
+					}
+					const existing = bySender.get(key)
+					if (existing) {
+						existing.push(reactionEvt.sender)
+					} else {
+						bySender.set(key, [reactionEvt.sender])
+					}
+				}
+				setSenders(bySender)
+			},
+			err => {
+				console.error("Failed to get reaction senders", err)
+				setFailed(true)
+			},
+		)
+	}
+	const tooltipText = (reaction: string): string => {
+		if (failed) {
+			return "Failed to load who reacted"
+		} else if (senders === null) {
+			return "Loading…"
+		}
+		const users = senders.get(reaction)
+		if (!users?.length) {
+			return "Nobody?"
+		}
+		return users
+			.map(userID => getDisplayname(
+				userID,
+				room.getStateEvent("m.room.member", userID)?.content as UserProfile | undefined,
+			))
+			.join(", ")
+	}
 	if (reactionEntries.length === 0) {
 		return null
 	}
 	return <div className="event-reactions">
 		{reactionEntries.map(([reaction, count]) =>
-			<div key={reaction} className="reaction" title={reaction} onClick={onRereact}>
-				{reaction.startsWith("mxc://")
-					? <img className="reaction-emoji" src={getMediaURL(reaction)} alt=""/>
-					: <span className="reaction-emoji">{reaction}</span>}
-				<span className="reaction-count">{count}</span>
+			<div key={reaction} className="reaction" onClick={onRereact} onMouseEnter={loadSenders}>
+				<div className="reaction-inner">
+					{reaction.startsWith("mxc://")
+						? <img className="reaction-emoji" src={getMediaURL(reaction)} alt=""/>
+						: <span className="reaction-emoji">{reaction}</span>}
+					<span className="reaction-count">{count}</span>
+				</div>
+				<div className="reaction-tooltip">{tooltipText(reaction)}</div>
 			</div>)}
 	</div>
 }
@@ -479,7 +557,13 @@ const TimelineEvent = ({
 			isThread={true}
 			threadRoot={threadRoot}
 			timelineThreadMsg={true}
-			reactions={evt.reactions ? <EventReactions reactions={evt.reactions} onRereact={onRereact} /> : null}
+			reactions={evt.reactions ? <EventReactions
+				reactions={evt.reactions}
+				onRereact={onRereact}
+				client={client}
+				room={roomCtx.store}
+				eventID={evt.event_id}
+			/> : null}
 		/> : <div className="event-content">
 			{replyInMessage}
 			<ContentErrorBoundary>
@@ -493,7 +577,13 @@ const TimelineEvent = ({
 			>
 				(edited at {formatShortTime(editEventTS)})
 			</div> : null}
-			{evt.reactions ? <EventReactions reactions={evt.reactions} onRereact={onRereact} /> : null}
+			{evt.reactions ? <EventReactions
+				reactions={evt.reactions}
+				onRereact={onRereact}
+				client={client}
+				room={roomCtx.store}
+				eventID={evt.event_id}
+			/> : null}
 		</div>}
 		{!evt.event_id.startsWith("~")
 			&& roomCtx.store.preferences.display_read_receipts

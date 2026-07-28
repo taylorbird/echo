@@ -8,6 +8,9 @@ struct BackendProcess(Mutex<Option<CommandChild>>);
 pub fn run() {
   let app = tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())
+    // Lets the frontend hand external links to the system browser. Without it,
+    // target="_blank" links in messages are silently dropped by the webview.
+    .plugin(tauri_plugin_opener::init())
     .manage(BackendProcess(Mutex::new(None)))
     .setup(|app| {
       if cfg!(debug_assertions) {

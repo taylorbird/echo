@@ -17,10 +17,10 @@ import { JSX } from "react"
 import { RoomListFilter, Space } from "@/api/statestore/space.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import UnreadCount from "./UnreadCount.tsx"
-import HomeIcon from "@/icons/home.svg?react"
-import NotificationsIcon from "@/icons/notifications.svg?react"
-import PersonIcon from "@/icons/person.svg?react"
-import TagIcon from "@/icons/tag.svg?react"
+import BellIcon from "@/icons/modern/bell.svg?react"
+import HashIcon from "@/icons/modern/hash.svg?react"
+import HomeIcon from "@/icons/modern/home.svg?react"
+import UserIcon from "@/icons/modern/user.svg?react"
 import "./RoomList.css"
 
 export interface FakeSpaceProps {
@@ -35,11 +35,11 @@ const getFakeSpaceMeta = (space: RoomListFilter | null): [string | undefined, JS
 	case undefined:
 		return ["Home", <HomeIcon />]
 	case "fi.mau.gomuks.direct_chats":
-		return ["Direct chats", <PersonIcon />]
+		return ["Direct chats", <UserIcon />]
 	case "fi.mau.gomuks.unreads":
-		return ["Unread chats", <NotificationsIcon />]
+		return ["Unread chats", <BellIcon />]
 	case "fi.mau.gomuks.space_orphans":
-		return ["Rooms outside spaces", <TagIcon />]
+		return ["Rooms outside spaces", <HashIcon />]
 	default:
 		return [undefined, null]
 	}

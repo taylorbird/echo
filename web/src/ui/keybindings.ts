@@ -16,6 +16,7 @@
 import React from "react"
 import { RoomStateStore, StateStore } from "@/api/statestore"
 import { MainScreenContextFields } from "@/ui/MainScreenContext.ts"
+import { modals } from "@/ui/modal"
 
 export function keyToString(evt: React.KeyboardEvent | KeyboardEvent) {
 	let key = evt.key
@@ -42,6 +43,11 @@ export default class Keybindings {
 
 	private keyDownMap: KeyMap = {
 		"Ctrl+k": () => document.getElementById("room-search")?.focus(),
+		// The platform-standard Preferences shortcut: Cmd+, on macOS, Ctrl+,
+		// elsewhere. Settings is per-room (it shows this room's overrides alongside
+		// the global ones), so there is nothing to open without a room selected.
+		"Super+,": () => this.openSettings(),
+		"Ctrl+,": () => this.openSettings(),
 		"Alt+ArrowUp": () => {
 			if (!this.activeRoom) {
 				return
@@ -70,6 +76,13 @@ export default class Keybindings {
 
 	private keyUpMap: KeyMap = {
 		// "Escape": evt => evt.target === evt.currentTarget && this.context.clearActiveRoom(),
+	}
+
+	private openSettings() {
+		if (!this.activeRoom) {
+			return
+		}
+		window.openNestableModal(modals.settings(this.activeRoom))
 	}
 
 	listen(): () => void {

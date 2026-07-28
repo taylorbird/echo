@@ -7,6 +7,13 @@ div.overlay {
 
 	&.dimmed {
 		background-color: var(--dimmed-overlay-background-color);
+		/*
+		 * Defocuses the app behind the modal instead of only darkening it. A flat
+		 * dim leaves every edge behind the box at full sharpness, so the box reads
+		 * as pasted on; blurring pushes the app back and lets the dim be lighter.
+		 * The radius is 0 outside Tauri, where there is no vibrancy layer to match.
+		 */
+		backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(115%);
 	}
 
 	&.modal > div.modal-box {

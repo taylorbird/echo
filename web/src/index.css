@@ -4,6 +4,41 @@
 	--monospace-font-stack: "Fira Code", monospace;
 
 	--window-top-margin: env(safe-area-inset-top, 0px);
+
+	/* Mac-native chrome: inset sidebar rows, hairline seams, rounded reading surface. */
+	--sidebar-inset: .5rem;
+	--sidebar-item-radius: .5rem;
+	--space-bar-width: 4.5rem;
+
+	/*
+	 * Height of the header band in every pane: the room header, the room-list
+	 * search row and the right-panel header. Shared so the rule under them lines
+	 * up as one continuous horizontal edge across the panes — three panes each
+	 * hardcoding their own value is how that line drifts out of alignment.
+	 */
+	--room-header-height: 3.5rem;
+
+	/* Casts the header band down over the timeline, so the title reads as a layer
+	   above the messages rather than the first row of them. */
+	--room-header-shadow: 0 4px 12px rgba(0, 0, 0, .28);
+
+	/* Transparent by default: the header sits on the chat surface and inherits it.
+	   Overridden in Tauri, where it wears the room list's tone instead. */
+	--room-header-background: transparent;
+
+	/* Blur radius applied behind modals. Zero by default — see the html[data-tauri]
+	   block, where the app already has a vibrancy layer to match. */
+	--modal-backdrop-blur: 0px;
+	--hairline-color: rgba(0, 0, 0, .08);
+	--section-label-color: var(--secondary-text-color);
+
+	/* Shared accent for "this is live / you are here" cues: the active space
+	   marker and the resize handle under the cursor. Ferra's yellow lifted toward
+	   a candy lemon so it sits with the pastel sender colours. */
+	--accent-glow-color: #ffe484;
+	--accent-glow-near: rgba(255, 228, 132, .75);
+	--accent-glow-far: rgba(255, 228, 132, .35);
+
 	--background-color: #fff;
 	--login-background-color: #eee;
 	--text-color: #000;
@@ -109,16 +144,32 @@
 		--timeline-status-size: 2.3rem;
 	}
 
+	/*
+	 * Ferra, with a candy pastel accent layer on top. The surfaces and body text
+	 * are Ferra's own warm values; what changed are the chromatic accents, which
+	 * are now high-lightness pastels rather than Ferra's more saturated originals.
+	 * The cool graphite palette this reverted from is preserved in
+	 * themes/cool-graphite.css.
+	 */
 	@media (prefers-color-scheme: dark) {
 		color-scheme: dark;
 		/* Ferra theme colors */
 		--background-color: #2b292d;
 		--login-background-color: #383539;
-		--text-color: #fecdb2;
+		/*
+		 * Body copy is a warm off-white, not Ferra's peach (#fecdb2). The peach is
+		 * a saturated colour in its own right, so with pastel sender names above it
+		 * every glyph in the timeline carried hue and nothing read as the accent.
+		 * Dropping the chroma here — while keeping the warm cast — gives the pastel
+		 * names a neutral ground to sit against.
+		 */
+		--text-color: #efe7e1;
 		--inverted-text-color: var(--background-color);
-		--secondary-text-color: #d1d1e0;
-		--semisecondary-text-color: #ffa07a;
-		--link-text-color: #ffa07a;
+		/* Warm gray. The old #d1d1e0 was a cool lavender pulling against the warm
+		   surfaces it sits on. */
+		--secondary-text-color: #b8aca6;
+		--semisecondary-text-color: #ffb59a;
+		--link-text-color: #ffb59a;
 
 		--code-background-color: rgba(56, 53, 57, 0.8);
 		--media-placeholder-default-background: rgba(254, 205, 178, .1);
@@ -129,6 +180,8 @@
 		--error-color: #e06b75;
 
 		--border-color: #4d424b;
+		--hairline-color: rgba(254, 205, 178, .09);
+		--section-label-color: rgba(254, 205, 178, .45);
 		--pill-background-color: #6f5d63;
 		--disabled-input-background-color: #383539;
 		--url-preview-background-color: #383539;
@@ -138,9 +191,9 @@
 		--composer-background-color: #383539;
 
 		--timeline-hover-bg-color: #383539;
-		--timeline-highlight-bg-color: rgba(245, 215, 110, .15);
+		--timeline-highlight-bg-color: rgba(255, 228, 132, .15);
 		--timeline-highlight-hover-bg-color: #4d424b;
-		--timeline-jump-bg-color: rgba(177, 182, 149, .2);
+		--timeline-jump-bg-color: rgba(160, 231, 200, .2);
 		--timeline-jump-hover-bg-color: #4d424b;
 
 		--room-list-background-overlay: #232125;
@@ -156,23 +209,29 @@
 		--image-pack-editor-selected-color: #6f5d63;
 
 		--unread-counter-message-bg: rgba(209, 209, 224, 0.6);
-		--unread-counter-notification-bg: rgba(177, 182, 149, 0.8);
-		--unread-counter-highlight-bg: rgba(224, 107, 117, 0.8);
+		--unread-counter-notification-bg: rgba(160, 231, 200, 0.85);
+		--unread-counter-highlight-bg: rgba(255, 158, 181, 0.85);
 		--space-unread-counter-message-bg: rgba(209, 209, 224, 0.8);
-		--space-unread-counter-notification-bg: #b1b695;
-		--space-unread-counter-highlight-bg: #e06b75;
+		--space-unread-counter-notification-bg: #a0e7c8;
+		--space-unread-counter-highlight-bg: #ff9eb5;
 
-		/* Ferra username colors */
-		--sender-color-0: #e06b75;
-		--sender-color-1: #f5d76e;
-		--sender-color-2: #ffa07a;
-		--sender-color-3: #f6b6c9;
-		--sender-color-4: #b1b695;
-		--sender-color-5: #d1d1e0;
-		--sender-color-6: #fecdb2;
-		--sender-color-7: #e06b75;
-		--sender-color-8: #f5d76e;
-		--sender-color-9: #ffa07a;
+		/*
+		 * Candy username colors — saturated rather than pastel now, and spanning
+		 * the full hue wheel so a red actually appears. The near-black chat pane
+		 * is what buys this: on the old light pane the pastels were already
+		 * scraping 4.5:1, leaving no room to add saturation. Against #16181f the
+		 * weakest of these (the grape) still clears 6.5:1.
+		 */
+		--sender-color-0: #ff5d73;
+		--sender-color-1: #ffa64d;
+		--sender-color-2: #4dd6a8;
+		--sender-color-3: #a78bfa;
+		--sender-color-4: #4db8f5;
+		--sender-color-5: #ffd93d;
+		--sender-color-6: #ff7ac6;
+		--sender-color-7: #4de0e0;
+		--sender-color-8: #ff8a65;
+		--sender-color-9: #a3e635;
 
 		--sent-ok-color: #4d424b;
 		--blockquote-border-color: #4d424b;
@@ -327,4 +386,283 @@ a {
 
 .hidden {
 	display: none !important;
+}
+
+/*
+ * macOS native chrome. Only applies inside the Tauri window (flagged in index.html),
+ * where an NSVisualEffectView sits behind the webview and the titlebar is overlaid
+ * on the content. In a browser there is no titlebar and nothing to blur, so the
+ * defaults above are left alone.
+ */
+html[data-tauri] {
+	/*
+	 * A solid band across the top seats the macOS window controls in a section of
+	 * their own. Kept at the standard 28pt titlebar height so the native traffic
+	 * lights sit centred in it without needing trafficLightPosition overrides.
+	 * The band supplies the top offset, so panes no longer inset themselves.
+	 */
+	--titlebar-height: 2rem;
+	--titlebar-background: #232125;
+	--window-top-margin: 0px;
+
+	/*
+	 * Wide enough to contain the traffic lights, which run to roughly 66pt from
+	 * the window's left edge. The rail then reads as the section that owns them
+	 * rather than something they overhang. Browsers have no window controls, so
+	 * the narrower default above still applies there.
+	 */
+	--space-bar-width: 5.5rem;
+
+	/* A taller header band gives the conversation title room to sit at a larger
+	   size and reads as the pane's masthead rather than a thin strip. */
+	--room-header-height: 4.75rem;
+
+	/*
+	 * With the app blurred behind it, the dim no longer has to do the separating on
+	 * its own, so it lightens from .75 to .5 — the modal stops looking like a hole
+	 * punched in a black sheet.
+	 */
+	--modal-backdrop-blur: 20px;
+	--dimmed-overlay-background-color: rgba(0, 0, 0, .5);
+
+	/*
+	 * The header wears the room list's tone, so the two header bands read as one
+	 * band running across both panes. Note this is the same *declared* colour, not
+	 * the same rendered one: over in the room list it composites against the
+	 * vibrancy blur, whereas here it composites against the opaque chat pane, so
+	 * it lands darker. Matching them exactly would mean hardcoding an opaque value
+	 * tuned by eye.
+	 */
+	--room-header-background: var(--room-list-background);
+
+	/*
+	 * Panes float as separate cards with a gap between them, rather than butting
+	 * together as slabs. The gap is what does the softening: the vibrancy layer
+	 * shows through it, so panes read as distinct objects on one surface instead
+	 * of as a wall divided by borders.
+	 */
+	--pane-gap: .5rem;
+	/* Square by preference: the gap and shadow do the separating, not a radius. */
+	--pane-radius: 0;
+	--pane-shadow: 0 0 0 .5px rgba(0, 0, 0, .45), 0 6px 20px rgba(0, 0, 0, .3);
+
+	/*
+	 * Stacking runs left over right: the room list is the raised panel and the
+	 * chat slides beneath it. Two halves make that read, and it needs both.
+	 *
+	 * The recess is an *inset* shadow down the chat's left edge. Inset shadows
+	 * paint inside the border box, so unlike an outer shadow they cannot be
+	 * clipped by the paint containment on these panes — this half is what
+	 * guarantees the effect. The raise is the room list's outer shadow spilling
+	 * rightward onto the chat, which is the more conventional cue but depends on
+	 * an outer shadow escaping `contain: strict`.
+	 */
+	--pane-recess-shadow: inset 10px 0 10px -10px rgba(0, 0, 0, .6);
+
+	/*
+	 * Each raise is a light edge line plus a dark blur, in that order. The light
+	 * line is the part that actually reads: the chat pane is near-black, so a
+	 * black shadow cast onto it has nothing left to darken and disappears. A 1px
+	 * offset with no blur draws a crisp lit edge on the raised pane instead, which
+	 * is what separates it — the dark blur only adds depth behind that.
+	 */
+	--pane-raise-shadow:
+		1px 0 0 rgba(255, 255, 255, .07),
+		8px 0 24px rgba(0, 0, 0, .6);
+	/* Mirror of the above, for panes raised over the chat from the right. */
+	--pane-raise-shadow-left:
+		-1px 0 0 rgba(255, 255, 255, .07),
+		-8px 0 24px rgba(0, 0, 0, .6);
+
+	/*
+	 * Tint the vibrancy layer rather than covering it or leaving it bare. Left
+	 * fully transparent, these panes have no colour of their own and land on
+	 * whatever tone the blur happens to produce from the desktop behind the
+	 * window — which can match the opaque chat surface exactly. The alpha is
+	 * high enough that each pane's own colour dominates and the step to the
+	 * chat pane always reads, while the blur still modulates it and still
+	 * follows the window's active state.
+	 *
+	 * Tone runs darkest-to-lightest left to right: space rail, room list,
+	 * chat. The rail paints on top of the wrapper, so its alpha is the higher
+	 * of the two in order to win rather than composite into the same value.
+	 */
+	--room-list-background: rgba(31, 29, 34, .78);
+	--space-list-background-overlay: rgba(20, 18, 22, .85);
+	--room-list-background-overlay: transparent;
+	--room-list-search-background-overlay: transparent;
+
+	&, & body {
+		background-color: transparent;
+	}
+
+	/*
+	 * The chat surface sits lighter than the sidebar. The sidebar is translucent
+	 * over the vibrancy layer and therefore reads dark, so lifting the reading
+	 * surface is what separates the two — the panes no longer need a border to
+	 * tell them apart.
+	 */
+	@media (prefers-color-scheme: dark) {
+		--background-color: #4a4553;
+		--composer-background-color: #3b3743;
+		--timeline-hover-bg-color: #565060;
+		--timeline-highlight-hover-bg-color: #625b6d;
+		--timeline-jump-hover-bg-color: #625b6d;
+	}
+
+	/*
+	 * Reading surfaces stay opaque: text contrast must never depend on whatever
+	 * wallpaper happens to be behind the window. Each is a floating card, so the
+	 * internal titlebar inset is zeroed — the card's own top margin clears it.
+	 */
+	/* Flush to the title bar on top, floating on the other three sides — a gap up
+	   there just reopens the seam the solid band was added to close. */
+	& div.room-view, & div.right-panel {
+		background-color: var(--background-color);
+		margin: 0 var(--pane-gap) var(--pane-gap) 0;
+		border-radius: var(--pane-radius);
+		box-shadow: var(--pane-shadow);
+	}
+
+	/*
+	 * The chat pane has no left margin, so it sits flush against the room list
+	 * and its drop shadow blurred sideways onto it — which is what made the chat
+	 * read as the panel on top. Trading that outer shadow for an inset one on the
+	 * same edge reverses the cue: the edge is now darkened *within* the chat, so
+	 * the room list reads as sitting above it.
+	 */
+	& div.room-view {
+		box-shadow: var(--pane-recess-shadow);
+
+		/*
+		 * The chat pane runs its own cool, near-black scheme while the sidebars
+		 * keep Ferra's warmth. Scoped here rather than on html so the override
+		 * inherits to everything inside the pane — header, timeline, composer —
+		 * and stops at the pane's edge.
+		 *
+		 * This inverts the earlier tonal order: the chat is now the darkest
+		 * surface rather than the lightest. It suits the recessed treatment (a
+		 * well should read darker than what sits above it), but note the recess
+		 * shadow itself is now nearly invisible — a black inset on a near-black
+		 * pane has little left to darken.
+		 *
+		 * Reading surfaces stay fully opaque, so text contrast still never
+		 * depends on the wallpaper behind the vibrancy layer.
+		 */
+		@media (prefers-color-scheme: dark) {
+			--background-color: #16181f;
+			/* Lighter than the pane, not darker: on a near-black surface an input
+			   reads as raised. The recessed-composer logic only held while the
+			   chat pane was the lightest thing on screen. */
+			--composer-background-color: #1e212a;
+
+			--text-color: #e6eaf2;
+			--secondary-text-color: #98a0b0;
+
+			--timeline-hover-bg-color: #212530;
+			--timeline-highlight-hover-bg-color: #2a2f3c;
+			--timeline-jump-hover-bg-color: #2a2f3c;
+
+			--border-color: #2f3543;
+			--hairline-color: rgba(230, 234, 242, .09);
+			--blockquote-border-color: #2f3543;
+			--sent-ok-color: #2f3543;
+			--pill-background-color: #39404f;
+			--code-background-color: rgba(30, 33, 42, .85);
+			--button-hover-color: rgba(230, 234, 242, .18);
+			--light-hover-color: rgba(230, 234, 242, .08);
+		}
+	}
+
+	/* The raised panel casts rightward, and has to stack above the pane it casts
+	   onto. Below the titlebar's z-index 4 so it still slides under that band. */
+	& div.room-list-wrapper {
+		position: relative;
+		z-index: 3;
+		box-shadow: var(--pane-raise-shadow);
+	}
+
+	/* The card edge separates the panel now, so the hard rule is redundant. */
+	& div.right-panel {
+		border-left: none;
+		padding-top: 0;
+
+		/*
+		 * Wears the room list's tone rather than the chat pane's. Unlike the room
+		 * header — which borrows the same token but composites over the opaque chat
+		 * pane and so lands darker — this pane sits at the window edge with the
+		 * vibrancy layer directly behind it, exactly as the room list does. Same
+		 * declared colour over the same backdrop, so the two genuinely match.
+		 */
+		background-color: var(--room-list-background);
+
+		/*
+		 * The panel is raised over the chat, mirroring how the room list sits over
+		 * it on the other side — same shadow, cast leftward, same stacking level.
+		 * Without the z-index the chat pane paints over the shadow and the panel
+		 * reads as sitting under it.
+		 */
+		z-index: 3;
+		box-shadow: var(--pane-raise-shadow-left);
+		animation: right-panel-slide-in .22s cubic-bezier(.22, .61, .36, 1);
+
+		/*
+		 * The grid column is allocated the instant the panel mounts, so the slot
+		 * is briefly empty while the panel travels into it. Animating the column
+		 * width instead would be the tighter effect, but the open/closed grid
+		 * templates differ in track count (3 vs 5), which is not interpolable.
+		 */
+
+	}
+
+	/* Inside a floating card, a full-weight rule reads as a seam. Soften to a
+	   hairline. The room header is excluded: it separates with a cast shadow now
+	   and carries no bottom border to soften. */
+	& div.right-panel > div.right-panel-header {
+		border-bottom-color: var(--hairline-color);
+	}
+}
+
+/*
+ * Right panel entrance. An animation rather than a transition because the panel
+ * is mounted on open — there is no prior state for a transition to run from.
+ * Declared at the top level: @keyframes cannot be nested inside a style rule.
+ */
+@keyframes right-panel-slide-in {
+	from {
+		translate: 100% 0;
+	}
+
+	to {
+		translate: 0 0;
+	}
+}
+
+/* Motion-free substitute for the slide. See the reduced-motion block below. */
+@keyframes right-panel-fade-in {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+/*
+ * Reduce motion, not remove feedback: a fade with no travel still marks the
+ * transition without the sliding movement the preference is actually about.
+ *
+ * Every reduced-motion rule in this app is written to also require
+ * data-ignore-reduce-motion to be ABSENT, which is what makes the "Ignore reduce
+ * motion" preference possible — CSS cannot un-match a media query, so the escape
+ * hatch has to be built into each rule's selector rather than layered on top.
+ * Kept at the top level rather than nested inside the html[data-tauri] block:
+ * both attributes live on <html>, and a nested `&` would produce an html
+ * descendant of html, which matches nothing.
+ */
+@media (prefers-reduced-motion: reduce) {
+	html[data-tauri]:not([data-ignore-reduce-motion]) div.right-panel {
+		animation: right-panel-fade-in .12s ease-out;
+	}
 }

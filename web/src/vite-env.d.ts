@@ -23,6 +23,8 @@ declare global {
 		gomuksAndroid?: true
 		gomuksDesktop?: boolean
 		gomuksWebWasm?: boolean
+		// Injected by Tauri into its webview; absent in a plain browser.
+		__TAURI_INTERNALS__?: unknown
 		vapidPublicKey?: string
 	}
 	interface Element {

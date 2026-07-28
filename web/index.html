@@ -16,6 +16,11 @@
 	<script type="module">
 		window.gomuksDesktop = window.wails || window._wails || navigator.userAgent.includes("wails.io")
 		window.gomuksWebWasm = import.meta.env.PROD && !document.querySelector("meta[name=gomuks-frontend-etag]")
+		// Tauri overlays its titlebar on the content and puts a vibrancy layer behind the webview.
+		// Mark the document so the CSS can inset for the traffic lights and go translucent.
+		if (window.__TAURI_INTERNALS__) {
+			document.documentElement.dataset.tauri = "true"
+		}
 	</script>
 	<script type="module" src="src/main.tsx"></script>
 	<audio id="default-notification-sound" preload="auto" src="sounds/bright.flac"></audio>

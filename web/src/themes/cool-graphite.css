@@ -1,0 +1,123 @@
+/*
+ * Graphite — the cool theme. PRESERVED, NOT ACTIVE.
+ *
+ * This file is deliberately not imported anywhere. It is the neutral gray palette
+ * Seabug wore briefly on 2026-07-28, kept because it may be wanted back as a
+ * selectable "cool" theme. The active palette in index.css is Ferra (warm) with a
+ * candy pastel accent layer.
+ *
+ * Near-achromatic by design: it exists to let typography be judged without a hue
+ * cast pulling on it. Two things stay chromatic on purpose — error red, because
+ * neutralising a semantic colour makes it stop signalling, and the sender colours,
+ * which must remain mutually distinguishable to do their job at all.
+ *
+ * To bring it back:
+ *   1. `import "./themes/cool-graphite.css"` in web/src/main.tsx, after index.css
+ *      (it must come later — the html[data-tauri] block in index.css carries the
+ *      same specificity, so source order is what decides the pane tones).
+ *   2. Set `document.documentElement.dataset.theme = "graphite"`.
+ *
+ * Specificity note: html[data-theme="graphite"] is (0,1,1) against the :root
+ * block's (0,1,0) in index.css, so these win over the defaults without
+ * !important. This import path has not been exercised — nothing imports the file.
+ */
+
+html[data-theme="graphite"] {
+	/* Cool steel accent — the active-space indicator and resize handles. */
+	--accent-glow-color: #9db8dd;
+	--accent-glow-near: rgba(157, 184, 221, .75);
+	--accent-glow-far: rgba(157, 184, 221, .35);
+
+	--room-list-background: #232326;
+
+	@media (prefers-color-scheme: dark) {
+		color-scheme: dark;
+		/* Graphite theme colors */
+		--background-color: #2a2a2d;
+		--login-background-color: #3a3a3e;
+		--text-color: #e9e9ec;
+		--inverted-text-color: var(--background-color);
+		--secondary-text-color: #a6a6ae;
+		--semisecondary-text-color: #93a4c0;
+		--link-text-color: #9db8dd;
+
+		--code-background-color: rgba(58, 58, 62, 0.8);
+		--media-placeholder-default-background: rgba(233, 233, 236, .1);
+		--media-placeholder-button-background: rgba(41, 41, 45, .7);
+
+		--primary-color: #e9e9ec;
+		--primary-color-dark: #c9c9d1;
+		--error-color: #e0686f;
+
+		--border-color: #4a4a52;
+		--hairline-color: rgba(233, 233, 236, .09);
+		--section-label-color: rgba(233, 233, 236, .45);
+		--pill-background-color: #5a5a63;
+		--disabled-input-background-color: #3a3a3e;
+		--url-preview-background-color: #3a3a3e;
+		--button-hover-color: rgba(233, 233, 236, .2);
+		--light-hover-color: rgba(233, 233, 236, .1);
+
+		--composer-background-color: #3a3a3e;
+
+		--timeline-hover-bg-color: #3a3a3e;
+		--timeline-highlight-bg-color: rgba(157, 184, 221, .15);
+		--timeline-highlight-hover-bg-color: #4a4a52;
+		--timeline-jump-bg-color: rgba(166, 166, 174, .2);
+		--timeline-jump-hover-bg-color: #4a4a52;
+
+		--room-list-background-overlay: #232326;
+		--space-list-background-overlay: #17171a;
+		--room-list-scrollbar-color: rgba(233, 233, 236, .4) rgba(233, 233, 236, .1);
+		--room-list-entry-hover-color: rgba(233, 233, 236, 0.1);
+		--room-list-entry-selected-color: rgba(233, 233, 236, 0.15);
+
+		--modal-box-shadow-color: rgba(0, 0, 0, 0.3);
+		--popout-widget-box-shadow-color: rgba(0, 0, 0, 0.5);
+
+		--emoji-selected-border-color: #5a5a63;
+		--image-pack-editor-selected-color: #5a5a63;
+
+		--unread-counter-message-bg: rgba(166, 166, 174, 0.6);
+		--unread-counter-notification-bg: rgba(157, 184, 221, 0.8);
+		--unread-counter-highlight-bg: rgba(224, 104, 111, 0.8);
+		--space-unread-counter-message-bg: rgba(166, 166, 174, 0.8);
+		--space-unread-counter-notification-bg: #9db8dd;
+		--space-unread-counter-highlight-bg: #e0686f;
+
+		/* Desaturated username colors — muted and cool-leaning, but still ten
+		   distinguishable hues. */
+		--sender-color-0: #d98f95;
+		--sender-color-1: #c2c08f;
+		--sender-color-2: #8fbfb5;
+		--sender-color-3: #b0a9d0;
+		--sender-color-4: #9fb8d8;
+		--sender-color-5: #c3c6cc;
+		--sender-color-6: #8fa8a0;
+		--sender-color-7: #cf9aa8;
+		--sender-color-8: #a9b6c9;
+		--sender-color-9: #b5b5bd;
+
+		--sent-ok-color: #4a4a52;
+		--blockquote-border-color: #4a4a52;
+		--lightbox-button-color: #e9e9ec;
+	}
+}
+
+/*
+ * The cool variants of the macOS pane tones: room list darker than the chat so
+ * the tonal step never depends on the wallpaper behind the vibrancy layer.
+ */
+html[data-theme="graphite"][data-tauri] {
+	--titlebar-background: #232326;
+	--room-list-background: rgba(29, 29, 32, .78);
+	--space-list-background-overlay: rgba(17, 17, 19, .85);
+
+	@media (prefers-color-scheme: dark) {
+		--background-color: #47474c;
+		--composer-background-color: #3a3a3e;
+		--timeline-hover-bg-color: #53535a;
+		--timeline-highlight-hover-bg-color: #5f5f67;
+		--timeline-jump-hover-bg-color: #5f5f67;
+	}
+}

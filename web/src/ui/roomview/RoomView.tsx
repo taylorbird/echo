@@ -94,7 +94,7 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 		<div className="room-view" onClick={onClick}>
 			<ErrorBoundary thing="room header" wrapperClassName="room-header-error">
 				<div className="mobile-event-menu-container" id="mobile-event-menu-container"/>
-				<RoomViewHeader room={room}/>
+				<RoomViewHeader room={room} activePanel={rightPanel?.type ?? null}/>
 			</ErrorBoundary>
 			<ErrorBoundary thing="room timeline" wrapperClassName="room-timeline-error">
 				{view}

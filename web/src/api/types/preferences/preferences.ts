@@ -96,6 +96,12 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: false,
 	}),
+	ignore_reduce_motion: new Preference<boolean>({
+		displayName: "Ignore reduce motion",
+		description: "Whether to play animations even when the system asks for reduced motion. Device-specific, since the system setting it overrides is itself per-device.",
+		allowedContexts: globalDeviceSpecific,
+		defaultValue: false,
+	}),
 	custom_css: new Preference<string>({
 		displayName: "Custom CSS",
 		description: "Arbitrary custom CSS to apply to the client.",

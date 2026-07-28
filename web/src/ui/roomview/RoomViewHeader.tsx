@@ -20,21 +20,24 @@ import { getModalStyleFromButton } from "@/ui/menu/util.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { LightboxContext, NestableModalContext, modals } from "../modal"
-import BackIcon from "@/icons/back.svg?react"
-import CodeIcon from "@/icons/code.svg?react"
-import PeopleIcon from "@/icons/group.svg?react"
-import MoreIcon from "@/icons/more.svg?react"
-import NotificationsIcon from "@/icons/notifications.svg?react"
-import PinIcon from "@/icons/pin.svg?react"
-import SettingsIcon from "@/icons/settings.svg?react"
-import WidgetIcon from "@/icons/widgets.svg?react"
+import { RightPanelType } from "../rightpanel/RightPanel.tsx"
+import BackIcon from "@/icons/modern/arrow-left.svg?react"
+import NotificationsIcon from "@/icons/modern/bell.svg?react"
+import CodeIcon from "@/icons/modern/code.svg?react"
+import WidgetIcon from "@/icons/modern/layout-grid.svg?react"
+import MoreIcon from "@/icons/modern/more-horizontal.svg?react"
+import PinIcon from "@/icons/modern/pin.svg?react"
+import SettingsIcon from "@/icons/modern/settings.svg?react"
+import PeopleIcon from "@/icons/modern/users.svg?react"
 import "./RoomViewHeader.css"
 
 interface RoomViewHeaderProps {
 	room: RoomStateStore
+	/** Type of the currently open right panel, so its opener button can show as active. */
+	activePanel?: RightPanelType | null
 }
 
-const RoomViewHeader = ({ room }: RoomViewHeaderProps) => {
+const RoomViewHeader = ({ room, activePanel }: RoomViewHeaderProps) => {
 	const roomMeta = useEventAsState(room.meta)
 	const mainScreen = use(MainScreenContext)
 	const openNestableModal = use(NestableModalContext)
@@ -45,27 +48,38 @@ const RoomViewHeader = ({ room }: RoomViewHeaderProps) => {
 		openNestableModal(modals.roomStateExplorer(room))
 	}
 	const buttonCount = 5
+	// The opener for whichever panel is showing gets the same active treatment as a
+	// selected room-list entry, so the header says which panel slid in.
+	const activeClass = (panel: RightPanelType) => activePanel === panel ? "active" : undefined
 	const makeButtons = (titles?: boolean)  => {
 		return <>
 			<button
+				className={activeClass("pinned-messages")}
+				aria-pressed={activePanel === "pinned-messages"}
 				data-target-panel="pinned-messages"
 				data-close-nestable-modal={titles}
 				onClick={mainScreen.clickRightPanelOpener}
 				title="Pinned Messages"
 			><PinIcon/>{titles && "Pinned Messages"}</button>
 			<button
+				className={activeClass("members")}
+				aria-pressed={activePanel === "members"}
 				data-target-panel="members"
 				data-close-nestable-modal={titles}
 				onClick={mainScreen.clickRightPanelOpener}
 				title="Room Members"
 			><PeopleIcon/>{titles && "Room Members"}</button>
 			<button
+				className={activeClass("widgets")}
+				aria-pressed={activePanel === "widgets"}
 				data-target-panel="widgets"
 				data-close-nestable-modal={titles}
 				onClick={mainScreen.clickRightPanelOpener}
 				title="Widgets in room"
 			><WidgetIcon/>{titles && "Widgets in room"}</button>
 			<button
+				className={activeClass("notifications")}
+				aria-pressed={activePanel === "notifications"}
 				data-target-panel="notifications"
 				data-close-nestable-modal={titles}
 				onClick={mainScreen.clickRightPanelOpener}
@@ -97,10 +111,12 @@ const RoomViewHeader = ({ room }: RoomViewHeaderProps) => {
 			alt=""
 		/>
 		<div className="room-name-and-topic">
-			<div className="room-name">
+			<div className="room-name" title={roomMeta.name ?? roomMeta.room_id}>
 				{roomMeta.name ?? roomMeta.room_id}
 			</div>
-			{roomMeta.topic && <div className="room-topic">
+			{/* Both lines are clipped to one line with an ellipsis, so the full text
+			    is only reachable on hover. */}
+			{roomMeta.topic && <div className="room-topic" title={roomMeta.topic}>
 				{roomMeta.topic}
 			</div>}
 		</div>

@@ -338,13 +338,21 @@ const handleURLHash = (client: Client, context: MainScreenContextFields, hashOnl
 
 type ActiveRoomType = [RoomStateStore | RoomPreviewProps | null, RoomStateStore | RoomPreviewProps | null]
 
+// Mirrors the CSS: the system preference is honoured unless the "Ignore reduce
+// motion" preference has set the attribute on <html>. Without this the toggle
+// would be half-applied on narrow layouts — the CSS transition would run, but the
+// outgoing room would not be kept mounted for it to animate.
+const prefersReducedMotion = () =>
+	window.matchMedia("(prefers-reduced-motion: reduce)").matches
+	&& !document.documentElement.hasAttribute("data-ignore-reduce-motion")
+
 const activeRoomReducer = (
 	prev: ActiveRoomType,
 	active: RoomStateStore | RoomPreviewProps | "clear-animation" | null,
 ): ActiveRoomType => {
 	if (active === "clear-animation") {
 		return prev[1] === null ? [null, null] : prev
-	} else if (window.innerWidth > 720 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+	} else if (window.innerWidth > 720 || prefersReducedMotion()) {
 		return [null, active]
 	} else {
 		return [prev[1], active]
@@ -497,6 +505,11 @@ const MainScreen = () => {
 		<ModalWrapper ContextType={ModalContext} historyStateKey="modal">
 			<ModalWrapper ContextType={NestableModalContext} historyStateKey="nestable_modal">
 				<StylePreferences client={client} activeRoom={activeRealRoom}/>
+				{/*
+				  * Solid band behind the macOS window controls. Only visible inside the
+				  * Tauri window; the drag region makes it behave like a real title bar.
+				  */}
+				<div className="app-titlebar" data-tauri-drag-region/>
 				{mainContent}
 				{syncLoader}
 			</ModalWrapper>

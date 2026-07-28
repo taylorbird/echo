@@ -34,6 +34,12 @@ import { LightboxContext, ModalCloseContext, ModalContext, modals } from "../mod
 import JSONView from "../util/JSONView.tsx"
 import Toggle from "../util/Toggle.tsx"
 import CloseIcon from "@/icons/close.svg?react"
+import BracesIcon from "@/icons/modern/braces.svg?react"
+import RoomIcon from "@/icons/modern/door-open.svg?react"
+import KeyIcon from "@/icons/modern/key.svg?react"
+import LogOutIcon from "@/icons/modern/log-out.svg?react"
+import PaletteIcon from "@/icons/modern/palette.svg?react"
+import SlidersIcon from "@/icons/modern/sliders-horizontal.svg?react"
 import "./SettingsView.css"
 
 interface PreferenceCellProps<T extends PreferenceValueType> {
@@ -54,15 +60,24 @@ const makeRemover = (
 	return <button onClick={() => setPref(context, name, undefined)}><CloseIcon /></button>
 }
 
+/*
+ * Every cell carries its scope so the two room-scoped columns can be tinted as a
+ * group, and gets `set` when this scope defines the value itself rather than
+ * inheriting it. A set cell is highlighted with an accent edge — the vertical runs
+ * of highlight are what show where overrides actually live.
+ */
+const cellClass = (kind: string, context: PreferenceContext, value: PreferenceValueType | undefined) =>
+	`preference ${kind} scope-${context}${value !== undefined ? " set" : ""}`
+
 const BooleanPreferenceCell = ({ context, name, setPref, value, inheritedValue }: PreferenceCellProps<boolean>) => {
-	return <div className="preference boolean-preference">
+	return <div className={cellClass("boolean-preference", context, value)}>
 		<Toggle checked={value ?? inheritedValue} onChange={evt => setPref(context, name, evt.target.checked)}/>
 		{makeRemover(context, setPref, name, value)}
 	</div>
 }
 
 const TextPreferenceCell = ({ context, name, setPref, value, inheritedValue }: PreferenceCellProps<string>) => {
-	return <div className="preference string-preference">
+	return <div className={cellClass("string-preference", context, value)}>
 		<input value={value ?? inheritedValue} onChange={evt => setPref(context, name, evt.target.value)}/>
 		{makeRemover(context, setPref, name, value)}
 	</div>
@@ -72,7 +87,7 @@ const SelectPreferenceCell = ({ context, name, pref, setPref, value, inheritedVa
 	if (!pref.allowedValues) {
 		return null
 	}
-	return <div className="preference select-preference">
+	return <div className={cellClass("select-preference", context, value)}>
 		<select value={value ?? inheritedValue} onChange={evt => setPref(context, name, evt.target.value)}>
 			{pref.allowedValues.map((value, i) =>
 				<option key={i} value={value}>{pref.valueLabels ? pref.valueLabels[i] : value}</option>)}
@@ -111,7 +126,7 @@ const PreferenceRow = ({
 		inheritedVal: PreferenceValueType,
 	) => {
 		if (!pref.allowedContexts.includes(context)) {
-			return <div className="empty-cell" />
+			return <div className={`empty-cell scope-${context}`} />
 		}
 		if (prefType === "boolean") {
 			return <BooleanPreferenceCell
@@ -146,7 +161,13 @@ const PreferenceRow = ({
 	}
 	let inherit: PreferenceValueType
 	return <>
-		<div className="name" title={pref.description}>{pref.displayName}</div>
+		{/* The description used to live only in a title tooltip, which meant the
+		    grid showed a column of switch labels with no way to learn what any of
+		    them did without hovering each one. */}
+		<div className="name">
+			<div className="pref-label">{pref.displayName}</div>
+			<div className="pref-description">{pref.description}</div>
+		</div>
 		{makeContentCell(PreferenceContext.Account, globalServer, inherit = pref.defaultValue)}
 		{makeContentCell(PreferenceContext.Device, globalLocal, inherit = globalServer ?? inherit)}
 		{makeContentCell(PreferenceContext.RoomAccount, roomServer, inherit = globalLocal ?? inherit)}
@@ -222,8 +243,9 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 		setText(vscodeContentRef.current)
 		vscodeContentRef.current = ""
 	}, [])
-	return <div className="custom-css-input">
-		<div className="header">
+	return <section className="settings-section custom-css-input">
+		<header>
+			<PaletteIcon/>
 			<h3>Custom CSS</h3>
 			<select value={context} onChange={onChangeContext}>
 				<option value={PreferenceContext.Account}>Account</option>
@@ -235,7 +257,7 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 				<span className="warning">
 					&#x26a0;&#xfe0f; This context will not be applied, <code>{appliedContext}</code> has content
 				</span>}
-		</div>
+		</header>
 		{vscodeOpen ? <div className="vscode-wrapper">
 			<Suspense fallback={
 				<div className="loader"><ScaleLoader width={40} height={80} color="var(--primary-color)"/></div>
@@ -253,14 +275,17 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 			{origText !== undefined && <button className="delete" onClick={onDelete}>Delete</button>}
 			<button className="save primary-color-button" onClick={onSave} disabled={origText === text}>Save</button>
 		</div>
-	</div>
+	</section>
 }
 
 const AppliedSettingsView = ({ room }: SettingsViewProps) => {
 	const client = use(ClientContext)!
 
-	return <div className="applied-settings">
-		<h3>Raw settings data</h3>
+	return <section className="settings-section applied-settings">
+		<header>
+			<BracesIcon/>
+			<h3>Raw settings data</h3>
+		</header>
 		<details>
 			<summary><h4>Applied settings in this room</h4></summary>
 			<JSONView data={room.preferences}/>
@@ -281,7 +306,7 @@ const AppliedSettingsView = ({ room }: SettingsViewProps) => {
 			<summary><h4>Room device settings</h4></summary>
 			<JSONView data={room.localPreferenceCache}/>
 		</details>
-	</div>
+	</section>
 }
 
 export interface KeyRestoreStatus {
@@ -391,8 +416,14 @@ const KeyExportView = ({ room }: SettingsViewProps) => {
 			boxClass: "key-restore-modal-wrapper",
 		})
 	}
-	return <div className="key-export">
-		<h3>Key export/import</h3>
+	return <section className="settings-section key-export">
+		<header>
+			<KeyIcon/>
+			<h3>Encryption keys</h3>
+		</header>
+		<p className="section-note">
+			The passphrase encrypts the export file, and is required to read it back.
+		</p>
 		<input
 			className="passphrase"
 			type="password"
@@ -433,7 +464,7 @@ const KeyExportView = ({ room }: SettingsViewProps) => {
 			<button onClick={() => importBackup(room.roomID)}>Import room backup</button>
 			<button onClick={() => importBackup()}>Import entire backup</button>
 		</div>
-	</div>
+	</section>
 }
 
 const SettingsView = ({ room }: SettingsViewProps) => {
@@ -514,72 +545,127 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 	const roomServer = room.serverPreferenceCache
 	const roomLocal = room.localPreferenceCache
 	return <>
-		<h2>Settings</h2>
-		<div className="room-details">
-			<img
-				className="avatar large"
-				loading="lazy"
-				src={getRoomAvatarThumbnailURL(roomMeta)}
-				data-full-src={getRoomAvatarURL(roomMeta)}
-				onClick={use(LightboxContext)}
-				alt=""
-			/>
-			<div>
-				{roomMeta.name && <div className="room-name">{roomMeta.name}</div>}
-				<code>{room.roomID}</code>
-				<div>{roomMeta.topic}</div>
-				<div className="room-buttons">
-					<button className="leave-room" onClick={onClickLeave}>Leave room</button>
-					<button className="devtools" onClick={openDevtools}>Explore room state</button>
-					<select onChange={evt => {
-						window.activeRoomContext?.setForceViewType(evt.target.value as RoomType)
-						closeModal()
-					}} defaultValue="__null__">
-						{preferences.room_view_type.allowedValues!.map((val, i) =>
-							<option key={i} value={val ?? "__null__"} disabled={i === 0}>
-								{i === 0 ? "Override view" : preferences.room_view_type.valueLabels![i]}
-							</option>)}
-					</select>
-					{previousRoomID &&
-						<button className="previous-room" onClick={openPredecessorRoom}>
-							Open Predecessor Room
-						</button>}
-				</div>
+		{/*
+		  * The headline is "Settings", not the room name. Titling the whole screen
+		  * with the room made it look like everything here was room-only, when in
+		  * fact most of it is global and only the two right-hand columns are scoped
+		  * to one room. The room is named where it actually applies instead.
+		  */}
+		<div className="settings-masthead">
+			<div className="masthead-text">
+				<div className="masthead-eyebrow">Seabug</div>
+				<h2>Settings</h2>
+				<p className="masthead-note">
+					These are your preferences everywhere. You can also override any of them
+					for a single room — right now that room is
+					{" "}
+					<span className="room-chip" title={room.roomID}>
+						<img
+							className="avatar"
+							loading="lazy"
+							src={getRoomAvatarThumbnailURL(roomMeta)}
+							data-full-src={getRoomAvatarURL(roomMeta)}
+							onClick={use(LightboxContext)}
+							alt=""
+						/>
+						{roomMeta.name ?? room.roomID}
+					</span>.
+				</p>
 			</div>
 		</div>
-		<div className="preference-table">
-			<div className="name" style={{ height: "2.5rem" }}>Name</div>
-			<div className="name">Account</div>
-			<div className="name">Device</div>
-			<div className="name">Room (account)</div>
-			<div className="name">Room (device)</div>
-			{Object.entries(preferences).map(([key, pref]) =>
-				!pref.hidden ? <PreferenceRow
-					key={key}
-					name={key as keyof Preferences}
-					pref={pref}
-					setPref={setPref}
-					globalServer={globalServer[key as keyof Preferences]}
-					globalLocal={globalLocal[key as keyof Preferences]}
-					roomServer={roomServer[key as keyof Preferences]}
-					roomLocal={roomLocal[key as keyof Preferences]}
-				/> : null)}
-		</div>
+
+		<section className="settings-section">
+			<header>
+				<SlidersIcon/>
+				<h3>Preferences</h3>
+			</header>
+			<div className="preference-table">
+				{/*
+				  * Two group headers spanning two columns each. The four scopes are
+				  * really a 2×2: where it applies (everywhere / this room) crossed with
+				  * which devices (all / just this one). Four flat columns hid that, and
+				  * left two of them labelled identically.
+				  */}
+				<div className="group-head spacer"/>
+				<div className="group-head everywhere">
+					<div className="group-title">Everywhere</div>
+					<div className="group-note">your default in every room</div>
+				</div>
+				<div className="group-head this-room">
+					<div className="group-title">Only in {roomMeta.name ?? "this room"}</div>
+					<div className="group-note">overrides the default above</div>
+				</div>
+
+				<div className="column-head name">Setting</div>
+				<div className="column-head">All devices</div>
+				<div className="column-head">This device</div>
+				<div className="column-head scope-room_account">All devices</div>
+				<div className="column-head scope-room_device">This device</div>
+
+				{Object.entries(preferences).map(([key, pref]) =>
+					!pref.hidden ? <PreferenceRow
+						key={key}
+						name={key as keyof Preferences}
+						pref={pref}
+						setPref={setPref}
+						globalServer={globalServer[key as keyof Preferences]}
+						globalLocal={globalLocal[key as keyof Preferences]}
+						roomServer={roomServer[key as keyof Preferences]}
+						roomLocal={roomLocal[key as keyof Preferences]}
+					/> : null)}
+			</div>
+			<p className="section-note">
+				Each column beats the ones to its left, so the rightmost value you have set is the one that
+				applies. Highlighted cells are set here; everything else is inherited. Use
+				{" "}<CloseIcon className="inline-icon"/>{" "}to clear one and go back to inheriting.
+			</p>
+		</section>
+
+		<section className="settings-section">
+			<header>
+				<RoomIcon/>
+				<h3>This room</h3>
+			</header>
+			{roomMeta.topic && <p className="room-topic">{roomMeta.topic}</p>}
+			<div className="room-buttons">
+				<button className="devtools" onClick={openDevtools}>Explore room state</button>
+				<select onChange={evt => {
+					window.activeRoomContext?.setForceViewType(evt.target.value as RoomType)
+					closeModal()
+				}} defaultValue="__null__">
+					{preferences.room_view_type.allowedValues!.map((val, i) =>
+						<option key={i} value={val ?? "__null__"} disabled={i === 0}>
+							{i === 0 ? "Override view" : preferences.room_view_type.valueLabels![i]}
+						</option>)}
+				</select>
+				{previousRoomID &&
+					<button className="previous-room" onClick={openPredecessorRoom}>
+						Open predecessor room
+					</button>}
+				<button className="leave-room danger" onClick={onClickLeave}>Leave room</button>
+			</div>
+		</section>
+
 		<CustomCSSInput setPref={setPref} room={room} />
 		<AppliedSettingsView room={room} />
-		<hr/>
 		<KeyExportView room={room} />
-		<hr/>
-		<div className="misc-buttons">
-			<button onClick={onClickOpenCSSApp}>Sign into css.gomuks.app</button>
-			{window.Notification && !window.gomuksAndroid && <button onClick={client.requestNotificationPermission}>
-				Request notification permission
-			</button>}
-			{!window.gomuksAndroid &&
-				<button onClick={client.registerURIHandler}>Register <code>matrix:</code> URI handler</button>
-			}
-			<button className="logout" onClick={onClickLogout}>Logout</button>
-		</div>
+
+		<section className="settings-section">
+			<header>
+				<LogOutIcon/>
+				<h3>Account</h3>
+			</header>
+			<div className="misc-buttons">
+				<button onClick={onClickOpenCSSApp}>Sign into css.gomuks.app</button>
+				{window.Notification && !window.gomuksAndroid && <button onClick={client.requestNotificationPermission}>
+					Request notification permission
+				</button>}
+				{!window.gomuksAndroid &&
+					<button onClick={client.registerURIHandler}>Register <code>matrix:</code> URI handler</button>
+				}
+				<button className="logout danger" onClick={onClickLogout}>Log out</button>
+			</div>
+		</section>
 	</>
 }
 

@@ -1,39 +1,71 @@
+/*
+ * Settings, styled as a pane of the app rather than a dialog on top of it.
+ *
+ * Three things carry that over from the main UI: the masthead is proportioned
+ * like the room header (same band height token, same 3rem avatar, same cast
+ * shadow), sections are square-cornered cards with a lit top edge the way the
+ * floating panes are, and section headers use the icon + tracked-label treatment
+ * from the room list's Rooms / Direct messages headers.
+ *
+ * Corners stay square throughout. Small controls keep --sidebar-item-radius,
+ * which is the one radius the app does use.
+ */
+
+/*
+ * The shared modal box is rounded at 1rem. Settings squares it off to match the
+ * app's panes — square is a deliberate choice here, not an oversight.
+ *
+ * The edge is three layers rather than a border. A 1px solid border in
+ * --border-color drew a hard bright line straight against the dimmed backdrop,
+ * which is what read as a harsh cut-out. Instead: a lit inner top edge (the same
+ * cue the section cards and floating panes use), a tight dark containment ring
+ * that separates without announcing itself, and a broad soft cast that falls off
+ * gradually so the box sits in the backdrop rather than on top of it.
+ */
+div.overlay.modal > div.modal-box.settings-view-modal {
+	/*
+	 * Softened from fully square. The square-corner preference is about the app's
+	 * panes, which butt against each other and the window edge; a modal floats free
+	 * over a blurred backdrop, and there a hard 90° corner is what reads as "sharp
+	 * edge". Kept well under the shared modal's 1rem so it still belongs to a
+	 * square-cornered app.
+	 */
+	border-radius: .625rem;
+	border: none;
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, .10),
+		0 0 0 1px rgba(0, 0, 0, .5),
+		0 24px 70px rgba(0, 0, 0, .55);
+	padding: 1.25rem;
+}
+
 div.settings-view {
-	div.room-details {
-		display: flex;
-		gap: .5rem;
-
-		img.avatar {
-			margin-top: 0.5rem;
-		}
-
-		div.room-name {
-			font-size: 1.2rem;
-			font-weight: bold;
-			text-overflow: ellipsis;
-			text-wrap: nowrap;
-		}
-
-		div.room-buttons {
-			display: flex;
-			gap: .5rem;
-
-			button {
-				padding: .5rem 1rem;
-
-				&.leave-room {
-					&:hover, &:focus {
-						background-color: var(--error-color);
-						color: var(--inverted-text-color);
-					}
-				}
-			}
-		}
-	}
-
-	width: min(60rem, 80vw);
+	/* The modal-box-inner this class lands on is the scroll container. */
+	width: min(64rem, 86vw);
 	display: flex;
 	flex-direction: column;
+	gap: var(--settings-section-gap);
+
+	--settings-section-gap: 1.25rem;
+	/*
+	 * Derived from the modal's own background rather than borrowed from a sidebar
+	 * token: html[data-tauri] sets --room-list-background-overlay to transparent so
+	 * the vibrancy layer shows through the room list, which would have left these
+	 * cards with no surface at all. Mixing keeps them opaque — the column header
+	 * below is sticky and rows scroll under it, so it cannot be translucent.
+	 */
+	--settings-card-surface: color-mix(in srgb, var(--background-color) 85%, black);
+	--settings-card-edge: rgba(255, 255, 255, .06);
+	--settings-inset-surface: color-mix(in srgb, var(--background-color) 70%, black);
+
+	/*
+	 * The room-scoped half of the matrix sits in a recessed darker band. Two
+	 * variants of the same tone: a translucent wash for body cells, and an opaque
+	 * equivalent for the sticky headers, which cannot be see-through because rows
+	 * scroll underneath them.
+	 */
+	--settings-room-wash: rgba(0, 0, 0, .26);
+	--settings-room-head: color-mix(in srgb, var(--settings-card-surface) 74%, black);
 
 	h2, h3, h4 {
 		margin: 0;
@@ -43,54 +75,400 @@ div.settings-view {
 		display: inline;
 	}
 
-	div.preference-table {
-		display: grid;
-		grid-template-columns: auto 1fr 1fr 1fr 1fr;
-		grid-gap: .25rem;
+	/* ── Masthead ─────────────────────────────────────────────────────── */
 
-		> div.name {
-			font-weight: bold;
+	> div.settings-masthead {
+		padding: 0 0 1rem;
+		border-bottom: 1px solid var(--border-color);
+
+		> div.masthead-text {
+			display: flex;
+			flex-direction: column;
+			gap: .125rem;
+
+			> div.masthead-eyebrow {
+				font-size: .6875rem;
+				font-weight: 700;
+				letter-spacing: .12em;
+				text-transform: uppercase;
+				color: var(--section-label-color);
+			}
+
+			> h2 {
+				font-size: 1.375rem;
+				font-weight: 700;
+				line-height: 1.25;
+			}
+
+			> p.masthead-note {
+				margin: 0;
+				max-width: 46rem;
+				color: var(--secondary-text-color);
+				line-height: 1.5;
+			}
+		}
+
+		/*
+		 * The room avatar earns its place here by labelling the thing it applies to,
+		 * rather than titling a screen that is mostly not about this room.
+		 */
+		span.room-chip {
+			display: inline-flex;
+			align-items: center;
+			gap: .3125rem;
+			vertical-align: baseline;
+			padding: .0625rem .4375rem .0625rem .1875rem;
+			border-radius: 999px;
+			background-color: var(--settings-inset-surface);
+			color: var(--text-color);
+			font-weight: 600;
+			white-space: nowrap;
+
+			> img.avatar {
+				width: 1.125rem;
+				height: 1.125rem;
+			}
+		}
+	}
+
+	/* ── Section cards ────────────────────────────────────────────────── */
+
+	> section.settings-section {
+		display: flex;
+		flex-direction: column;
+		gap: .75rem;
+
+		background-color: var(--settings-card-surface);
+		/* The lit top edge is what separates the card from the modal behind it — on
+		   these dark surfaces a drop shadow alone has nothing to darken. The 1px
+		   border is dropped for the same reason the modal's was: against a dark
+		   surface it draws a hard line rather than an edge. */
+		box-shadow: inset 0 1px 0 var(--settings-card-edge);
+		border-radius: .375rem;
+		padding: 1rem;
+
+		> header {
 			display: flex;
 			align-items: center;
+			gap: .5rem;
+
+			> svg {
+				width: 1.125rem;
+				height: 1.125rem;
+				flex-shrink: 0;
+				opacity: .55;
+			}
+
+			> h3 {
+				font-size: .75rem;
+				font-weight: 700;
+				letter-spacing: .1em;
+				text-transform: uppercase;
+				color: var(--section-label-color);
+				flex: 1;
+			}
+
+			> select {
+				padding: .25rem .5rem;
+				border-radius: var(--sidebar-item-radius);
+				border: 1px solid var(--border-color);
+				background-color: var(--settings-inset-surface);
+				color: inherit;
+			}
+
+			> span.warning {
+				font-size: .8125rem;
+				color: var(--error-color);
+			}
+		}
+
+		/* Quiet explanatory line under a section's controls. */
+		p.section-note {
+			margin: 0;
+			font-size: .8125rem;
+			line-height: 1.5;
+			color: var(--secondary-text-color);
+
+			/* Shows the actual control the sentence refers to, rather than naming it. */
+			> svg.inline-icon {
+				width: .875rem;
+				height: .875rem;
+				vertical-align: -.1875rem;
+			}
+		}
+
+		p.room-topic {
+			margin: 0;
+			white-space: pre-wrap;
+		}
+	}
+
+	/* ── Preference matrix ────────────────────────────────────────────── */
+
+	div.preference-table {
+		display: grid;
+		grid-template-columns: minmax(14rem, 2fr) repeat(4, minmax(6rem, 1fr));
+		column-gap: .5rem;
+
+		/* Both header rows stick. Stated once so the second row's offset cannot
+		   drift out of step with the first row's height. */
+		--group-head-height: 2.75rem;
+
+		> div.group-head {
+			position: sticky;
+			top: 0;
+			z-index: 2;
+			/* Opaque: rows scroll underneath. */
+			background-color: var(--settings-card-surface);
+			height: var(--group-head-height);
+			box-sizing: border-box;
+			padding-bottom: .375rem;
+
+			> div.group-title {
+				font-size: .8125rem;
+				font-weight: 700;
+			}
+
+			> div.group-note {
+				font-size: .75rem;
+				color: var(--secondary-text-color);
+			}
+
+			/* Two columns each: the four scopes are a 2×2, not a flat four. */
+			&.everywhere {
+				grid-column: 2 / 4;
+			}
+
+			&.this-room {
+				grid-column: 4 / 6;
+				/* The one hard division in the table — everything right of it is
+				   scoped to a single room. The darker fill starts here so the band
+				   runs unbroken from the header down through the last row. */
+				border-left: 1px solid var(--border-color);
+				padding-left: .5rem;
+				background-color: var(--settings-room-head);
+			}
+		}
+
+		> div.column-head {
+			position: sticky;
+			top: var(--group-head-height);
+			z-index: 1;
+			background-color: var(--settings-card-surface);
+			padding: 0 0 .5rem;
+			border-bottom: 1px solid var(--border-color);
+
+			font-size: .6875rem;
+			font-weight: 700;
+			letter-spacing: .08em;
+			text-transform: uppercase;
+			color: var(--secondary-text-color);
+		}
+
+		/*
+		 * The room-scoped half of the table carries a faint wash for its whole
+		 * height, so the grouping in the header holds all the way down the list
+		 * instead of being forgotten after the first few rows.
+		 */
+		/* Body cells take the translucent wash; the sticky headers get the opaque
+		   match, since anything see-through there would let rows show through. */
+		> div.scope-room_account:not(.column-head),
+		> div.scope-room_device:not(.column-head) {
+			background-color: var(--settings-room-wash);
+		}
+
+		> div.column-head.scope-room_account,
+		> div.column-head.scope-room_device {
+			background-color: var(--settings-room-head);
+		}
+
+		/* Border rather than box-shadow: a set cell uses box-shadow for its accent
+		   edge, which would knock a shadow-drawn divider out and leave gaps down
+		   the line. Padding is matched on every cell in the column so the controls
+		   stay aligned with their header. */
+		> div.scope-room_account {
+			border-left: 1px solid var(--border-color);
+			padding-left: .5rem;
+		}
+
+		> div.name {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			padding: .5rem .75rem .5rem 0;
+
+			> div.pref-label {
+				font-weight: 600;
+			}
+
+			/* Was hidden in a title tooltip. Capped so one verbose description
+			   cannot set the row height for the whole grid. */
+			> div.pref-description {
+				font-size: .8125rem;
+				line-height: 1.4;
+				color: var(--secondary-text-color);
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+			}
 		}
 
 		> div.preference {
 			display: flex;
 			align-items: center;
+			gap: .25rem;
+			/*
+			 * Block-only on purpose. As the `padding: .5rem 0` shorthand this reset
+			 * padding-left to zero for the room_account column, whose divider rule
+			 * sits earlier in the file at equal specificity — the controls in that
+			 * column would have sat half a rem left of their own header.
+			 */
+			padding-block: .5rem;
+			position: relative;
 
-			&.select-preference > select {
-				padding: .25rem;
-			}
-
+			&.select-preference > select,
 			&.string-preference > input {
+				padding: .25rem .375rem;
 				border: 1px solid var(--border-color);
-				padding: .25rem;
-				/* TODO make this less hacky */
-				width: 8rem;
+				border-radius: var(--sidebar-item-radius);
+				background-color: var(--settings-inset-surface);
+				color: inherit;
+				min-width: 0;
+				width: 100%;
 			}
+
+			/*
+			 * A scope that sets the value itself is highlighted across the whole
+			 * cell with an accent edge, rather than marked with a dot: the × remover
+			 * only renders when a value is set, so a dot said nothing the × wasn't
+			 * already saying. Highlighting the cell instead makes overrides legible
+			 * as vertical runs down a column, which is the thing that is genuinely
+			 * hard to see otherwise.
+			 */
+			&.set {
+				/*
+				 * Painted as a background-image so it layers on top of whatever fill
+				 * the column already has instead of replacing it. As a background-color
+				 * it competed with the room band at equal specificity, and a set cell
+				 * inside the band would have dropped out of it.
+				 */
+				background-image: linear-gradient(var(--light-hover-color), var(--light-hover-color));
+				box-shadow: inset 2px 0 0 var(--accent-glow-color);
+			}
+
+			> button {
+				width: 1.5rem;
+				height: 1.5rem;
+				flex-shrink: 0;
+				border-radius: var(--sidebar-item-radius);
+
+				> svg {
+					width: .875rem;
+					height: .875rem;
+				}
+			}
+		}
+
+		> div.empty-cell {
+			/* Reads as "not available here" rather than as an empty control. */
+			align-self: center;
+			justify-self: start;
+			width: 1rem;
+			height: 1px;
+			background-color: var(--border-color);
+			opacity: .5;
 		}
 	}
 
-	> div.custom-css-input {
-		display: flex;
-		flex-direction: column;
-		gap: .5rem;
-		margin-right: 1rem;
+	/* ── Buttons ──────────────────────────────────────────────────────── */
 
-		> div.header {
-			display: flex;
-			gap: .5rem;
+	div.room-buttons, div.misc-buttons, div.buttons,
+	div.export-buttons, form.import-buttons, div.key-backup-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: .5rem;
+		align-items: center;
+	}
+
+	div.misc-buttons {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	button, select, input {
+		font-family: inherit;
+	}
+
+	div.room-buttons > button, div.misc-buttons > button,
+	div.buttons > button, div.key-backup-buttons > button,
+	div.export-buttons button, form.import-buttons button {
+		padding: .4375rem .875rem;
+		border-radius: var(--sidebar-item-radius);
+		border: 1px solid var(--border-color);
+		background-color: var(--settings-inset-surface);
+
+		&:hover:not(:disabled), &:focus-visible:not(:disabled) {
+			background-color: var(--light-hover-color);
 		}
 
+		&:disabled {
+			opacity: .5;
+		}
+	}
+
+	div.room-buttons > select {
+		padding: .4375rem .5rem;
+		border-radius: var(--sidebar-item-radius);
+		border: 1px solid var(--border-color);
+		background-color: var(--settings-inset-surface);
+		color: inherit;
+	}
+
+	/*
+	 * Destructive actions are outlined in the error colour at rest and only fill on
+	 * intent. A permanently red button reads as an alert; this reads as a warning
+	 * about what the button will do.
+	 */
+	button.danger {
+		border-color: var(--error-color) !important;
+		color: var(--error-color);
+
+		&:hover, &:focus-visible {
+			background-color: var(--error-color) !important;
+			color: var(--inverted-text-color);
+		}
+	}
+
+	/* Pushed away from the rest so it is never a mis-click. */
+	div.misc-buttons > button.logout {
+		margin-top: .75rem;
+	}
+
+	/* ── Custom CSS ───────────────────────────────────────────────────── */
+
+	> section.custom-css-input {
 		> textarea {
 			width: 100%;
 			box-sizing: border-box;
 			resize: vertical;
 			border: 1px solid var(--border-color);
+			border-radius: var(--sidebar-item-radius);
+			background-color: var(--settings-inset-surface);
+			color: inherit;
 			outline: none;
+			padding: .5rem;
 			height: 10rem;
 			min-height: 3rem;
 			font-family: var(--monospace-font-stack);
+
+			&:focus-visible {
+				border-color: var(--accent-glow-color);
+			}
+		}
+
+		> div.buttons {
+			justify-content: flex-end;
 		}
 
 		> div.vscode-wrapper {
@@ -108,78 +486,99 @@ div.settings-view {
 				align-items: center;
 			}
 		}
+	}
 
-		> div.buttons {
-			display: flex;
-			justify-content: right;
-			gap: .5rem;
+	/* ── Raw settings data ────────────────────────────────────────────── */
 
-			> button {
-				padding: .5rem 1rem;
-				font-weight: bold;
+	> section.applied-settings {
+		> details {
+			border: 1px solid var(--border-color);
+			border-radius: var(--sidebar-item-radius);
+			padding: .5rem .75rem;
+			background-color: var(--settings-inset-surface);
 
-				&.delete:hover, &.delete:focus {
-					background-color: var(--error-color);
-					color: var(--inverted-text-color);
+			> summary {
+				cursor: var(--clickable-cursor);
+
+				> h4 {
+					font-size: .8125rem;
+					font-weight: 600;
+					letter-spacing: .02em;
 				}
 			}
 		}
 	}
 
-	> div.key-export {
-		display: flex;
-		flex-direction: column;
-		gap: .5rem;
-		margin: 0 .5rem;
-		max-width: 25rem;
+	/* ── Encryption keys ──────────────────────────────────────────────── */
 
-		button {
-			padding: .5rem;
-			box-sizing: border-box;
-			width: 100%;
+	> section.key-export {
+		> input.passphrase, input.import-file {
+			border: 1px solid var(--border-color);
+			border-radius: var(--sidebar-item-radius);
+			background-color: var(--settings-inset-surface);
+			color: inherit;
+			padding: .4375rem .5rem;
+			max-width: 22rem;
+
+			&:focus-visible {
+				outline: none;
+				border-color: var(--accent-glow-color);
+			}
 		}
 
-		hr {
+		> hr {
 			width: 100%;
-			opacity: .2;
+			border: none;
+			border-top: 1px solid var(--border-color);
 			margin: 0;
 		}
-
-		input {
-			border: 1px solid var(--border-color);
-			padding: .5rem;
-			border-radius: .5rem;
-		}
-
-		> div.export-buttons, > form.import-buttons, > div.key-backup-buttons {
-			display: flex;
-			gap: .5rem;
-
-			> form {
-				width: 100%;
-			}
-		}
 	}
 
-	> div.misc-buttons > button {
-		padding: .5rem 1rem;
-		display: block;
+	/* ── Narrow windows ───────────────────────────────────────────────── */
 
-		&.logout {
-			margin-top: 2rem;
+	@media screen and (max-width: 60rem) {
+		width: 90vw;
 
-			&:hover, &:focus {
-				background-color: var(--error-color);
-				color: var(--inverted-text-color);
+		/*
+		 * The five-column matrix cannot survive this width. Each preference becomes
+		 * a stacked block: name and description on their own line, the four scopes
+		 * in a row beneath. The grid keeps its column count so the scope cells stay
+		 * aligned with each other down the list.
+		 */
+		div.preference-table {
+			grid-template-columns: repeat(4, 1fr);
+
+			> div.column-head:not(.name) {
+				font-size: .625rem;
+			}
+
+			> div.column-head.name, > div.name {
+				grid-column: 1 / -1;
+			}
+
+			> div.name {
+				padding-bottom: .25rem;
+				border-top: 1px solid var(--border-color);
+				padding-top: .625rem;
+			}
+
+			/* The name column is gone, so the groups shift left by one. */
+			> div.group-head.spacer {
+				display: none;
+			}
+
+			> div.group-head.everywhere {
+				grid-column: 1 / 3;
+			}
+
+			> div.group-head.this-room {
+				grid-column: 3 / 5;
 			}
 		}
-	}
-
-	> hr {
-		width: 100%;
-		opacity: .2;
 	}
 }
+
+/* ── Key restore progress modal ───────────────────────────────────────── */
 
 div.key-restore-modal-wrapper {
 	width: 100%;

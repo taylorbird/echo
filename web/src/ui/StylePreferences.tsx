@@ -125,6 +125,13 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 	useEffect(() => {
 		favicon.href = preferences.favicon
 	}, [preferences.favicon])
+	// An attribute rather than an injected stylesheet: CSS cannot un-match a media
+	// query, so every reduced-motion rule is written to also require this attribute
+	// to be absent. Flipping it here re-enables all of them at once, instead of
+	// having to restate each animation in an override sheet.
+	useEffect(() => {
+		document.documentElement.toggleAttribute("data-ignore-reduce-motion", preferences.ignore_reduce_motion)
+	}, [preferences.ignore_reduce_motion])
 	return null
 }
 

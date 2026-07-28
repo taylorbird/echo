@@ -113,6 +113,7 @@ export function settings(room: RoomStateStore): NestableModalState {
 	return {
 		dimmed: true,
 		boxed: true,
+		boxClass: "settings-view-modal",
 		innerBoxClass: "settings-view",
 		content: <SettingsView room={room} />,
 		nestable: true,

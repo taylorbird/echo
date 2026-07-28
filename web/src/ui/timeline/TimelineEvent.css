@@ -80,8 +80,16 @@ div.timeline-event {
 				margin-right: .25rem;
 			}
 
+			/*
+			 * The name reads as a label over the message, not as a peer of it: a
+			 * step down in size with a step up in tracking. At body size and bold
+			 * it competed with the message text for the same rank, and hue was
+			 * doing all the separating on its own.
+			 */
 			> span.event-sender {
-				font-weight: bold;
+				font-size: .875rem;
+				font-weight: 600;
+				letter-spacing: .015em;
 				user-select: none;
 				cursor: var(--clickable-cursor);
 			}
@@ -257,27 +265,62 @@ div.event-reactions {
 	> div.reaction {
 		display: flex;
 		align-items: center;
-		gap: .25rem;
 
 		background-color: var(--background-color);
 		border: 1px solid var(--border-color);
 		border-radius: 2rem;
 		padding: 0 .5rem;
 
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		overflow: hidden;
-		max-width: 20rem;
-
 		user-select: none;
 		cursor: var(--clickable-cursor);
+
+		/* Anchors the tooltip. The clipping that used to live here now sits on the
+		   inner element — an absolutely positioned tooltip is still a descendant,
+		   so `overflow: hidden` on its containing block would cut it off. */
+		position: relative;
 
 		&:hover {
 			background-color: var(--light-hover-color);
 		}
 
-		> img.reaction-emoji {
-			height: 1.5rem;
+		> div.reaction-inner {
+			display: flex;
+			align-items: center;
+			gap: .25rem;
+
+			white-space: nowrap;
+			text-overflow: ellipsis;
+			overflow: hidden;
+			max-width: 20rem;
+
+			> img.reaction-emoji {
+				height: 1.5rem;
+			}
+		}
+
+		> div.reaction-tooltip {
+			display: none;
+			position: absolute;
+			bottom: 100%;
+			left: 0;
+			margin-bottom: .25rem;
+			z-index: 5;
+
+			background-color: var(--background-color);
+			border: 1px solid var(--border-color);
+			border-radius: .25rem;
+			box-shadow: 0 4px 12px var(--modal-box-shadow-color);
+			padding: .25rem .5rem;
+
+			/* Names wrap; the pill itself never does. */
+			width: max-content;
+			max-width: 18rem;
+			white-space: normal;
+			cursor: default;
+		}
+
+		&:hover > div.reaction-tooltip {
+			display: block;
 		}
 	}
 }

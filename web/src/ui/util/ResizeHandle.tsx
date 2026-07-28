@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { CSSProperties } from "react"
+import React, { CSSProperties, useState } from "react"
 import "./ResizeHandle.css"
 
 export interface ResizeHandleProps {
@@ -27,6 +27,9 @@ export interface ResizeHandleProps {
 }
 
 const ResizeHandle = ({ width, minWidth, maxWidth, setWidth, style, className, inverted }: ResizeHandleProps) => {
+	// Tracked so the handle can stay lit for the whole drag: the pointer leaves
+	// the handle almost immediately, so :hover alone goes dark mid-resize.
+	const [isDragging, setIsDragging] = useState(false)
 	const onMouseDown = (evt: React.MouseEvent<HTMLDivElement>) => {
 		const origWidth = width
 		const startPos = evt.clientX
@@ -39,14 +42,19 @@ const ResizeHandle = ({ width, minWidth, maxWidth, setWidth, style, className, i
 			evt.preventDefault()
 		}
 		const onMouseUp = () => {
+			setIsDragging(false)
 			document.removeEventListener("mousemove", onMouseMove)
 			document.removeEventListener("mouseup", onMouseUp)
 		}
+		setIsDragging(true)
 		document.addEventListener("mousemove", onMouseMove)
 		document.addEventListener("mouseup", onMouseUp)
 		evt.preventDefault()
 	}
-	return <div className={`resize-handle-outer ${className ?? ""}`} style={style}>
+	return <div
+		className={`resize-handle-outer ${isDragging ? "dragging" : ""} ${className ?? ""}`}
+		style={style}
+	>
 		<div className="resize-handle-inner" onMouseDown={onMouseDown}/>
 	</div>
 }
