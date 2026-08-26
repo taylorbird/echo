@@ -14,16 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, memo, use } from "react"
-import { getRoomAvatarThumbnailURL } from "@/api/media.ts"
+import { getRoomAccentColor, getRoomAvatarThumbnailURL } from "@/api/media.ts"
 import type { RoomListEntry } from "@/api/statestore"
-import type { MemDBEvent, MemberEventContent } from "@/api/types"
-import useContentVisibility from "@/util/contentvisibility.ts"
+import { type MemDBEvent, type MemberEventContent, RoomNameQuality } from "@/api/types"
 import { getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { RoomMenu, getModalStyleFromMouse } from "../menu"
 import { ModalContext } from "../modal"
 import UnreadCount from "./UnreadCount.tsx"
+import MessagesSquareIcon from "@/icons/modern/messages-square.svg?react"
+import UserIcon from "@/icons/modern/user.svg?react"
+import UsersIcon from "@/icons/modern/users.svg?react"
 
 export interface RoomListEntryProps {
 	room: RoomListEntry
@@ -58,7 +60,7 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 	return ["", null]
 }
 
-function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined) {
+function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, KindIcon: typeof UserIcon) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, room.preview_sender)
 
 	return <>
@@ -71,7 +73,13 @@ function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined) {
 			/>
 		</div>
 		<div className="room-entry-right">
-			<div className="room-name">{room.name}</div>
+			<div
+				className="room-name"
+				style={{ "--room-accent": getRoomAccentColor(room.room_id) } as React.CSSProperties}
+			>
+				<span className="room-name-text">{room.name}</span>
+				<KindIcon className="room-kind-icon" />
+			</div>
 			{previewText && <div className="message-preview" title={previewText}>{croppedPreviewText}</div>}
 		</div>
 		<UnreadCount counts={room} />
@@ -79,7 +87,6 @@ function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined) {
 }
 
 const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
-	const [isVisible, divRef] = useContentVisibility<HTMLDivElement>()
 	const openModal = use(ModalContext)
 	const mainScreen = use(MainScreenContext)
 	const client = use(ClientContext)!
@@ -99,14 +106,29 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 		})
 		evt.preventDefault()
 	}
+	// What kind of conversation this is, shown as a glyph after the name:
+	// a person for DMs, two people for an ad-hoc group whose name is just
+	// its members' names ("X and Y" — name_quality Participants), chat
+	// bubbles for rooms with a real name or alias. Meta is read without
+	// subscribing — a stale glyph until the next list update is fine.
+	let KindIcon = MessagesSquareIcon
+	if (room.dm_user_id) {
+		KindIcon = UserIcon
+	} else if (client.store.rooms.get(room.room_id)
+		?.meta.current.name_quality === RoomNameQuality.Participants) {
+		KindIcon = UsersIcon
+	}
+	// Rendered unconditionally: this used to be gated on useContentVisibility,
+	// but that hook needs `content-visibility: auto` on the row, which was
+	// removed from the CSS because WebKit deferred repaints of the contained
+	// rows (stale .active highlight for seconds after switching rooms).
 	return <div
-		ref={divRef}
 		className={`room-entry ${isActive ? "active" : ""} ${hidden ? "hidden" : ""}`}
 		onClick={mainScreen.clickRoom}
 		onContextMenu={onContextMenu}
 		data-room-id={room.room_id}
 	>
-		{isVisible ? renderEntry(room, hideAvatar) : null}
+		{renderEntry(room, hideAvatar, KindIcon)}
 	</div>
 }
 

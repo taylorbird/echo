@@ -2,6 +2,108 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-08-25 23:03
+
+**Session Summary**: Two-day dense session (2026-08-24 and 2026-08-25) completing the visual rebrand and production architecture. On 2026-08-24: replaced Lato with Inter base font + Space Grotesk display font across sidebar names, room headers, space dashboard titles/member names, and timeline sender names via new --display-font-stack token and Google Fonts link; refined timeline sender styling (min-height on sender row, name opacity-dimmed to 75%, all names now label-size .875rem/600/.015em, avatar gap doubled, color-5 yellow→honey-gold for dim contrast). On 2026-08-25: rebranded project from Seabug to echo (identifier com.tbird.echo, bundle ID, window title, masthead, login heading, index.html <title>); locked penguin icon (low-poly faceted side profile, violet/blue facets, sources in design/) and regenerated icon set via tauri icon CLI after bumping @tauri-apps/cli to ^2.11.0 for .icon support — discovered Icon Composer's SVG layer crashes actool deterministically, PNG-layer workaround documented; completely rewired production architecture to load http://localhost:29325 same-origin instead of static dist (root cause: Go server lacks CORS and cookie is SameSite=Lax), implementing TCP readiness wait in lib.rs before window creation and making capabilities/default.json remote.urls entry mandatory (else all prod IPC silently dies); fixed ACL remote-origin denial by adding core:window:allow-start-dragging and remote.urls block, which fixed external link opening; applied UX fixes (room-list width default 350→400px with localStorage key bump, hiddenTitle true→false, drag region attributes on titlebar/room-header/room-name); documented logo-design skill (SVG-first diverge-to-numeric process). All work uncommitted on seabug-visual-redesign; fresh 19:04 build (echo.app + DMG) created and awaiting user verification.
+
+**Decisions Made**:
+- Inter + Space Grotesk font stack replaces Lato everywhere — Inter is neutral, Space Grotesk adds personality to hierarchical text (names, titles, usernames); Google Fonts link loads both 400-700 weights.
+- Opacity-dim sender names (75%) rather than color-token dims — allows per-user overrides (cheats, custom colors) to dim equally and consistently.
+- Rebrand to "echo" (lowercase) with identifier com.tbird.echo — user's branding choice; localStorage keys deliberately NOT renamed (would wipe state, migration shim needed if ever attempted).
+- Production same-origin architecture over CORS retrofit — empirically proven cross-origin impossible without Go server changes; user preferred "one package" (sidecar embedded in dist); requires strict npm run build → go build → tauri build order for prod changes.
+- Penguin icon locked with design/ folder as single source of truth — SVG exact outline + facets, PNG layer for icon regeneration; Icon Composer .icon package blocked pending user PNG re-export (SVG layer + clipPath crashes actool deterministically).
+- TCP readiness wait in lib.rs (500ms connect timeout, 100ms interval, 15s deadline) over random retry — deterministic, fixes old ECONNREFUSED startup race as side effect.
+- Capabilities split into local (app URL) vs remote (sidecar origin) requirement — remote.urls entry mandatory or silent IPC failure; core:window:allow-start-dragging explicit grant (not in core:default).
+- Room-list width default bump 350→400px with localStorage key rename (old default was persisted, rename forces new value for existing users) — was too narrow for redesigned rows.
+- Window drag regions via data-tauri-drag-region bare attribute on titlebar, deep attribute on room-name (Tauri v2 semantics: bare matches element only, deep matches subtree, interactive tags block; text selection on room name suppressed as side effect).
+
+**Actions Taken**:
+- Fonts: replaced Lato all sources (RoomList.css, RoomViewHeader.css, SpaceView.css, TimelineEvent.css, index.css) with Inter base + Space Grotesk via --display-font-stack token; added Google Fonts link web/index.html (Inter 400-700, Space Grotesk 400-700); added src-tauri/target to eslint.config.js ignores.
+- Timeline sender styling: web/src/ui/timeline/TimelineEvent.css (sender row min-height calc, gap 0, opacity .75, .875rem/600/.015em tracking, avatar gap doubled); web/src/index.css (--sender-color-5 #ffd93d→#f0c674).
+- Rebrand: tauri.conf.json (productName→"echo", identifier→"com.tbird.echo"), web/src/ui/settings/SettingsView.tsx (masthead eyebrow), web/src/ui/WebAuthLogin.tsx (heading "echo"), web/index.html (<title>echo), bundle ID usage in code.
+- Icon: design/ folder created (echo-penguin-facet.svg + echo-penguin-layer.png 1024 RGBA + README.md); ran npx tauri icon design/echo-penguin-layer.png (regenerated all sizes); @tauri-apps/cli bumped ^2.10.0 → ^2.11.0 (locked 2.11.4); echo.icon copied to web/src-tauri/icons/ from Icon Composer, listed first in bundle.icon (with caveat: SVG layer + clipPath causes actool crash; user must re-export PNG layer).
+- Production architecture: web/src-tauri/src/lib.rs (added TCP readiness wait on setup, window creation moved to run_on_main_thread after backend ready, config.url overridden to backend origin in prod, dev cfg!(debug_assertions) unchanged); tauri.conf.json windows[0] (added "create": false); web/src/api/backend.ts (BACKEND_URL/BACKEND_WS_URL/isTauri exports, all 19 _gomuks sites routed through it, gomuksWebWasm guarded with !window.__TAURI_INTERNALS__); capabilities/default.json (added remote.urls entry for http://localhost:29325, added core:window:allow-start-dragging explicit grant).
+- UX fixes: web/src/ui/MainScreen.tsx (roomListWidth→roomListWidth2 localStorage key); tauri.conf.json (hiddenTitle true→false); web/src/ui/MainScreen.css + web/src/ui/roomview/RoomViewHeader.css + web/src/ui/roomlist/RoomList.tsx (drag region attributes added).
+- Learnings: .claude/learnings/dev-environment-gotchas.md build-command section corrected (package is ./cmd/gomuks, embed order documented); logo-design skill created (~/.claude/skills/logo-design/SKILL.md, SVG-first process distilled from research).
+- Artifacts published: "echo Icon Playbook" (GPT Image/Gemini/Midjourney prompts, macOS 26 icon pipeline, research findings), "echo Logomarks" (18 design rounds).
+
+**Context/Thoughts**:
+- actool (Xcode 26.6) crashes with "attempt to insert nil object" when Icon Composer exports a .icon whose ONLY layer is SVG with clipPath — deterministic crash, not edge case. User must re-export with PNG layer. The 18:03 build that seemed to succeed with the SVG .icon is unexplained (possibly actool cache, possibly file not actually included in bundle).
+- Sidecar go:embeds web/dist (web/frontend.go) — CRITICAL: any frontend change shipped to prod requires the strict order npm run build → go build ./cmd/gomuks → npx tauri build. Prod-visible frontend mismatch is one missed build step away.
+- Remote capability currently grants full permission set including shell:spawn/kill to sidecar origin — security note flagged for tightening before distributing to friends (next-action item).
+- fetch_og_tags (URL-preview webview tier) still dead in prod — needs follow-up work (app permission file + capability entry in capabilities/default.json).
+- Light-mode titlebar text caveat: --titlebar-background #232125 is unconditional; light-mode native title text will be dark-on-dark (flagged as one-liner fix pending, next-actions item 6).
+- Text selection on room header suppressed as side effect of data-tauri-drag-region="deep" on room-name element (Tauri v2 drag-region deep semantics block pointer events; caveat documented).
+- User verification of 19:04 build (fresh echo.app + DMG) pending: window drag functional, title bar shows "echo", room-list width properly wide, YouTube link opens.
+
+## 2026-08-21 13:56
+
+**Session Summary**: Extensive visual polish and functional improvements across the Seabug redesign. Applied a Dracula-inspired candy color system to sender names and room identifiers via `getRoomAccentColor(roomID)` in media.ts; implemented full room-list redesign with full-width hover/selected states, hairline separator lines, 4rem content height, off-center glow bar, and conversation-kind glyphs (DM icon, group icon, room icon). Built a space dashboard in SpaceView (5rem avatar masthead with accent name, topic, member/room counts, quick action buttons: Settings/Share/View timeline, expandable sections for Spaces/Rooms/Members, join buttons on non-joined rooms, responsive member grid capped at 30). Added a cheat console easter egg (Cmd/Ctrl+Shift+G → D-pad controller UI, Konami code ↑↑↓↓←→←→BA toggles "raam-green" cheat, effect: `getUserColorOverride()` returns green `#50fa7b` for user localpart "raam" case-insensitive). Reorganized settings with category field on all preferences, 15 scope prunes (custom_css marked as per-room removal, flagged), zero-lint/zero-tsc baseline established for the first time. Fixed platform issues: aligned Tauri 2.11 (crate ↔ npm minor lockstep), added WKWebView clipboard fallback (`util/clipboard.ts`), diagnosed startup auth race on shell rebuild (pending frontend retry). Removed `content-visibility: auto` + `useContentVisibility` hook from room-list entries (WebKit paint-defer causing stale active highlight on Alt+arrows), fixed `getMembers()` infinite loop (fresh `[]` in useSyncExternalStore), all work UNCOMMITTED on seabug-visual-redesign branch.
+
+**Decisions Made**:
+- Candy colors via hash (room accent via `roomID` hash modulo palette size; sender colors via user ID hash) — replicable, deterministic, matches per-user color pref system already in place.
+- Room glow bar left-aligned + 2rem tall + 1rem left margin (off-center intentionally) — matches the 1rem margin inside the 4rem content height; glow-green `#85f0a8` token vs accent-yellow to avoid confusion with active-space indicator.
+- Space dashboard in place of timeline when viewing a space (RoomView.tsx checks `viewType === "m.space"`, hides header, switches to "headerless" grid layout).
+- Cheat toggle via `window.location.reload()` — colors are render-time, reload is the only reapply mechanism that works reliably.
+- Cheat BEATS custom user colors in priority (cheat green returned first by `getUserColorOverride`).
+- Inline styles for cheat/custom overrides (not classes) — timeline uses `sender-color-N` classes; overrides need higher specificity.
+- Content-visibility removal was comprehensive: deleted the CSS property, the hook import, and the hook call from Entry.tsx; entries render unconditionally.
+- Uniform room-list color when enabled: peach `#fecdb2` names + warm white `rgba(255,255,255,.9)` preview text (temperature contrast fixed the warm-on-warm failure).
+- Settings scope: code_block_line_wrap global-only is most debatable (user hasn't objected), custom_notification_sound has no UI (pre-existing gap).
+- Startup retry on ECONNREFUSED postponed (distinct from 401 auth fail) — low-hanging fix, depends on determining retry semantics with the user.
+
+**Actions Taken**:
+- `web/src/api/media.ts`: new `getRoomAccentColor(roomID)` using stable hash, returned as `color-mix(in oklab, accent 70%, #f8f8f2)` softened value; `getUserColor` recolor for right-panel pastels; applied to room names and member names.
+- `web/src/ui/roomlist/RoomList.css` / `Entry.tsx`: full-width hover/selected highlight (removed margins, border-radius), hairline separators `inset 0 1px 0 rgba(254,205,178,.08)` via `&:not(.hidden) ~ &`, 4rem `align-items: center`, title 1.1875rem, active-room glow pill (2rem tall, green `--room-glow-*` tokens), conversation-kind glyph placement after name, ellipsis wrapping, removed `content-visibility: auto` / `contain: strict` and useContentVisibility hook.
+- `web/src/icons/modern/messages-square.svg`: new icon for named rooms.
+- `web/src/ui/SpaceView.tsx` / `.css`: dashboard layout with avatar masthead, topic, meta line, quick-action buttons, expandable sections (Spaces/Rooms/Members/SpaceAdder), child rows with avatar/accent-name/topic/member-count/admin-buttons/join-button (green tinted, join→open room), member grid 30-cap + "Show all N members", back button under 45rem width, RoomStateStore integration for member loading.
+- `web/src/ui/RoomView.tsx` / `.css`: check `viewType === "m.space"`, render SpaceView in chat pane, hide RoomViewHeader, apply `.headerless` grid template.
+- `web/src/ui/CheatConsole.tsx` / `.css`: modal with D-pad/B/A buttons, SELECT/START pills, sequence chip readout, Backspace deletes, Escape closes.
+- `web/src/util/cheats.ts`: cheat registry, tail-matching logic, localStorage persistence, Konami code support, `raam-green` cheat toggle.
+- `web/src/icons/modern/gamepad-2.svg`: new cheat indicator icon.
+- `web/src/api/media.ts`: `getUserColorOverride()` checking cheat registry before custom colors, applied via inline style in TimelineEvent.tsx / ReplyBody.tsx (not classes).
+- `web/src/ui/RoomList.tsx` / `.css`: space-rail footer (sticky bottom, profile/settings buttons disabled with no room, glowing gamepad indicator while cheats active), layout flex column.
+- Settings scope reorganization: 15 preferences moved to anyGlobalContext (code_block_theme, code_block_line_wrap, pointer_cursor, uniform_room_list_color, custom_css, favicon, small_replies, show_date_separators, upload_dialog, map_provider, leaflet_tile_template, gif_provider, message_context_menu, ctrl_enter_send, ctrl_arrow_reply), category field on all, preferences.ts declares all categories.
+- `web/src-tauri/Cargo.toml`: aligned `tauri` 2.10.0 → 2.11 (locked 2.11.5) with `@tauri-apps/api` 2.11.1.
+- `web/src/util/clipboard.ts`: new utility `copyToClipboard()` with navigator.clipboard try/catch → hidden-textarea execCommand fallback, replacing 3 bare `navigator.clipboard.writeText()` sites.
+- All files: `npx tsc -b` and `npx eslint` clean, zero-lint baseline established.
+
+**Context/Thoughts**:
+- Platform fixes (links + clipboard) untested by user so far — need confirmation YouTube click works + Share→Copy hits clipboard. If links still fail, the opener error path needs instrumentation.
+- Auth retry on ECONNREFUSED (startup race post-shell-rebuild) is pending — Vite full reload (touch index.html) works around it, but a proper frontend retry is the next action.
+- Custom_css per-room removal flagged but not reverted — one-line edit if user wants it back.
+- Cheat system deliberately separate from preferences (no UI, localStorage-only, different inheritance) — keeps it lightweight and intentionally hidden.
+- Right-panel sender-color contrast question resolved: new pastels from `getUserColor` are high-luminance (capped at L 80%), reading better on warm backgrounds.
+- Virtualization gotcha documented: WebKit defers repaints of `content-visibility: auto` / `contain: strict` boxes, causing multi-room highlight lag during fast room nav. Plain rendering trades memory for reliability.
+
+## 2026-08-06 16:36
+
+**Session Summary**: Built a 3-tier URL preview system for received messages (embedded via `m.url_previews`/`com.beeper.linkpreviews` → homeserver `/preview_url` endpoint → hidden-webview OG tag scraper triggered by click). Debugged Cloudflare blocking (TLS fingerprint, not IP/UA — Synapse cache explains intermittent success). Built Cmd+K quick-switcher (Alfred/Raycast-style 48rem panel, 10-result room search ranked by recency/prefix/substring/subsequence, pinned Settings/New-room actions). Iterated visual design to approved state: modal edge idiom (hairline ring + dark seam for warm surfaces), quick-switcher reduced frosting via `:has()` scoped override, section dividers at 40% color-mix opacity. New preference `auto_load_encrypted_url_previews` (default false, privacy). Dependencies: `percent-encoding = "2"` (Cargo.toml), `@tauri-apps/api` (package.json). All work UNCOMMITTED.
+
+**Decisions Made**:
+- Three-tier preview fallback: (1) embedded array `.length` check (Beeper senders embed empty `[]`), (2) homeserver auto for <48h old, click for older, (3) hidden-webview collector via `location.hash` fragment channel (Rust polls `webview.url()`). Click-only for tier 3 — auto JS execution on arbitrary URLs is security risk.
+- Encrypted-room URLs never auto-fetch by default — leaks reading activity to homeserver. Preference-gated.
+- Quick-switcher reduced frosting scoped via `:has()` selector (blur 3px, 12% dim — lighter than the app-wide 20px/50%) rather than global override.
+- Modal edge treatment: solid borders invisible on warm surfaces; use `inset 0 0 0 1px rgba(255,255,255,.18)` (light hairline) + `0 0 0 1px rgba(0,0,0,.6)` (dark seam) + shadows + faint accent underglow.
+- Divider lines 40% color-mix opacity to optically match small label text weight.
+
+**Actions Taken**:
+- `web/src/ui/urlpreview/FetchedURLPreview.tsx`: three-tier system with `.length` check, `AUTO_LOAD_PREVIEW_MAX_AGE` from TimelineEvent, click-to-load chip for homeserver fails, `fetch_og_tags` Tauri command integration, `og:image` branch on `mxc://` prefix, onError collapse for broken images, title===description dedup.
+- `web/src-tauri/src/lib.rs`: `fetch_og_tags` Tauri command spawning hidden WebKit window, collector script harvesting OG tags from DOM, `location.hash = "__OGRESULT__=" + percent-encoded JSON` channel, Rust polling `webview.url()` for result.
+- `web/src/api/types/preferences/preferences.ts`: new `auto_load_encrypted_url_previews` preference, `allowedContexts: anyContext`, default false.
+- `web/src/ui/QuickSwitcher.tsx` + `.css`: 48rem panel at 11vh, 1.375rem search input, ROOMS section (10 results, recency rank), ACTIONS (Settings, New room), arrow/Enter/Escape navigation.
+- `web/src/ui/modal/opener.tsx`: `modals.quickSwitcher(store, mainScreen)` integration.
+- `web/src/ui/keybindings.ts`: `"Super+k"` binding opening quick-switcher (Ctrl+K still focuses sidebar search).
+- `web/src/ui/QuickSwitcher.css`: modal edge idiom CSS (hairline + seam + shadow + underglow); scoped reduced frosting via `:has()`; section dividers via `--quick-switcher-divider`.
+- `web/src-tauri/Cargo.toml`: added `percent-encoding = "2"`.
+- `web/package.json`: added `@tauri-apps/api`.
+- `.claude/learnings/url-previews.md` written (architecture + gotchas).
+
+**Context/Thoughts**:
+- Printables.com Cloudflare block is TLS-fingerprint-based (curl/Node also fail), not IP/UA. Only real browser engine passes. Cache expiry explains Element's "showed preview then didn't" — Synapse cached one successful scrape, cache expired, then failed.
+- Webview collector `setInterval` worked in testing; if timeouts appear, make window visible-but-offscreen.
+- gomuks backend `/url_preview` just proxies homeserver `/_matrix/client/v1/media/preview_url` (`pkg/gomuks/media.go GetURLPreview`).
+
 ## 2026-07-28 15:23
 
 **Session Summary**: A very large visual-design iteration session on the Tauri macOS app (`npx tauri dev` from `web/`, verified only via Vite HMR log lines plus the user's own eyes and two pasted screenshots — Claude still cannot screenshot the Tauri window itself), plus two functional fixes and one new feature. Covered: room-list-vs-chat-pane contrast and pane stacking order, several palette reversals ending on Ferra warm surfaces with a cool near-black chat pane and saturated candy sender colours, room header retokenization and growth, chat text hierarchy rework, header icon resizing, right-panel raise/slide-in, a reduced-motion diagnosis and fix, a dark-surface shadow-visibility diagnosis and fix, a new "ignore reduce motion" preference, a drag-and-drop bug fix, a reaction-hover-tooltip feature, room topic/name tooltips, a full settings-page redesign, a toggle-component redesign, a modal edge/backdrop fix, a corner-radius reversal, and a Cmd+, keyboard shortcut. All work is UNCOMMITTED on branch `main`; a commit is being made right after this checkpoint. `npx tsc -b` and `npx eslint` were clean on every file touched; 11 pre-existing eslint errors remain in files NOT touched this session and are not attributable to this work.

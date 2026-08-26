@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import equal from "fast-deep-equal"
-import { JSX, RefObject, use, useEffect, useMemo, useReducer, useRef, useState } from "react"
+import { JSX, RefObject, use, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react"
 import { SyncLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomListFilter, RoomStateStore } from "@/api/statestore"
 import type { EventID, RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { hackyIsSafari } from "@/util/ismobile.ts"
+import { getUpdateState, restartToApply, subscribeToUpdateState } from "@/util/updater.ts"
 import { ensureString, ensureStringArray, parseMatrixURI } from "@/util/validation.ts"
 import ClientContext from "./ClientContext.ts"
 import MainScreenContext, { MainScreenContextFields, SetActiveRoomExtra } from "./MainScreenContext.ts"
@@ -361,6 +362,22 @@ const activeRoomReducer = (
 
 const incrementReducer = (prev: number): number => prev + 1
 
+/*
+ * Shows up once a self-update has been downloaded and staged. It sits in the same slot as the
+ * sync status chip — a transient, non-blocking notice — because the app is perfectly usable on
+ * the old version; the restart is the user's call.
+ */
+const UpdateChip = () => {
+	const updateState = useSyncExternalStore(subscribeToUpdateState, getUpdateState)
+	if (updateState !== "ready") {
+		return null
+	}
+	return <div className="update-ready-chip">
+		<span>Update ready</span>
+		<button className="primary-color-button" onClick={restartToApply}>Restart</button>
+	</div>
+}
+
 const MainScreen = () => {
 	const [[prevActiveRoom, activeRoom], directSetActiveRoom] = useReducer(activeRoomReducer, [null, null])
 	const [space, directSetSpace] = useState<RoomListFilter | null>(null)
@@ -427,9 +444,15 @@ const MainScreen = () => {
 		}
 	}, [context, client])
 	useEffect(() => context.keybindings.listen(), [context])
+	// 400px, not upstream's 350: the redesigned rows spend a fixed ~94px on the glow-bar
+	// lane and the 3.5rem avatar, and the space rail takes another 5.5rem in the Tauri
+	// window, so 350 left barely 100px for a 1.1875rem bold name plus its preview line.
+	// The floor is raised for the same reason - below ~240px the rail is most of the pane.
+	// The storage key is versioned because the old default was already persisted on first
+	// run, so a plain default change would never reach anyone who has opened the app.
 	const [roomListWidth, resizeHandle1] = useResizeHandle(
-		350, 96, Math.min(900, window.innerWidth * 0.4),
-		"roomListWidth", { className: "room-list-resizer" },
+		440, 240, Math.min(900, window.innerWidth * 0.4),
+		"roomListWidth3", { className: "room-list-resizer" },
 	)
 	const [rightPanelWidth, resizeHandle2] = useResizeHandle(
 		300, 100, Math.min(900, window.innerWidth * 0.4),
@@ -509,9 +532,12 @@ const MainScreen = () => {
 				  * Solid band behind the macOS window controls. Only visible inside the
 				  * Tauri window; the drag region makes it behave like a real title bar.
 				  */}
-				<div className="app-titlebar" data-tauri-drag-region/>
+				<div className="app-titlebar" data-tauri-drag-region>
+					<span className="app-titlebar-title">echo</span>
+				</div>
 				{mainContent}
 				{syncLoader}
+				<UpdateChip/>
 			</ModalWrapper>
 		</ModalWrapper>
 	</MainScreenContext>

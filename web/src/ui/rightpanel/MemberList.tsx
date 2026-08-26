@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useState } from "react"
-import { getAvatarThumbnailURL } from "@/api/media.ts"
+import { getAvatarThumbnailURL, getUserColor } from "@/api/media.ts"
 import { MemDBEvent, MemberEventContent } from "@/api/types"
 import { getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
@@ -37,7 +37,7 @@ const MemberRow = ({ evt, onClick }: MemberRowProps) => {
 			alt=""
 			loading="lazy"
 		/>
-		<div className="displayname">
+		<div className="displayname" style={{ "--user-accent": getUserColor(userID) } as React.CSSProperties}>
 			{evt.content.membership === "invite" ? <span className="invited-indicator">(invited) </span> : null}
 			{getDisplayname(userID, content)}
 		</div>

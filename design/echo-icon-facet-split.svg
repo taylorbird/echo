@@ -1,0 +1,53 @@
+<svg viewBox="0 0 1024 1024" width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    echo app icon: "Facet Split" backing (chosen 2026-08-26 from the
+    echo Icon Backings comparison) behind the faceted penguin mark.
+    Full-bleed unmasked square: macOS applies the squircle mask itself.
+    Never bake a squircle, gloss, or soft alpha edges into this file.
+    The penguin geometry is copied from echo-penguin-facet.svg; edit the
+    mark there and re-copy, edit only the backing + placement here.
+  -->
+  <defs>
+    <path id="outline" d="M280,84
+      C 240,86 214,100 206,124
+      L 146,142 L 204,160
+      C 196,196 178,240 172,296
+      C 168,340 178,378 200,404
+      L 232,416 L 276,416
+      C 300,416 330,410 352,398
+      L 398,386
+      C 394,330 398,270 390,210
+      C 382,140 340,90 280,84 Z"/>
+    <clipPath id="clip"><use href="#outline"/></clipPath>
+  </defs>
+  <rect width="1024" height="1024" fill="#3B1D8F"/>
+  <polygon points="0,1024 1024,0 1024,1024" fill="#2E1065"/>
+  <g transform="translate(512,512) scale(0.92) translate(-526,-524)">
+    <g transform="scale(2)">
+      <use href="#outline" fill="#5B21B6"/>
+      <g clip-path="url(#clip)">
+        <polygon points="206,124 280,84 256,150" fill="#A78BFA"/>
+        <polygon points="280,84 350,120 256,150" fill="#7C3AED"/>
+        <polygon points="206,124 256,150 204,162" fill="#8B5CF6"/>
+        <polygon points="256,150 350,120 310,220" fill="#6D28D9"/>
+        <polygon points="256,150 310,220 244,236" fill="#7C3AED"/>
+        <polygon points="350,120 392,230 310,220" fill="#5B21B6"/>
+        <polygon points="310,220 392,230 340,320" fill="#6D28D9"/>
+        <polygon points="392,230 394,340 340,320" fill="#4C1D95"/>
+        <polygon points="340,320 394,340 360,398" fill="#5B21B6"/>
+        <polygon points="244,236 310,220 268,320" fill="#6D28D9"/>
+        <polygon points="268,320 340,320 300,410" fill="#4C1D95"/>
+        <polygon points="340,320 360,398 300,410" fill="#6D28D9"/>
+        <polygon points="200,148 128,250 244,236" fill="#BFDBFE"/>
+        <polygon points="128,250 150,400 244,236" fill="#60A5FA"/>
+        <polygon points="244,236 150,400 268,320" fill="#93C5FD"/>
+        <polygon points="268,320 150,400 250,440" fill="#BFDBFE"/>
+        <polygon points="268,320 250,440 310,430" fill="#93C5FD"/>
+        <polygon points="208,122 146,142 206,162" fill="#2F7CF6"/>
+        <polygon points="180,136 146,142 182,154" fill="#60A5FA"/>
+        <polygon points="300,240 330,350 280,330" fill="#2563EB"/>
+        <polygon points="300,240 280,330 266,260" fill="#3B82F6"/>
+      </g>
+    </g>
+  </g>
+</svg>

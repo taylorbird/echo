@@ -91,6 +91,8 @@ export interface AutocompleteMemberEntry {
 
 const collator = new Intl.Collator()
 
+const emptyMembers: AutocompleteMemberEntry[] = []
+
 const UNSENT_TIMELINE_ROWID_BASE = 1000000000000000
 
 function isInThread(evt: MemDBEvent, threadRoot?: EventID | null): boolean {
@@ -323,7 +325,11 @@ export class RoomStateStore {
 		if (this.#membersCache === null) {
 			this.#fillMembersCache()
 		}
-		return this.#membersCache ?? []
+		// Must be a stable reference while the cache is unfilled (no member
+		// state loaded yet): this is a useSyncExternalStore snapshot, and a
+		// fresh [] each call reads as an ever-changing snapshot — an infinite
+		// re-render loop ("Maximum update depth exceeded").
+		return this.#membersCache ?? emptyMembers
 	}
 
 	getViaServers(): string[] {

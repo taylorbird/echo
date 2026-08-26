@@ -24,6 +24,7 @@ import React, {
 	useRef,
 	useState,
 } from "react"
+import { BACKEND_CREDENTIALS, BACKEND_CROSS_ORIGIN, BACKEND_URL } from "@/api/backend.ts"
 import { useRoomEvent, useRoomState } from "@/api/statestore"
 import {
 	BotArgumentValue,
@@ -604,7 +605,8 @@ const MessageComposer = () => {
 
 		cancelMediaUpload.current = () => xhr.abort()
 		setLoadingMedia(0)
-		xhr.open("POST", `_gomuks/upload?${params.toString()}`)
+		xhr.open("POST", `${BACKEND_URL}_gomuks/upload?${params.toString()}`)
+		xhr.withCredentials = BACKEND_CROSS_ORIGIN
 		xhr.setRequestHeader("Content-Type", file.type)
 		xhr.send(file)
 	}, [client.rpc, isEncrypted])
@@ -700,8 +702,9 @@ const MessageComposer = () => {
 	}
 	const resolvePreview = useCallback((url: string) => {
 		setState(s => ({ loadingPreviews: [...s.loadingPreviews, url]}))
-		fetch(`_gomuks/url_preview?encrypt=${isEncrypted}&url=${encodeURIComponent(url)}`, {
+		fetch(`${BACKEND_URL}_gomuks/url_preview?encrypt=${isEncrypted}&url=${encodeURIComponent(url)}`, {
 			method: "GET",
+			credentials: BACKEND_CREDENTIALS,
 		})
 			.then(async res => {
 				const json = await res.json()
@@ -996,7 +999,14 @@ const MessageComposer = () => {
 				/>
 			</ErrorBoundary>
 		</div> : null}
-		<div className={`message-composer ${isDragging ? "dragging" : ""}`} ref={composerRef} onDrop={onDrop} onDragOver={onDragOver} onDragEnter={onDragEnter} onDragLeave={onDragLeave}>
+		<div
+			className={`message-composer ${isDragging ? "dragging" : ""}`}
+			ref={composerRef}
+			onDrop={onDrop}
+			onDragOver={onDragOver}
+			onDragEnter={onDragEnter}
+			onDragLeave={onDragLeave}
+		>
 			{replyToEvt && <ReplyBody
 				roomCtx={roomCtx}
 				event={replyToEvt}

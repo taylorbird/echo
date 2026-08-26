@@ -92,6 +92,17 @@ div.settings-view {
 				letter-spacing: .12em;
 				text-transform: uppercase;
 				color: var(--section-label-color);
+
+				/*
+				 * Lighter than the wordmark it trails: this is a fact about the build, not
+				 * part of the app's name, so it shouldn't share the label's emphasis.
+				 */
+				> span.masthead-version {
+					margin-left: .5rem;
+					font-weight: 500;
+					letter-spacing: .06em;
+					opacity: .7;
+				}
 			}
 
 			> h2 {
@@ -289,6 +300,33 @@ div.settings-view {
 		> div.scope-room_account {
 			border-left: 1px solid var(--border-color);
 			padding-left: .5rem;
+		}
+
+		/*
+		 * Group labels inside the table, in the same tracked-uppercase treatment the
+		 * section cards use for their own headers — the table is a list of sections
+		 * now, so it should look like the rest of the screen does.
+		 *
+		 * Deliberately not sticky. Both header rows above already stick, and a third
+		 * sticky band would need its offset kept in step with the second row's
+		 * intrinsic height. These scroll away underneath instead: the sticky rows
+		 * carry z-index 1 and 2 against this one's auto, so they paint over it.
+		 */
+		> div.category-head {
+			grid-column: 1;
+			align-self: end;
+			padding: 1.125rem .75rem .25rem 0;
+
+			font-size: .6875rem;
+			font-weight: 700;
+			letter-spacing: .1em;
+			text-transform: uppercase;
+			color: var(--section-label-color);
+		}
+
+		/* Empty by design — see the comment on the header row in SettingsView.tsx. */
+		> div.category-head-filler {
+			min-height: 0;
 		}
 
 		> div.name {
@@ -554,6 +592,16 @@ div.settings-view {
 
 			> div.column-head.name, > div.name {
 				grid-column: 1 / -1;
+			}
+
+			/* No name column to sit in, so the label takes the full width and the
+			   fillers that carried the room band lose their columns with it. */
+			> div.category-head {
+				grid-column: 1 / -1;
+			}
+
+			> div.category-head-filler {
+				display: none;
 			}
 
 			> div.name {

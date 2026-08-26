@@ -17,11 +17,15 @@ import React, { JSX, use, useCallback, useEffect, useRef, useState } from "react
 import { HexColorPicker } from "react-colorful"
 import { createPortal } from "react-dom"
 import type Client from "@/api/client.ts"
-import { getAvatarThumbnailURL, getMediaURL, getUserColorIndex, getCustomUserColor, setCustomUserColor } from "@/api/media.ts"
+import {
+	getAvatarThumbnailURL, getCustomUserColor, getMediaURL, getUserColorIndex, getUserColorOverride,
+	setCustomUserColor,
+} from "@/api/media.ts"
 import {
 	RoomStateStore,
 	applyPerMessageSender,
 	maybeRedactMemberEvent,
+	usePreference,
 	useRoomMember,
 } from "@/api/statestore"
 import {
@@ -41,6 +45,7 @@ import MainScreenContext from "../MainScreenContext.ts"
 import { EventFixedMenu, EventFullMenu, EventHoverMenu, getModalStyleFromMouse } from "../menu"
 import { ModalCloseContext, ModalContext, NestableModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
+import FetchedURLPreview, { extractPreviewableURLs } from "../urlpreview/FetchedURLPreview.tsx"
 import URLPreview from "../urlpreview/URLPreview.tsx"
 import { jumpToEventInView } from "../util/jumpToEvent.tsx"
 import ReadReceipts from "./ReadReceipts.tsx"
@@ -268,16 +273,34 @@ const UserColorCard = ({ userID, displayName, avatarUrl, style, onColorChange }:
 	</div>
 }
 
+// Messages older than this get a click-to-load button instead of auto-fetching previews
+const AUTO_LOAD_PREVIEW_MAX_AGE = 48 * 60 * 60 * 1000
+
 const EventURLPreviews = ({ event, room }: {
 	room: RoomStateStore
 	event: MemDBEvent
 }) => {
+	const client = use(ClientContext)!
+	const renderPreviews = usePreference(client.store, room, "render_url_previews")
+	const autoLoadEncrypted = usePreference(client.store, room, "auto_load_encrypted_url_previews")
 	const previews = (event.content["com.beeper.linkpreviews"] ?? event.content["m.url_previews"]) as URLPreviewType[]
-	if (!previews) {
+	if (previews?.length) {
+		return <div className="url-previews">
+			{previews.map((p, i) => <URLPreview key={i} room={room} preview={p}/>)}
+		</div>
+	}
+	if (!renderPreviews) {
 		return null
 	}
+	const urls = extractPreviewableURLs(event.content.body)
+	if (!urls.length) {
+		return null
+	}
+	const isEncrypted = Boolean(room.meta.current.encryption_event)
+	const autoLoad = Date.now() - event.timestamp < AUTO_LOAD_PREVIEW_MAX_AGE
+		&& (!isEncrypted || autoLoadEncrypted)
 	return <div className="url-previews">
-		{previews.map((p, i) => <URLPreview key={i} room={room} preview={p}/>)}
+		{urls.map(url => <FetchedURLPreview key={url} url={url} room={room} autoLoad={autoLoad}/>)}
 	</div>
 }
 
@@ -347,11 +370,12 @@ const TimelineEvent = ({
 	const onSenderContextMenu = useCallback((mouseEvt: React.MouseEvent) => {
 		mouseEvt.preventDefault()
 		const userID = mouseEvt.currentTarget.getAttribute("data-target-user") as UserID
-		if (!userID) return
+		if (!userID) {return}
 
 		const displayName = mouseEvt.currentTarget.textContent || userID
 		const member = roomCtx.store.getStateEvent("m.room.member", userID)
-		const avatarUrl = getAvatarThumbnailURL(userID, member?.content as import("@/api/types").UserProfile | undefined)
+		const avatarUrl = getAvatarThumbnailURL(
+			userID, member?.content as import("@/api/types").UserProfile | undefined)
 
 		const style = getModalStyleFromMouse(mouseEvt, 280)
 		openModal({
@@ -530,7 +554,9 @@ const TimelineEvent = ({
 				onClick={perMessageSender ? undefined : roomCtx.appendMentionToComposer}
 				onContextMenu={onSenderContextMenu}
 				title={`${perMessageSender ? perMessageSender.id : evt.sender} (right-click for color)`}
-				style={getCustomUserColor(perMessageSender?.id ?? evt.sender) ? { color: getCustomUserColor(perMessageSender?.id ?? evt.sender)! } : undefined}
+				style={getUserColorOverride(perMessageSender?.id ?? evt.sender)
+					? { color: getUserColorOverride(perMessageSender?.id ?? evt.sender) }
+					: undefined}
 			>
 				{getDisplayname(evt.sender, renderMemberEvtContent)}
 			</span>
@@ -542,7 +568,7 @@ const TimelineEvent = ({
 					onClick={roomCtx.appendMentionToComposer}
 					onContextMenu={onSenderContextMenu}
 					title={`${evt.sender} (right-click for color)`}
-					style={getCustomUserColor(evt.sender) ? { color: getCustomUserColor(evt.sender)! } : undefined}
+					style={getUserColorOverride(evt.sender) ? { color: getUserColorOverride(evt.sender) } : undefined}
 				>
 					{getDisplayname(evt.sender, memberEvtContent)}
 				</span>

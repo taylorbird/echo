@@ -1,5 +1,5 @@
 // Web authentication login component for Tauri
-import { useState, FormEvent } from "react"
+import { FormEvent, useState } from "react"
 import "./WebAuthLogin.css"
 
 interface WebAuthLoginProps {
@@ -21,8 +21,8 @@ export default function WebAuthLogin({ onSubmit, onCancel, error }: WebAuthLogin
 
 	return (
 		<div className="web-auth-login">
-			<h2>gomuks Authentication</h2>
-			<p>Enter your local gomuks credentials</p>
+			<h2>echo</h2>
+			<p>Enter your local credentials</p>
 			{error && <div className="error-message">{error}</div>}
 			<form onSubmit={handleSubmit}>
 				<input

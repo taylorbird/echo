@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useCallback, useMemo, useRef, useState } from "react"
 import { BarLoader } from "react-spinners"
+import { getAvatarThumbnailURL } from "@/api/media.ts"
 import {
 	RoomListEntry,
 	RoomListFilter,
@@ -23,6 +24,7 @@ import {
 	usePreference,
 } from "@/api/statestore"
 import type { RoomID } from "@/api/types"
+import { getCheats, isCheatActive } from "@/util/cheats.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import ClientContext from "../ClientContext.ts"
@@ -35,6 +37,8 @@ import Space from "./Space.tsx"
 import AddCircleIcon from "@/icons/add-circle.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
 import ChevronDownIcon from "@/icons/modern/chevron-down.svg?react"
+import GamepadIcon from "@/icons/modern/gamepad-2.svg?react"
+import SettingsIcon from "@/icons/modern/settings.svg?react"
 import UserIcon from "@/icons/modern/user.svg?react"
 import UsersIcon from "@/icons/modern/users.svg?react"
 import SearchIcon from "@/icons/search.svg?react"
@@ -75,9 +79,17 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		openModal(modals.createRoom())
 	}
 	const onClickSpace = useCallback((evt: React.MouseEvent<HTMLDivElement>) => {
-		const store = client.store.getSpaceStore(evt.currentTarget.getAttribute("data-target-space")!)
+		const spaceID = evt.currentTarget.getAttribute("data-target-space")!
+		const store = client.store.getSpaceStore(spaceID)
 		mainScreen.setSpace(store)
-	}, [mainScreen, client])
+		// A real space is also a room, so open its lobby (RoomView renders SpaceView
+		// for m.space rooms) instead of leaving the chat pane on whatever was there.
+		// Pseudo-spaces have no room behind them and stay filter-only — they use the
+		// setSpace prop directly rather than going through this handler.
+		if (spaceID !== activeRoomID && client.store.rooms.has(spaceID)) {
+			mainScreen.setActiveRoom(spaceID)
+		}
+	}, [mainScreen, client, activeRoomID])
 	const onClickSpaceUnread = useCallback((
 		evt: React.MouseEvent<HTMLDivElement>, space?: SpaceStore | null,
 	) => {
@@ -190,7 +202,11 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		})
 	}, [])
 	return <div className="room-list-wrapper">
-		<div className="room-search-wrapper">
+		{/* The sidebar's header band is a window drag surface, matching the room header.
+		    The bare attribute only fires when the mousedown target is this element itself,
+		    so the strip above and below the shorter search input drags the window while
+		    the input and its buttons keep working. */}
+		<div className="room-search-wrapper" data-tauri-drag-region>
 			<input
 				value={query}
 				onChange={setQuery}
@@ -225,6 +241,37 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				isActive={space?.id === roomID}
 				onClickUnread={onClickSpaceUnread}
 			/>)}
+			<div className="space-bar-footer">
+				{/* Static per page load is fine: toggling a cheat reloads the app. */}
+				{getCheats().some(cheat => isCheatActive(cheat.id)) && <button
+					className="cheat-indicator"
+					title="A cheat code is active — click to manage"
+					onClick={() => window.openModal(modals.cheatConsole())}
+				>
+					<GamepadIcon/>
+				</button>}
+				<button
+					className="rail-profile"
+					title={`Your profile (${client.userID})`}
+					disabled={!activeRoomID}
+					onClick={() => mainScreen.setRightPanel({ type: "user", userID: client.userID })}
+				>
+					<img className="avatar" src={getAvatarThumbnailURL(client.userID)} alt=""/>
+				</button>
+				<button
+					className="rail-settings"
+					title="Settings"
+					disabled={!activeRoomID}
+					onClick={() => {
+						const room = activeRoomID ? client.store.rooms.get(activeRoomID) : null
+						if (room) {
+							window.openNestableModal(modals.settings(room))
+						}
+					}}
+				>
+					<SettingsIcon/>
+				</button>
+			</div>
 		</div>
 		<div className="room-list">
 			{initComplete ? null

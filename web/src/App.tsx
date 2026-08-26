@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { useEffect, useMemo, useState } from "react"
 import { ScaleLoader } from "react-spinners"
+import { BACKEND_WS_URL } from "./api/backend.ts"
 import Client from "./api/client.ts"
 import RPCClient from "./api/rpc.ts"
 import { getLocalStoragePreferences } from "./api/types/preferences"
@@ -23,10 +24,11 @@ import WasmClient from "./api/wasmclient.ts"
 import WSClient from "./api/wsclient.ts"
 import ClientContext from "./ui/ClientContext.ts"
 import MainScreen from "./ui/MainScreen.tsx"
+import WebAuthLogin from "./ui/WebAuthLogin.tsx"
 import { LoginScreen, VerificationScreen } from "./ui/login"
 import { LightboxWrapper } from "./ui/modal"
-import WebAuthLogin from "./ui/WebAuthLogin.tsx"
 import { useEventAsState } from "./util/eventdispatcher.ts"
+import { checkForUpdates } from "./util/updater.ts"
 
 function makeRPCClient(): RPCClient {
 	if (window.gomuksDesktop) {
@@ -35,7 +37,7 @@ function makeRPCClient(): RPCClient {
 		return new WasmClient()
 	}
 	const lb = getLocalStoragePreferences("global_prefs", () => {}).low_bandwidth
-	return new WSClient("_gomuks/websocket", lb ?? false)
+	return new WSClient(`${BACKEND_WS_URL}_gomuks/websocket`, lb ?? false)
 }
 
 function App() {
@@ -47,6 +49,11 @@ function App() {
 		window.client = client
 		return client.start()
 	}, [client])
+	// Runs regardless of auth state and is a no-op outside the packaged Tauri app.
+	// checkForUpdates() guards itself against running twice, so StrictMode double-invoke is fine.
+	useEffect(() => {
+		checkForUpdates()
+	}, [])
 
 	const needsWebAuth = connState?.error === "AUTH_REQUIRED" || connState?.error === "Invalid credentials"
 	const afterConnectError = Boolean(connState?.error && connState.reconnecting && clientState?.is_verified)

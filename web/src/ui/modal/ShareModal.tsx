@@ -16,6 +16,7 @@
 import { useState } from "react"
 import { RoomStateStore } from "@/api/statestore"
 import { MemDBEvent } from "@/api/types"
+import copyToClipboard from "@/util/clipboard.ts"
 import useEvent from "@/util/useEvent.ts"
 import { lessNoisyEncodeURIComponent } from "@/util/validation.ts"
 import Toggle from "../util/Toggle.tsx"
@@ -57,7 +58,7 @@ export const ShareModal = ({ room, evt }: ShareModalProps) => {
 	}
 
 	const onConfirm = useEvent(() => {
-		navigator.clipboard.writeText(generatedURL).catch(
+		copyToClipboard(generatedURL).catch(
 			err => window.alert(`Failed to copy link: ${err}`),
 		)
 	})

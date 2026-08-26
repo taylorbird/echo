@@ -36,6 +36,7 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 	const client = use(ClientContext)!
 	const renderPreviews = usePreference(client.store, room ?? null, "render_url_previews")
 	const [forceShowImage, setForceShowImage] = useState(false)
+	const [imageFailed, setImageFailed] = useState(false)
 	const showPreviewImages = usePreference(client.store, room ?? null, "show_media_previews")
 		// If the url parameter is set, it means we're in the composer and should always render the media
 		|| Boolean(url) || forceShowImage
@@ -66,9 +67,12 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 		return null
 	}
 
+	// og:image is normally an mxc:// URI, but locally-fetched previews carry a direct https URL
 	const mediaURL = preview["beeper:image:encryption"]
 		? getEncryptedMediaURL(preview["beeper:image:encryption"].url)
-		: getMediaURL(preview["og:image"])
+		: preview["og:image"]?.startsWith("mxc://")
+			? getMediaURL(preview["og:image"])
+			: preview["og:image"]
 	const aspectRatio = (preview["og:image:width"] ?? 1) / (preview["og:image:height"] ?? 1)
 	let containerSize: ImageContainerSize | undefined
 	let inline = false
@@ -90,6 +94,7 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 			style={style.media}
 			src={mediaURL}
 			onClick={use(LightboxContext)!}
+			onError={() => setImageFailed(true)}
 			alt=""
 		/> : preview["matrix:image:blurhash"] ? <Blurhash
 			hash={preview["matrix:image:blurhash"]}
@@ -109,8 +114,9 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 		{clearPreview && <div className="actions">
 			<button onClick={clearPreview}><DeleteIcon/></button>
 		</div>}
-		<div className="description">{preview["og:description"]}</div>
-		{mediaURL && (inline
+		{preview["og:description"] !== title
+			&& <div className="description">{preview["og:description"]}</div>}
+		{mediaURL && !imageFailed && (inline
 			? <div className="inline-media-wrapper">{mediaContainer}</div>
 			: mediaContainer)}
 	</div>

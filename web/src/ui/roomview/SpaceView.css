@@ -1,36 +1,271 @@
+/*
+ * The space lobby: an overview of what a space contains, rather than a timeline.
+ * The view is the scroll container (the room-view grid gives it a fixed 1fr row
+ * under `contain: strict`, so a long child list has to scroll here or not at
+ * all); the content column inside it is what gets centred and width-capped.
+ */
 div.space-view {
+	grid-area: messageview;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+div.space-lobby {
+	box-sizing: border-box;
+	max-width: 46rem;
+	margin: 0 auto;
+	/* Nothing above this view any more, so the masthead gets room to breathe
+	   instead of starting immediately under the window edge. */
+	padding: 2.5rem 2rem 1.5rem;
+}
+
+/*
+ * The dashboard's own identity block, standing in for the header this view no
+ * longer has: avatar and name at masthead size, then the topic in full (the one
+ * place it isn't ellipsized) and the stats line.
+ */
+div.space-masthead {
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;
+	gap: .5rem;
+	padding-bottom: 1.25rem;
 
-	margin: 0 auto;
-	max-width: 40rem;
-	width: 100%;
+	> div.space-identity {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		overflow: hidden;
+
+		/* Only reachable when the panes are stacked; on a wide window the room
+		   list is always visible, so a back button there would do nothing. */
+		> button.space-back {
+			display: none;
+			flex-shrink: 0;
+			width: 2.5rem;
+			height: 2.5rem;
+
+			> svg {
+				width: 1.25rem;
+				height: 1.25rem;
+			}
+
+			@media screen and (max-width: 45rem) {
+				display: flex;
+			}
+		}
+
+		> img.space-avatar {
+			flex-shrink: 0;
+			width: 5rem;
+			height: 5rem;
+			/* Squared off rather than the global circle: a space is a container,
+			   and the rounded square says so. */
+			border-radius: .75rem;
+		}
+
+		> h1.space-name {
+			margin: 0;
+			font-family: var(--display-font-stack);
+			font-size: 1.875rem;
+			font-weight: 700;
+			line-height: 1.2;
+			overflow: hidden;
+			overflow-wrap: anywhere;
+
+			@media (prefers-color-scheme: dark) {
+				color: color-mix(in oklab, var(--room-accent, var(--text-color)) 70%, #f8f8f2);
+			}
+		}
+	}
+
+	> div.space-topic {
+		color: var(--secondary-text-color);
+		font-size: .9375rem;
+		line-height: 1.5;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	> div.space-meta {
+		color: var(--secondary-text-color);
+		font-size: .8125rem;
+		opacity: .75;
+	}
+}
+
+/*
+ * Chips rather than a toolbar: square-cornered outlines that read as one row of
+ * peers, none of them primary. Every action here already exists in a menu
+ * somewhere — this row just makes them reachable without one.
+ */
+div.space-quick-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem;
+	padding-bottom: 1.5rem;
+	border-bottom: 1px solid var(--hairline-color);
+
+	> button {
+		display: flex;
+		align-items: center;
+		gap: .4375rem;
+		padding: .4375rem .75rem;
+		border: 1px solid var(--hairline-color);
+		border-radius: 0;
+		background-color: transparent;
+		color: var(--text-color);
+		font-size: .875rem;
+		cursor: var(--clickable-cursor);
+
+		&:hover {
+			background-color: var(--timeline-hover-bg-color);
+		}
+
+		> svg {
+			width: 1rem;
+			height: 1rem;
+			flex-shrink: 0;
+		}
+	}
+}
+
+div.space-empty {
+	margin-top: 1.5rem;
+	color: var(--secondary-text-color);
+	font-size: .9375rem;
+}
+
+div.space-section {
+	margin-top: 1.5rem;
+
+	/* Plain caption rather than the room list's tappable group header, but it
+	   borrows the same violet tint so the two read as the same kind of label. */
+	> h3.space-section-header {
+		display: flex;
+		align-items: baseline;
+		gap: .5rem;
+		margin: 0 0 .25rem;
+		font-family: var(--display-font-stack);
+		font-size: .8125rem;
+		font-weight: 700;
+		letter-spacing: .04em;
+		text-transform: uppercase;
+		color: var(--secondary-text-color);
+
+		@media (prefers-color-scheme: dark) {
+			color: color-mix(in oklab, #bd93f9 45%, var(--text-color));
+		}
+
+		/* Muted so the label still leads: the count is context, not a heading. */
+		> span.space-section-count {
+			color: var(--secondary-text-color);
+			font-weight: 600;
+			letter-spacing: normal;
+			opacity: .7;
+		}
+	}
+
+	/* Text-only, accent-coloured: an outlined chip here would compete with the
+	   quick-actions row for the same kind of attention. */
+	> button.space-show-all {
+		margin-top: .75rem;
+		padding: 0;
+		border: none;
+		background-color: transparent;
+		font-size: .875rem;
+		font-weight: 600;
+		cursor: var(--clickable-cursor);
+		color: var(--primary-color);
+
+		&:hover {
+			background-color: transparent;
+			text-decoration: underline;
+		}
+
+		/* Same violet the section headers use, at the name-accent mix so it reads
+		   as a live link rather than another muted label. */
+		@media (prefers-color-scheme: dark) {
+			color: color-mix(in oklab, #bd93f9 70%, #f8f8f2);
+		}
+	}
+}
+
+/*
+ * A grid rather than the single stacked column the child rows use: a member is
+ * one short line, and stacking a few hundred of those would make the roster the
+ * longest thing on the page by far.
+ */
+div.space-members {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+	gap: .125rem .5rem;
+
+	> div.space-member {
+		display: flex;
+		align-items: center;
+		gap: .5rem;
+		min-width: 0;
+		padding: .25rem;
+		cursor: var(--clickable-cursor);
+
+		&:hover {
+			background-color: var(--timeline-hover-bg-color);
+		}
+
+		> img.avatar {
+			flex-shrink: 0;
+			width: 2rem;
+			height: 2rem;
+		}
+
+		> div.space-member-name {
+			overflow: hidden;
+			white-space: nowrap;
+			text-overflow: ellipsis;
+			font-size: .875rem;
+			font-family: var(--display-font-stack);
+
+			@media (prefers-color-scheme: dark) {
+				color: color-mix(in oklab, var(--user-accent, var(--text-color)) 70%, #f8f8f2);
+			}
+		}
+	}
 }
 
 div.space-adder {
 	display: flex;
 	position: relative;
-	margin: .5rem .5rem .5rem 0;
 
 	> input {
-		padding: .25rem .5rem;
-		outline: none;
-		border-radius: .25rem;
-		border: 1px solid var(--border-color);
+		box-sizing: border-box;
 		width: 100%;
+		height: 2.25rem;
+		padding: 0 .625rem;
+		outline: none;
+		border: 1px solid var(--hairline-color);
+		border-radius: .25rem;
+		/* Lighter than the pane, matching the composer: on a near-black surface
+		   an input reads as raised rather than recessed. */
+		background-color: var(--composer-background-color);
+		color: var(--text-color);
+		font-family: inherit;
+		font-size: .9375rem;
+
+		&:focus {
+			border-color: var(--border-color);
+		}
 	}
 
 	> div.space-children {
 		position: absolute;
-		top: 2.125rem;
+		top: calc(100% + .25rem);
 		border-radius: .25rem;
 		background-color: var(--background-color);
 		border: 1px solid var(--border-color);
 		z-index: 5;
 		padding: .25rem;
 		overflow-y: auto;
-		max-height: calc(100vh - 7rem);
+		max-height: calc(100vh - 12rem);
 		box-shadow: 0 0 1rem var(--modal-box-shadow-color);
 		max-width: 30rem;
 		width: 100%;
@@ -42,57 +277,106 @@ div.space-adder {
 }
 
 div.space-children {
-	display: grid;
-	grid-template-columns: 1fr auto;
-	grid-auto-rows: 3rem;
+	display: flex;
 	flex-direction: column;
-	overflow-y: auto;
-	flex: 1;
 
 	> div.space-child {
 		display: flex;
-		gap: .25rem;
+		align-items: center;
+		gap: .75rem;
+		box-sizing: border-box;
+		min-height: 3.5rem;
+		padding: .5rem .25rem;
 		overflow: hidden;
 
-		cursor: var(--clickable-cursor);
-		padding: .25rem;
-		border-radius: .25rem;
-
-		&.existing-edge:hover {
-			background-color: var(--button-hover-color);
+		/* Light hairline between rows, per the app's idiom. The first row is
+		   already separated from the section header by its own spacing. */
+		&:not(:first-child) {
+			border-top: 1px solid var(--hairline-color);
 		}
 
-		> div.room-id-and-name {
+		/* Only rows backed by an existing edge open a room; the adder's
+		   suggestions are acted on through their button. */
+		&.existing-edge {
+			cursor: var(--clickable-cursor);
+
+			&:hover {
+				background-color: var(--timeline-hover-bg-color);
+			}
+		}
+
+		> img.avatar {
+			flex-shrink: 0;
+		}
+
+		> div.space-child-text {
 			display: flex;
 			flex-direction: column;
 			justify-content: center;
+			flex: 1;
+			gap: .125rem;
 			overflow: hidden;
-			white-space: nowrap;
 
-			> span.room-id {
-				font-family: var(--monospace-font-stack);
-				opacity: .7;
-				font-size: .75rem;
+			> div.room-name, > div.room-description {
+				overflow: hidden;
+				white-space: nowrap;
+				text-overflow: ellipsis;
 			}
 
-			> span.room-name, > span.room-id {
-				text-overflow: ellipsis;
-				overflow: hidden;
+			> div.room-name {
+				font-weight: 600;
+				font-size: 1rem;
+				line-height: 1.35;
+				font-family: var(--display-font-stack);
+
+				/* Same hash-derived candy accent the room list and header use. */
+				@media (prefers-color-scheme: dark) {
+					color: color-mix(in oklab, var(--room-accent, var(--text-color)) 70%, #f8f8f2);
+				}
+			}
+
+			> div.room-description {
+				color: var(--secondary-text-color);
+				font-size: .8125rem;
+				line-height: 1.35;
 			}
 		}
-	}
 
-	> div.buttons {
-		display: flex;
-		justify-content: right;
-		align-items: center;
-		margin-right: .5rem;
+		> div.member-count {
+			flex-shrink: 0;
+			color: var(--secondary-text-color);
+			font-size: .8125rem;
+			white-space: nowrap;
+		}
 
-		> button {
-			padding: .5rem;
+		> div.buttons {
+			display: flex;
+			flex-shrink: 0;
+			align-items: center;
 
-			&:disabled {
-				padding: .5rem .25rem;
+			> button {
+				padding: .375rem;
+
+				&:disabled {
+					padding: .375rem .1875rem;
+				}
+			}
+
+			/* Text button rather than an icon: joining is the row's primary
+			   action for rooms we're not in, so it gets a word and an edge. */
+			> button.join-button {
+				padding: .25rem .75rem;
+				border: 1px solid var(--hairline-color);
+				font-weight: 600;
+
+				&:disabled {
+					padding: .25rem .75rem;
+					opacity: .6;
+				}
+
+				@media (prefers-color-scheme: dark) {
+					color: color-mix(in oklab, #85f0a8 70%, #f8f8f2);
+				}
 			}
 		}
 	}

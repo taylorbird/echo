@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import type { MouseEvent } from "react"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
+import { BACKEND_CREDENTIALS, BACKEND_URL } from "./backend.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
 import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
 import {
@@ -84,11 +85,12 @@ export default class Client {
 				return
 			case "auth":
 				try {
-					const resp = await fetch("_gomuks/auth?no_prompt=true", {
+					const resp = await fetch(`${BACKEND_URL}_gomuks/auth?no_prompt=true`, {
 						method: "POST",
 						headers: {
 							Authorization: evtData.authorization,
 						},
+						credentials: BACKEND_CREDENTIALS,
 						signal,
 					})
 					if (!resp.ok && !signal.aborted) {

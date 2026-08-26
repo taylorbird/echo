@@ -27,6 +27,7 @@ import {
 	Symbols,
 	WidgetDriver,
 } from "matrix-widget-api"
+import { BACKEND_CREDENTIALS, BACKEND_URL } from "@/api/backend.ts"
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { EventRowID, RoomID } from "@/api/types"
@@ -233,9 +234,10 @@ class GomuksWidgetDriver extends WidgetDriver {
 	}
 
 	async uploadFile(file: XMLHttpRequestBodyInit): Promise<{ contentUri: string }> {
-		const res = await fetch("_gomuks/upload?encrypt=false", {
+		const res = await fetch(`${BACKEND_URL}_gomuks/upload?encrypt=false`, {
 			method: "POST",
 			body: file,
+			credentials: BACKEND_CREDENTIALS,
 		})
 		const json = await res.json()
 		if (!res.ok) {

@@ -90,11 +90,18 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 		<MessageComposer/>
 		<TypingNotifications/>
 	</>
+	// The space dashboard carries its own masthead (avatar, name, topic) plus a
+	// quick-actions row, so a room header above it would only repeat all of that.
+	// Keyed off the resolved view type, so forcing a space to the timeline view
+	// (via the room type override, which resolves to "") brings the header back.
+	const isSpaceDashboard = viewType === "m.space"
 	return <RoomContext value={roomContextData}>
-		<div className="room-view" onClick={onClick}>
+		<div className={`room-view ${isSpaceDashboard ? "headerless" : ""}`} onClick={onClick}>
 			<ErrorBoundary thing="room header" wrapperClassName="room-header-error">
 				<div className="mobile-event-menu-container" id="mobile-event-menu-container"/>
-				<RoomViewHeader room={room} activePanel={rightPanel?.type ?? null}/>
+				{isSpaceDashboard
+					? null
+					: <RoomViewHeader room={room} activePanel={rightPanel?.type ?? null}/>}
 			</ErrorBoundary>
 			<ErrorBoundary thing="room timeline" wrapperClassName="room-timeline-error">
 				{view}

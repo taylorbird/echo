@@ -1,6 +1,9 @@
 :root {
 	color-scheme: light;
-	--font-stack: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	--font-stack: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	/* Names and titles only — room names, usernames, section headers. Body copy,
+	   previews and the composer stay on --font-stack. */
+	--display-font-stack: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 	--monospace-font-stack: "Fira Code", monospace;
 
 	--window-top-margin: env(safe-area-inset-top, 0px);
@@ -38,6 +41,13 @@
 	--accent-glow-color: #ffe484;
 	--accent-glow-near: rgba(255, 228, 132, .75);
 	--accent-glow-far: rgba(255, 228, 132, .35);
+
+	/* Green sibling of the yellow glow, same lift-toward-candy treatment, so
+	   the active *room* marker reads as its own cue rather than echoing the
+	   active-space yellow one column over. */
+	--room-glow-color: #85f0a8;
+	--room-glow-near: rgba(133, 240, 168, .75);
+	--room-glow-far: rgba(133, 240, 168, .35);
 
 	--background-color: #fff;
 	--login-background-color: #eee;
@@ -122,13 +132,15 @@
 	--room-list-padding: .125rem;
 
 	--timeline-avatar-size: 2.5rem;
-	--timeline-avatar-gap: .5rem;
+	--timeline-avatar-gap: 1rem;
 	--timeline-avatar-total-size: calc(var(--timeline-avatar-size) + var(--timeline-avatar-gap));
 	--timeline-message-gap: 1.5rem;
 	--timeline-message-gap-same-sender: .35rem;
 	--timeline-message-gap-small-event: 0;
 	--timeline-message-gap-same-thread: 0;
 	--timeline-sender-name-timestamp-gap: .25rem;
+	/* The avatar-centred sender row already leaves ~.65rem of visual air
+	   below the name; extra margin on top of that read as too far apart. */
 	--timeline-sender-name-content-gap: 0;
 	--timeline-vertical-padding: 0;
 	--timeline-horizontal-padding: 1.5rem;
@@ -227,7 +239,9 @@
 		--sender-color-2: #4dd6a8;
 		--sender-color-3: #a78bfa;
 		--sender-color-4: #4db8f5;
-		--sender-color-5: #ffd93d;
+		/* Honey gold, not pure yellow — #ffd93d went mustardy under the
+	   sender-name dim (opacity .75) on the dark warm background. */
+	--sender-color-5: #f0c674;
 		--sender-color-6: #ff7ac6;
 		--sender-color-7: #4de0e0;
 		--sender-color-8: #ff8a65;

@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { RefObject } from "react"
-import { RoomStateStore } from "@/api/statestore"
+import { RoomStateStore, StateStore } from "@/api/statestore"
 import { EventID, MemDBEvent } from "@/api/types"
+import { MainScreenContextFields } from "@/ui/MainScreenContext.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
+import CheatConsole from "../CheatConsole.tsx"
+import QuickSwitcher from "../QuickSwitcher.tsx"
 import MediaUploadDialog, { UploadFileFunc } from "../composer/MediaUploadDialog.tsx"
 import VoiceRecorder from "../composer/VoiceRecorder.tsx"
 import CreateRoomView from "../roomview/CreateRoomView.tsx"
@@ -106,6 +109,24 @@ export function createRoom(): NonNestableModalState {
 		boxed: true,
 		boxClass: "create-room-view-modal",
 		content: <CreateRoomView />,
+	}
+}
+
+export function quickSwitcher(store: StateStore, mainScreen: MainScreenContextFields): NonNestableModalState {
+	return {
+		dimmed: true,
+		boxed: true,
+		boxClass: "quick-switcher-modal",
+		content: <QuickSwitcher store={store} mainScreen={mainScreen}/>,
+	}
+}
+
+export function cheatConsole(): NonNestableModalState {
+	return {
+		dimmed: true,
+		boxed: true,
+		boxClass: "cheat-console-modal",
+		content: <CheatConsole/>,
 	}
 }
 

@@ -61,13 +61,23 @@ div.timeline-event {
 		grid-area: sender;
 		margin-bottom: var(--timeline-sender-name-content-gap);
 
+		/* The avatar spans both grid rows; tracking its height keeps the
+		   sender name vertically centred on it, with the message text starting
+		   below the avatar. Slightly under-height so the text sits closer. */
+		min-height: calc(var(--timeline-avatar-size) - .25rem);
+
 		display: flex;
 		align-items: center;
 		gap: var(--timeline-sender-name-timestamp-gap);
 		text-wrap: nowrap;
 
 		> span.event-sender {
-			font-weight: bold;
+			/* Same label treatment as per-message senders below: a step down
+			   in size with a step up in tracking, so the name doesn't compete
+			   with the message text for the same rank. */
+			font-size: .875rem;
+			font-weight: 600;
+			letter-spacing: .015em;
 			user-select: none;
 			cursor: var(--clickable-cursor);
 		}
@@ -241,8 +251,14 @@ div.pinned-event > div.timeline-event, div.notification-panel-content > div.time
 }
 
 span.event-sender {
+	/* Also covers reply sender names — ReplyBody reuses this class. */
+	font-family: var(--display-font-stack);
 	overflow: hidden;
 	text-overflow: ellipsis;
+
+	/* Opacity rather than desaturated color tokens so per-user inline
+	   overrides (custom colors, cheats) dim by the same amount. */
+	opacity: .75;
 
 	&.sender-color-0 { color: var(--sender-color-0); }
 	&.sender-color-1 { color: var(--sender-color-1); }

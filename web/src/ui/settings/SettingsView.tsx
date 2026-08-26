@@ -13,20 +13,24 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { Suspense, lazy, use, useCallback, useRef, useState } from "react"
+import { Fragment, Suspense, lazy, use, useCallback, useRef, useState } from "react"
 import { ScaleLoader } from "react-spinners"
+import { BACKEND_CROSS_ORIGIN, BACKEND_URL } from "@/api/backend.ts"
 import Client from "@/api/client.ts"
 import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
 import { RoomStateStore, usePreferences } from "@/api/statestore"
 import { KeyRestoreProgress, RoomID, RoomType } from "@/api/types"
 import {
 	Preference,
+	PreferenceCategory,
 	PreferenceContext,
 	PreferenceValueType,
 	Preferences,
+	preferenceCategories,
 	preferenceContextToInt,
 	preferences,
 } from "@/api/types/preferences"
+import useAppVersion from "@/util/appversion.ts"
 import { NonNullCachedEventDispatcher, useEventAsState } from "@/util/eventdispatcher.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
@@ -113,13 +117,32 @@ const customUIPrefs = new Set([
 	"custom_notification_sound",
 ] as (keyof Preferences)[])
 
+const categoryLabels: Record<PreferenceCategory, string> = {
+	appearance: "Appearance",
+	chat: "Chat",
+	media: "Media",
+	input: "Input",
+	notifications: "Notifications",
+	advanced: "Advanced",
+}
+
+/*
+ * The flat alphabet-soup list was the actual problem with this table: thirty-odd
+ * unrelated switches with no shape to them. Grouping is computed once at module
+ * level rather than per render — `hidden` is decided by platform globals at import
+ * time and the custom-UI set is a constant, so nothing here can change later.
+ * Categories with nothing left to show drop out entirely.
+ */
+const visiblePreferences = (Object.entries(preferences) as [keyof Preferences, Preference][])
+	.filter(([key, pref]) => !pref.hidden && !customUIPrefs.has(key))
+const preferencesByCategory = preferenceCategories
+	.map(category => [category, visiblePreferences.filter(([, pref]) => pref.category === category)] as const)
+	.filter(([, prefs]) => prefs.length > 0)
+
 const PreferenceRow = ({
 	name, pref, setPref, globalServer, globalLocal, roomServer, roomLocal,
 }: PreferenceRowProps) => {
 	const prefType = typeof pref.defaultValue
-	if (customUIPrefs.has(name)) {
-		return null
-	}
 	const makeContentCell = (
 		context: PreferenceContext,
 		val: PreferenceValueType | undefined,
@@ -179,16 +202,37 @@ interface SettingsViewProps {
 	room: RoomStateStore
 }
 
-function getActiveCSSContext(client: Client, room: RoomStateStore): PreferenceContext {
-	if (room.localPreferenceCache.custom_css !== undefined) {
-		return PreferenceContext.RoomDevice
-	} else if (room.serverPreferenceCache.custom_css !== undefined) {
-		return PreferenceContext.RoomAccount
-	} else if (client.store.localPreferenceCache.custom_css !== undefined) {
-		return PreferenceContext.Device
-	} else {
-		return PreferenceContext.Account
+/*
+ * Custom CSS has its own editor rather than a row in the matrix, so it has to
+ * derive its scope picker from the preference's allowed contexts by hand — nothing
+ * else stops it offering to save into a scope the preference proxy would then
+ * ignore. Config is omitted: it is read-only from here.
+ */
+const cssContextLabels: Partial<Record<PreferenceContext, string>> = {
+	[PreferenceContext.Account]: "Account",
+	[PreferenceContext.Device]: "Device",
+	[PreferenceContext.RoomAccount]: "Room (account)",
+	[PreferenceContext.RoomDevice]: "Room (device)",
+}
+const cssContexts = preferences.custom_css.allowedContexts.filter(ctx => ctx in cssContextLabels)
+
+function getCSSForContext(client: Client, room: RoomStateStore, context: PreferenceContext): string | undefined {
+	if (context === PreferenceContext.Account) {
+		return client.store.serverPreferenceCache.custom_css
+	} else if (context === PreferenceContext.Device) {
+		return client.store.localPreferenceCache.custom_css
+	} else if (context === PreferenceContext.RoomAccount) {
+		return room.serverPreferenceCache.custom_css
+	} else if (context === PreferenceContext.RoomDevice) {
+		return room.localPreferenceCache.custom_css
 	}
+}
+
+// allowedContexts is ordered most-specific first, which is the same order the
+// preference proxy resolves in, so the first hit is the one actually applied.
+function getActiveCSSContext(client: Client, room: RoomStateStore): PreferenceContext {
+	return cssContexts.find(ctx => getCSSForContext(client, room, ctx) !== undefined)
+		?? PreferenceContext.Account
 }
 
 const Monaco = lazy(() => import("../util/monaco.tsx"))
@@ -197,23 +241,12 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 	const client = use(ClientContext)!
 	const appliedContext = getActiveCSSContext(client, room)
 	const [context, setContext] = useState(appliedContext)
-	const getContextText = (context: PreferenceContext) => {
-		if (context === PreferenceContext.Account) {
-			return client.store.serverPreferenceCache.custom_css
-		} else if (context === PreferenceContext.Device) {
-			return client.store.localPreferenceCache.custom_css
-		} else if (context === PreferenceContext.RoomAccount) {
-			return room.serverPreferenceCache.custom_css
-		} else if (context === PreferenceContext.RoomDevice) {
-			return room.localPreferenceCache.custom_css
-		}
-	}
-	const origText = getContextText(context)
+	const origText = getCSSForContext(client, room, context)
 	const [text, setText] = useState(origText ?? "")
 	const onChangeContext = (evt: React.ChangeEvent<HTMLSelectElement>) => {
 		const newContext = evt.target.value as PreferenceContext
 		setContext(newContext)
-		setText(getContextText(newContext) ?? "")
+		setText(getCSSForContext(client, room, newContext) ?? "")
 	}
 	const onChangeText = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setText(evt.target.value)
@@ -248,10 +281,7 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 			<PaletteIcon/>
 			<h3>Custom CSS</h3>
 			<select value={context} onChange={onChangeContext}>
-				<option value={PreferenceContext.Account}>Account</option>
-				<option value={PreferenceContext.Device}>Device</option>
-				<option value={PreferenceContext.RoomAccount}>Room (account)</option>
-				<option value={PreferenceContext.RoomDevice}>Room (device)</option>
+				{cssContexts.map(ctx => <option key={ctx} value={ctx}>{cssContextLabels[ctx]}</option>)}
 			</select>
 			{preferenceContextToInt(context) < preferenceContextToInt(appliedContext) &&
 				<span className="warning">
@@ -369,11 +399,11 @@ const KeyExportView = ({ room }: SettingsViewProps) => {
 	const [hasFile, setHasFile] = useState(false)
 	const openModal = use(ModalContext)
 	const importBackup = (roomID?: RoomID) => {
-		let path = "_gomuks/keys/restorebackup"
+		let path = `${BACKEND_URL}_gomuks/keys/restorebackup`
 		if (roomID) {
 			path += `/${encodeURIComponent(roomID)}`
 		}
-		const evtSource = new EventSource(path)
+		const evtSource = new EventSource(path, { withCredentials: BACKEND_CROSS_ORIGIN })
 		let progress: KeyRestoreProgress = {
 			stage: "fetching",
 			current_room_id: "",
@@ -433,7 +463,7 @@ const KeyExportView = ({ room }: SettingsViewProps) => {
 		/>
 		<form
 			className="import-buttons"
-			action="_gomuks/keys/import"
+			action={`${BACKEND_URL}_gomuks/keys/import`}
 			encType="multipart/form-data"
 			method="post"
 			target="_blank"
@@ -450,11 +480,15 @@ const KeyExportView = ({ room }: SettingsViewProps) => {
 			<button type="submit" disabled={passphrase == "" || !hasFile}>Import file</button>
 		</form>
 		<div className="export-buttons">
-			<form action="_gomuks/keys/export" method="post" target="_blank">
+			<form action={`${BACKEND_URL}_gomuks/keys/export`} method="post" target="_blank">
 				<input type="password" name="passphrase" hidden readOnly value={passphrase} />
 				<button type="submit" disabled={passphrase == ""}>Export all keys</button>
 			</form>
-			<form action={`_gomuks/keys/export/${encodeURIComponent(room.roomID)}`} method="post" target="_blank">
+			<form
+				action={`${BACKEND_URL}_gomuks/keys/export/${encodeURIComponent(room.roomID)}`}
+				method="post"
+				target="_blank"
+			>
 				<input type="password" name="passphrase" hidden readOnly value={passphrase} />
 				<button type="submit" disabled={passphrase == ""}>Export room keys</button>
 			</form>
@@ -469,6 +503,7 @@ const KeyExportView = ({ room }: SettingsViewProps) => {
 
 const SettingsView = ({ room }: SettingsViewProps) => {
 	const roomMeta = useEventAsState(room.meta)
+	const appVersion = useAppVersion()
 	const client = use(ClientContext)!
 	const closeModal = use(ModalCloseContext)
 	const openModal = use(ModalContext)
@@ -553,7 +588,11 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 		  */}
 		<div className="settings-masthead">
 			<div className="masthead-text">
-				<div className="masthead-eyebrow">Seabug</div>
+				{/* The version is only known inside the desktop app; on the web it's simply absent. */}
+				<div className="masthead-eyebrow">
+					echo
+					{appVersion && <span className="masthead-version">{appVersion}</span>}
+				</div>
 				<h2>Settings</h2>
 				<p className="masthead-note">
 					These are your preferences everywhere. You can also override any of them
@@ -602,17 +641,29 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 				<div className="column-head scope-room_account">All devices</div>
 				<div className="column-head scope-room_device">This device</div>
 
-				{Object.entries(preferences).map(([key, pref]) =>
-					!pref.hidden ? <PreferenceRow
+				{/*
+				  * A category header is five cells, not one spanning row. The four
+				  * trailing cells are empty, but they carry the scope classes, so the
+				  * room band's tint and its divider run through the header instead of
+				  * being cut in half at every group boundary.
+				  */}
+				{preferencesByCategory.map(([category, prefs]) => <Fragment key={category}>
+					<div className="category-head">{categoryLabels[category]}</div>
+					<div className="category-head-filler"/>
+					<div className="category-head-filler"/>
+					<div className="category-head-filler scope-room_account"/>
+					<div className="category-head-filler scope-room_device"/>
+					{prefs.map(([key, pref]) => <PreferenceRow
 						key={key}
-						name={key as keyof Preferences}
+						name={key}
 						pref={pref}
 						setPref={setPref}
-						globalServer={globalServer[key as keyof Preferences]}
-						globalLocal={globalLocal[key as keyof Preferences]}
-						roomServer={roomServer[key as keyof Preferences]}
-						roomLocal={roomLocal[key as keyof Preferences]}
-					/> : null)}
+						globalServer={globalServer[key]}
+						globalLocal={globalLocal[key]}
+						roomServer={roomServer[key]}
+						roomLocal={roomLocal[key]}
+					/>)}
+				</Fragment>)}
 			</div>
 			<p className="section-note">
 				Each column beats the ones to its left, so the rightmost value you have set is the one that

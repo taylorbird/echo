@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { useEffect, useInsertionEffect } from "react"
+import { BACKEND_URL } from "@/api/backend.ts"
 import type Client from "@/api/client.ts"
 import { RoomStateStore, usePreferences } from "@/api/statestore"
 
@@ -112,14 +113,14 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 		}
 	`, [preferences.show_inline_images])
 	useAsyncStyle(() => preferences.code_block_theme === "auto" ? `
-		@import url("_gomuks/codeblock/github.css") (prefers-color-scheme: light);
-		@import url("_gomuks/codeblock/github-dark.css") (prefers-color-scheme: dark);
+		@import url("${BACKEND_URL}_gomuks/codeblock/github.css") (prefers-color-scheme: light);
+		@import url("${BACKEND_URL}_gomuks/codeblock/github-dark.css") (prefers-color-scheme: dark);
 
 		pre.chroma {
 			background-color: inherit;
 		}
 	` : `
-		@import url("_gomuks/codeblock/${preferences.code_block_theme}.css");
+		@import url("${BACKEND_URL}_gomuks/codeblock/${preferences.code_block_theme}.css");
 	`, [preferences.code_block_theme], "gomuks-pref-code-block-theme")
 	useAsyncStyle(() => preferences.custom_css, [preferences.custom_css], "gomuks-pref-custom-css")
 	useEffect(() => {
@@ -132,6 +133,12 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 	useEffect(() => {
 		document.documentElement.toggleAttribute("data-ignore-reduce-motion", preferences.ignore_reduce_motion)
 	}, [preferences.ignore_reduce_motion])
+	// Same attribute technique: the per-room accents are inline style variables,
+	// so a CSS rule keyed on this attribute can override them all at once.
+	useEffect(() => {
+		document.documentElement.toggleAttribute(
+			"data-uniform-room-list-color", preferences.uniform_room_list_color)
+	}, [preferences.uniform_room_list_color])
 	return null
 }
 

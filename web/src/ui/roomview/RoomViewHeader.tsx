@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use } from "react"
-import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
+import { getRoomAccentColor, getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { getModalStyleFromButton } from "@/ui/menu/util.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
@@ -100,7 +100,13 @@ const RoomViewHeader = ({ room, activePanel }: RoomViewHeaderProps) => {
 			</div>,
 		})
 	}
-	return <div className="room-header">
+	// Drag regions: with titleBarStyle "Overlay" the webview covers the titlebar, so the
+	// window can only be moved by elements that opt in. Tauri's injected handler only
+	// treats the bare attribute as a drag region when the mousedown target IS that element
+	// (src/window/scripts/drag.js), so this one covers the header's own background - the
+	// padding and the flex gaps - and buttons inside stay clickable. The title block opts
+	// in with "deep" instead, since its children are plain text with nothing to click.
+	return <div className="room-header" data-tauri-drag-region>
 		<button className="back" onClick={mainScreen.clearActiveRoom}><BackIcon/></button>
 		<img
 			className="avatar"
@@ -110,8 +116,12 @@ const RoomViewHeader = ({ room, activePanel }: RoomViewHeaderProps) => {
 			onClick={use(LightboxContext)}
 			alt=""
 		/>
-		<div className="room-name-and-topic">
-			<div className="room-name" title={roomMeta.name ?? roomMeta.room_id}>
+		<div className="room-name-and-topic" data-tauri-drag-region="deep">
+			<div
+				className="room-name"
+				title={roomMeta.name ?? roomMeta.room_id}
+				style={{ "--room-accent": getRoomAccentColor(room.roomID) } as React.CSSProperties}
+			>
 				{roomMeta.name ?? roomMeta.room_id}
 			</div>
 			{/* Both lines are clipped to one line with an ellipsis, so the full text

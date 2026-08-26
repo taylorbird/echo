@@ -65,6 +65,17 @@ export const roomSpecific = [
 	PreferenceContext.RoomDevice,
 ] as const
 
+/*
+ * Semantic grouping for the settings list, in the order the groups are rendered.
+ * A preference without a category falls through to "advanced", which is the
+ * group for the low-level knobs nobody looks for by name.
+ */
+export const preferenceCategories = [
+	"appearance", "chat", "media", "input", "notifications", "advanced",
+] as const
+
+export type PreferenceCategory = typeof preferenceCategories[number]
+
 export type PreferenceValueType =
 	| boolean
 	| number
@@ -80,6 +91,7 @@ interface PreferenceFields<T extends PreferenceValueType = PreferenceValueType> 
 	allowedContexts: readonly PreferenceContext[]
 	defaultValue: T
 	description: string
+	category?: PreferenceCategory
 	allowedValues?: readonly T[]
 	valueLabels?: readonly string[]
 	hidden?: boolean
@@ -90,6 +102,7 @@ export class Preference<T extends PreferenceValueType = PreferenceValueType> {
 	public readonly allowedContexts: readonly PreferenceContext[]
 	public readonly defaultValue: T
 	public readonly description?: string
+	public readonly category: PreferenceCategory
 	public readonly allowedValues?: readonly T[]
 	public readonly valueLabels?: readonly string[]
 	public readonly hidden: boolean
@@ -99,6 +112,7 @@ export class Preference<T extends PreferenceValueType = PreferenceValueType> {
 		this.allowedContexts = fields.allowedContexts
 		this.defaultValue = fields.defaultValue
 		this.description = fields.description ?? ""
+		this.category = fields.category ?? "advanced"
 		this.allowedValues = fields.allowedValues
 		this.valueLabels = fields.valueLabels
 		this.hidden = fields.hidden ?? false

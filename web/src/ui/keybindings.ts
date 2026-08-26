@@ -43,11 +43,21 @@ export default class Keybindings {
 
 	private keyDownMap: KeyMap = {
 		"Ctrl+k": () => document.getElementById("room-search")?.focus(),
+		// Cmd+K on macOS: Slack-style quick switcher for jumping between rooms/DMs
+		"Super+k": () => window.openModal(modals.quickSwitcher(this.store, this.context)),
 		// The platform-standard Preferences shortcut: Cmd+, on macOS, Ctrl+,
 		// elsewhere. Settings is per-room (it shows this room's overrides alongside
 		// the global ones), so there is nothing to open without a room selected.
 		"Super+,": () => this.openSettings(),
 		"Ctrl+,": () => this.openSettings(),
+		// Cheat console. Shift is part of the chord, so evt.key for the G key
+		// arrives already shifted ("G") and keyToString builds "Super+Shift+G".
+		// The lowercase forms are registered too, cheaply, for layouts that
+		// report an unshifted key.
+		"Super+Shift+G": () => this.openCheatConsole(),
+		"Ctrl+Shift+G": () => this.openCheatConsole(),
+		"Super+Shift+g": () => this.openCheatConsole(),
+		"Ctrl+Shift+g": () => this.openCheatConsole(),
 		"Alt+ArrowUp": () => {
 			if (!this.activeRoom) {
 				return
@@ -76,6 +86,10 @@ export default class Keybindings {
 
 	private keyUpMap: KeyMap = {
 		// "Escape": evt => evt.target === evt.currentTarget && this.context.clearActiveRoom(),
+	}
+
+	private openCheatConsole() {
+		window.openModal(modals.cheatConsole())
 	}
 
 	private openSettings() {

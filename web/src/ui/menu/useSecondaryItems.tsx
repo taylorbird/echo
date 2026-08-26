@@ -17,6 +17,7 @@ import { use } from "react"
 import Client from "@/api/client.ts"
 import { useRoomMember, useRoomState } from "@/api/statestore"
 import { MemDBEvent } from "@/api/types"
+import copyToClipboard from "@/util/clipboard.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { getEventLevel } from "@/util/powerlevel.ts"
 import { ConfirmWithMessageModal, ModalCloseContext, ModalContext, modals } from "../modal"
@@ -30,6 +31,7 @@ import ReportIcon from "@/icons/report.svg?react"
 import RestoreTrashIcon from "@/icons/restore-trash.svg?react"
 import ShareIcon from "@/icons/share.svg?react"
 import UnpinIcon from "@/icons/unpin.svg?react"
+
 export const useSecondaryItems = (
 	client: Client,
 	roomCtx: RoomContextData,
@@ -42,9 +44,9 @@ export const useSecondaryItems = (
 		const copyRawCommand = () => {
 			const contentJSON = JSON.stringify(evt.content, null, "  ")
 			if (evt.state_key !== undefined) {
-				navigator.clipboard.writeText(`/rawstate ${evt.type} ${evt.state_key} ${contentJSON}`)
+				copyToClipboard(`/rawstate ${evt.type} ${evt.state_key} ${contentJSON}`)
 			} else {
-				navigator.clipboard.writeText(`/raw ${evt.type} ${contentJSON}`)
+				copyToClipboard(`/raw ${evt.type} ${contentJSON}`)
 			}
 			closeModal()
 		}
@@ -139,7 +141,9 @@ export const useSecondaryItems = (
 	return <>
 		<button onClick={onClickViewSource}><ViewSourceIcon/>{names && "View source"}</button>
 		<button onClick={onClickShareEvent}><ShareIcon/>{names && "Share"}</button>
-		<button onClick={onClickToggleImages}><ViewSourceIcon/>{names && (showMediaPreviews ? "Hide images" : "Show images")}</button>
+		<button onClick={onClickToggleImages}>
+			<ViewSourceIcon/>{names && (showMediaPreviews ? "Hide images" : "Show images")}
+		</button>
 		{ownPL >= pinPL && (pins.includes(evt.event_id)
 			? <button onClick={onClickPin(false)}>
 				<UnpinIcon/>{names && "Unpin message"}

@@ -1,5 +1,6 @@
 main.matrix-main {
-	--room-list-width: 350px;
+	/* Overridden inline by MainScreen.tsx; kept in sync with the default there. */
+	--room-list-width: 400px;
 	--right-panel-width: 300px;
 
 	position: fixed;
@@ -77,7 +78,9 @@ div.app-titlebar {
 
 html[data-tauri] {
 	& div.app-titlebar {
-		display: block;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		position: fixed;
 		top: 0;
 		left: 0;
@@ -86,6 +89,21 @@ html[data-tauri] {
 		background-color: var(--titlebar-background);
 		/* Below modals (z-index 100) so dialogs still cover the whole window. */
 		z-index: 4;
+
+		/*
+		 * The native title is hidden (hiddenTitle in tauri.conf.json) because Overlay
+		 * seats it left, next to the traffic lights. pointer-events: none so clicks
+		 * fall through to the div: data-tauri-drag-region is the bare attribute,
+		 * which matches the element only, and the text must not eat the drag.
+		 */
+		& span.app-titlebar-title {
+			pointer-events: none;
+			font-family: var(--display-font-stack);
+			font-size: .8125rem;
+			font-weight: 600;
+			letter-spacing: .04em;
+			color: rgba(254, 231, 218, .55);
+		}
 	}
 
 	/* The band occupies the top strip, so the app grid starts underneath it. */
@@ -110,5 +128,70 @@ div.sync-status {
 		border: 2px solid var(--error-color);
 		color: var(--error-color);
 		font-weight: bold;
+	}
+}
+
+/*
+ * Only the packaged app can update itself, so the chip only ever renders inside Tauri
+ * (see web/src/util/updater.ts) — hence styling it under html[data-tauri] like the rest
+ * of the mac chrome. Bottom-trailing keeps it clear of the sync status chip up top.
+ */
+html[data-tauri] div.update-ready-chip {
+	position: fixed;
+	bottom: 1rem;
+	right: 1rem;
+	display: flex;
+	align-items: center;
+	gap: .625rem;
+	padding: .5rem .5rem .5rem .875rem;
+	border-radius: .5rem;
+	font-size: .875rem;
+	background-color: var(--titlebar-background);
+	/*
+	 * The mac panel edge, same construction as the modals: a light hairline ring inside
+	 * the radius, a dark seam just outside it, then a shadow for float.
+	 */
+	box-shadow:
+		inset 0 0 0 1px rgba(255, 255, 255, .16),
+		0 0 0 1px rgba(0, 0, 0, .5),
+		0 8px 24px rgba(0, 0, 0, .35);
+	/* Below modals (z-index 100) so dialogs still cover it. */
+	z-index: 5;
+	animation: update-chip-in .35s cubic-bezier(.32, .72, 0, 1);
+
+	/* Colour comes from the shared .primary-color-button class; only the metrics are local. */
+	> button {
+		padding: .25rem .625rem;
+		border-radius: .3125rem;
+		font-size: .8125rem;
+		font-weight: 600;
+	}
+}
+
+@keyframes update-chip-in {
+	from {
+		opacity: 0;
+		translate: 0 .5rem;
+	}
+
+	to {
+		opacity: 1;
+		translate: 0 0;
+	}
+}
+
+@keyframes update-chip-fade-in {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html[data-tauri]:not([data-ignore-reduce-motion]) div.update-ready-chip {
+		animation: update-chip-fade-in .12s ease-out;
 	}
 }

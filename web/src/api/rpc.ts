@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { CachedEventDispatcher, EventDispatcher } from "../util/eventdispatcher.ts"
 import { CancellablePromise } from "../util/promise.ts"
+import { BACKEND_CREDENTIALS, BACKEND_URL } from "./backend.ts"
 import {
 	ClientWellKnown,
 	DBPushRegistration,
@@ -141,9 +142,10 @@ export default abstract class RPCClient {
 				headers["Authorization"] = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
 			}
 
-			const resp = await fetch("_gomuks/auth", {
+			const resp = await fetch(`${BACKEND_URL}_gomuks/auth`, {
 				method: "POST",
 				headers,
+				credentials: BACKEND_CREDENTIALS,
 				signal,
 			})
 

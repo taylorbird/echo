@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, MouseEvent, use } from "react"
-import { getAvatarThumbnailURL, getUserColorIndex } from "@/api/media.ts"
+import { getAvatarThumbnailURL, getUserColorIndex, getUserColorOverride } from "@/api/media.ts"
 import {
 	applyPerMessageSender,
 	maybeRedactMemberEvent,
@@ -142,6 +142,9 @@ export const ReplyBody = ({
 			<span
 				className={`event-sender sender-color-${userColorIndex}`}
 				title={perMessageSender ? perMessageSender.id : event.sender}
+				style={getUserColorOverride(perMessageSender?.id ?? event.sender)
+					? { color: getUserColorOverride(perMessageSender?.id ?? event.sender) }
+					: undefined}
 			>
 				{getDisplayname(event.sender, renderMemberEvtContent)}
 			</span>
@@ -156,6 +159,9 @@ export const ReplyBody = ({
 				<span
 					className={`event-sender sender-color-${getUserColorIndex(event.sender)}`}
 					title={event.sender}
+					style={getUserColorOverride(event.sender)
+						? { color: getUserColorOverride(event.sender) }
+						: undefined}
 				>
 					{getDisplayname(event.sender, memberEvtContent)}
 				</span>

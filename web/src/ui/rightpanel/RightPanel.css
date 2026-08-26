@@ -124,6 +124,7 @@ div.right-panel-content.user {
 		font-size: 1.5rem;
 		font-weight: bold;
 		text-align: center;
+		font-family: var(--display-font-stack);
 
 		/* Ensure names aren't too long */
 		display: -webkit-box;
@@ -362,6 +363,11 @@ div.right-panel-content.members {
 
 			> div.displayname {
 				grid-area: displayname;
+				font-family: var(--display-font-stack);
+
+				@media (prefers-color-scheme: dark) {
+					color: color-mix(in oklab, var(--user-accent, var(--text-color)) 70%, #f8f8f2);
+				}
 			}
 
 			> img.avatar {

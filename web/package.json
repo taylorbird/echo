@@ -16,7 +16,9 @@
 		"@element-hq/element-call-embedded": "^0.16.0",
 		"@sqlite.org/sqlite-wasm": "^3.50.4-build1",
 		"@streamparser/json-whatwg": "^0.0.22",
+		"@tauri-apps/api": "^2.11.1",
 		"@tauri-apps/plugin-opener": "^2.5.4",
+		"@tauri-apps/plugin-updater": "^2.10.1",
 		"@types/golang-wasm-exec": "^1.15.2",
 		"@wailsio/runtime": "^3.0.0-alpha.29",
 		"blurhash": "^2.0.5",
@@ -34,7 +36,7 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.11.1",
-		"@tauri-apps/cli": "^2.10.0",
+		"@tauri-apps/cli": "^2.11.0",
 		"@types/katex": "^0.16.7",
 		"@types/leaflet": "^1.9.14",
 		"@types/node": "^25.0.3",

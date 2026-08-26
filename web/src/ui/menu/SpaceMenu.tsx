@@ -98,7 +98,7 @@ export const SpaceMenu = ({ room, space, style }: SpaceMenuProps) => {
 	return <div className="context-menu space-list-menu" style={style}>
 		<button className="context-menu-item" onClick={openSettings}><SettingsIcon /> Settings</button>
 		<button onClick={onClickShare}><ShareIcon /> Share</button>
-		<button className="context-menu-item" onClick={openTimeline}><ChatIcon /> View timeline</button>
+		<button className="context-menu-item" onClick={openTimeline}><ChatIcon /> Open space</button>
 		{space.childSpaces.values().map(child =>
 			<ChildSpace client={client} child={child} key={child.id} />)}
 	</div>

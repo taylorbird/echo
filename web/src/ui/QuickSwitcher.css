@@ -1,0 +1,174 @@
+/*
+ * The switcher wants far less frosting than other modals: it's a transient
+ * launcher, not a focus-stealing dialog, so the app should stay legible behind
+ * it — a whisper of blur and dim, just enough to push the app back one plane.
+ */
+div.overlay.modal:has(> div.modal-box.quick-switcher-modal) {
+	background-color: rgba(0, 0, 0, .12);
+	backdrop-filter: blur(3px) saturate(105%);
+}
+
+div.overlay.modal > div.modal-box.quick-switcher-modal {
+	/* Launcher-style: wide panel anchored near the top of the window */
+	align-self: flex-start;
+	margin-top: 11vh;
+	width: 48rem;
+	max-width: min(48rem, 92vw);
+	padding: 0;
+
+	/*
+	 * Tighter than the shared modal radius — a launcher panel wants to read closer
+	 * to the app's square panes than to a floating dialog.
+	 */
+	border-radius: .5rem;
+	border: none;
+	/*
+	 * The macOS window edge, built the way AppKit builds it: a crisp light
+	 * hairline ring INSIDE the corner radius (this is the visible "border" on a
+	 * Mac window — a solid border-color line disappears into the surface), a
+	 * dark seam just outside it to cut the panel from the backdrop, then a
+	 * two-layer neutral shadow for float and a faint accent-tinted underglow.
+	 */
+	box-shadow:
+		inset 0 0 0 1px rgba(255, 255, 255, .18),
+		0 0 0 1px rgba(0, 0, 0, .6),
+		0 18px 40px rgba(0, 0, 0, .45),
+		0 55px 120px rgba(0, 0, 0, .4),
+		0 36px 100px rgba(255, 228, 132, .06);
+
+	> div.modal-box-inner {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+}
+
+div.quick-switcher {
+	display: flex;
+	flex-direction: column;
+	max-height: 56vh;
+
+	/*
+	 * Section dividers pick up the same warm tone as the section labels and
+	 * action icons (--semisecondary-text-color), knocked down so a 48rem line
+	 * carries the same optical weight as the small label text does.
+	 */
+	--quick-switcher-divider: color-mix(in srgb, var(--semisecondary-text-color) 40%, transparent);
+
+	div.section-label {
+		font-size: .6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: .06em;
+		color: var(--semisecondary-text-color);
+		padding: .5rem .75rem .25rem;
+	}
+
+	div.quick-switcher-entry {
+		display: flex;
+		align-items: center;
+		gap: .75rem;
+		padding: .5625rem .75rem;
+		border-radius: .375rem;
+		cursor: pointer;
+
+		&.selected {
+			background-color: var(--room-list-entry-selected-color);
+		}
+
+		&:hover:not(.selected) {
+			background-color: var(--room-list-entry-hover-color);
+		}
+
+		> img.avatar {
+			width: 2rem;
+			height: 2rem;
+			flex-shrink: 0;
+		}
+
+		> div.action-icon {
+			width: 2rem;
+			height: 2rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+			color: var(--semisecondary-text-color);
+
+			> svg {
+				width: 1.25rem;
+				height: 1.25rem;
+			}
+		}
+
+		> div.entry-name {
+			flex: 1;
+			overflow: hidden;
+			white-space: nowrap;
+			text-overflow: ellipsis;
+			font-size: .9375rem;
+
+			/* Only room results carry --room-accent; action rows fall back to body text. */
+			@media (prefers-color-scheme: dark) {
+				color: color-mix(in oklab, var(--room-accent, var(--text-color)) 70%, #f8f8f2);
+			}
+		}
+
+		> span.dm-tag {
+			font-size: .6875rem;
+			color: var(--semisecondary-text-color);
+			border: 1px solid var(--border-color);
+			border-radius: .25rem;
+			padding: 0 .3125rem;
+			flex-shrink: 0;
+		}
+	}
+
+	> div.quick-switcher-search {
+		display: flex;
+		align-items: center;
+		gap: .875rem;
+		padding: 1.125rem 1.25rem .875rem;
+		border-bottom: 1px solid var(--quick-switcher-divider);
+		flex-shrink: 0;
+
+		> svg {
+			width: 1.375rem;
+			height: 1.375rem;
+			color: var(--semisecondary-text-color);
+			flex-shrink: 0;
+		}
+
+		> input {
+			flex: 1;
+			border: none;
+			outline: none;
+			background: none;
+			color: var(--text-color);
+			font-size: 1.375rem;
+			font-family: inherit;
+
+			&::placeholder {
+				color: var(--secondary-text-color);
+			}
+		}
+	}
+
+	> div.quick-switcher-results {
+		flex: 1;
+		overflow-y: auto;
+		padding: 0 .5rem .375rem;
+
+		> div.no-results {
+			padding: 1.25rem;
+			text-align: center;
+			color: var(--secondary-text-color);
+		}
+	}
+
+	> div.quick-switcher-actions {
+		flex-shrink: 0;
+		border-top: 1px solid var(--quick-switcher-divider);
+		padding: .125rem .5rem .625rem;
+	}
+}

@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Seabug",
+  "productName": "echo",
   "version": "0.1.0",
-  "identifier": "app.gomuks.desktop",
+  "identifier": "com.tbird.echo",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:6173",
@@ -13,7 +13,8 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "Seabug",
+        "create": false,
+        "title": "echo",
         "width": 1200,
         "height": 800,
         "resizable": true,
@@ -37,6 +38,7 @@
     "active": true,
     "targets": "all",
     "icon": [
+      "icons/echo.icon",
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
@@ -45,6 +47,18 @@
     ],
     "externalBin": [
       "binaries/gomuks"
-    ]
+    ],
+    "createUpdaterArtifacts": true,
+    "macOS": {
+      "signingIdentity": "Developer ID Application: Taylor Bird (UFCDGSKCXB)"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5OTRFNkExN0RCRkQ0RUIKUldUcjFMOTlvZWFVYVdFN0txVjUybDhGR1FwNFpLa0swSjREVUV3UnFkL0VHbWZZK1h2N1Q5RnAK",
+      "endpoints": [
+        "https://github.com/taylorbird/gomuks/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

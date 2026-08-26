@@ -17,6 +17,7 @@ import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, useSensor, use
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import React, { use, useState } from "react"
+import { BACKEND_CREDENTIALS, BACKEND_URL } from "@/api/backend.ts"
 import { getMediaURL } from "@/api/media.ts"
 import { useRoomImagePacks } from "@/api/statestore"
 import {
@@ -287,12 +288,13 @@ const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorP
 				.filter(([key, value]) => !key.startsWith("_") && !!value)
 				.map(([key, value]) => [key, value.toString()]),
 		])
-		fetch(`_gomuks/upload?${params.toString()}`, {
+		fetch(`${BACKEND_URL}_gomuks/upload?${params.toString()}`, {
 			method: "POST",
 			body: file,
 			headers: {
 				"Content-Type": file.type,
 			},
+			credentials: BACKEND_CREDENTIALS,
 		})
 			.then(async resp => uploadComplete(await resp.json()), uploadFailed)
 			.finally(unsetUploading)

@@ -13,7 +13,9 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { isCheatActive } from "@/util/cheats.ts"
 import { parseMXC } from "@/util/validation.ts"
+import { BACKEND_URL } from "./backend.ts"
 import { ContentURI, RoomID, UserID, UserProfile } from "./types"
 
 export const getMediaURL = (mxc?: string, encrypted: boolean = false): string | undefined => {
@@ -21,7 +23,7 @@ export const getMediaURL = (mxc?: string, encrypted: boolean = false): string | 
 	if (!mediaID) {
 		return undefined
 	}
-	return `_gomuks/media/${server}/${mediaID}?encrypted=${encrypted}`
+	return `${BACKEND_URL}_gomuks/media/${server}/${mediaID}?encrypted=${encrypted}`
 }
 
 export const getEncryptedMediaURL = (mxc?: string): string | undefined => {
@@ -42,7 +44,7 @@ function loadCustomColors(): Record<string, string> {
 	}
 }
 
-let customUserColors: Record<string, string> = loadCustomColors()
+const customUserColors: Record<string, string> = loadCustomColors()
 
 export const getCustomUserColor = (userID: UserID): string | null => {
 	return customUserColors[userID] || null
@@ -75,16 +77,47 @@ function initFallbackColors(): string[] {
 
 let fallbackColors: string[]
 
+// Candy green, in the same pastel family as the sender colors.
+const RAAM_GREEN = "#50fa7b"
+
+// "@raam:example.com" -> "raam". Returns "" for anything that isn't a user ID.
+function getLocalpart(userID: UserID): string {
+	if (!userID.startsWith("@")) {
+		return ""
+	}
+	const colonIdx = userID.indexOf(":")
+	return (colonIdx === -1 ? userID.slice(1) : userID.slice(1, colonIdx)).toLowerCase()
+}
+
+// The color that beats the palette for this user, if any: an active cheat
+// first (the whole point of a cheat is that it holds everywhere, custom colors
+// included), then the user's own custom color. Exported separately because the
+// timeline colors senders with sender-color-N CSS classes rather than through
+// getUserColor, and applies this as an inline style override on top.
+export const getUserColorOverride = (userID: UserID): string | undefined => {
+	if (isCheatActive("raam-green") && getLocalpart(userID) === "raam") {
+		return RAAM_GREEN
+	}
+	return getCustomUserColor(userID) ?? undefined
+}
+
 export const getUserColor = (userID: UserID) => {
-	// Check for custom color first
-	const customColor = getCustomUserColor(userID)
-	if (customColor) {
-		return customColor
+	const override = getUserColorOverride(userID)
+	if (override) {
+		return override
 	}
 	if (!fallbackColors) {
 		fallbackColors = initFallbackColors()
 	}
 	return fallbackColors[getUserColorIndex(userID)]
+}
+
+// Rooms hash into the same palette as users, but never through the per-user custom color map.
+export const getRoomAccentColor = (roomID: string): string => {
+	if (!fallbackColors) {
+		fallbackColors = initFallbackColors()
+	}
+	return fallbackColors[getUserColorIndex(roomID)]
 }
 
 // note: this should stay in sync with fallbackAvatarTemplate in cmd/gomuks/media.go
@@ -127,8 +160,8 @@ export const getAvatarURL = (
 		return makeFallbackAvatar(backgroundColor, fallbackCharacter)
 	}
 	const encrypted = !!content?.avatar_file
-	const fallback = `${backgroundColor}:${fallbackCharacter}`
-	const url = `_gomuks/media/${server}/${mediaID}?encrypted=${encrypted}&fallback=${encodeURIComponent(fallback)}`
+	const fallback = encodeURIComponent(`${backgroundColor}:${fallbackCharacter}`)
+	const url = `${BACKEND_URL}_gomuks/media/${server}/${mediaID}?encrypted=${encrypted}&fallback=${fallback}`
 	return thumbnail ? `${url}&thumbnail=avatar` : url
 }
 

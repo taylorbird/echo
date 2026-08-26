@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { useCallback, useEffect, useState } from "react"
+import { BACKEND_CREDENTIALS, BACKEND_URL } from "@/api/backend.ts"
 import type Client from "@/api/client.ts"
 import type { ClientState } from "@/api/types"
 import BeeperLogin from "./BeeperLogin.tsx"
@@ -36,13 +37,16 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 
 	const loginSSO = () => {
 		setLoading(true)
-		fetch("_gomuks/sso", {
+		fetch(`${BACKEND_URL}_gomuks/sso`, {
 			method: "POST",
 			body: JSON.stringify({ homeserver_url: homeserverURL }),
 			headers: { "Content-Type": "application/json" },
+			credentials: BACKEND_CREDENTIALS,
 		}).then(resp => resp.json()).then(
 			resp => {
-				const redirectURL = new URL(window.location.href)
+				// The homeserver redirects a real browser back here, so this has to be the
+				// backend's own URL, not the document's (which is tauri:// under Tauri).
+				const redirectURL = new URL(BACKEND_URL || window.location.href, window.location.href)
 				if (!redirectURL.pathname.endsWith("/")) {
 					redirectURL.pathname += "/"
 				}

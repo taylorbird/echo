@@ -19,3 +19,5 @@ Capture durable insights here as you discover them (API quirks, integration gotc
 ## Project-Specific Context
 <!-- Add project-specific instructions below -->
 
+Linear project: none
+

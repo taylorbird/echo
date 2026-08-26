@@ -14,6 +14,22 @@ div.room-view {
 		/ 1fr;
 	contain: strict;
 
+	/*
+	 * The space dashboard replaces the header with its own masthead, so the row it
+	 * would have occupied is dropped rather than left as an empty band. The
+	 * safe-area strip stays — the pane still reaches the top of the window, and
+	 * the mobile event menu portal still needs somewhere to land.
+	 */
+	&.headerless {
+		grid-template:
+			"header" var(--window-top-margin)
+			"messageview" 1fr
+			"autocomplete" 0
+			"input" auto
+			"typing" auto
+			/ 1fr;
+	}
+
 	&.preview {
 		display: flex;
 		justify-content: center;
