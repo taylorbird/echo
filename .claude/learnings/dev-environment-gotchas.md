@@ -78,3 +78,16 @@ The sidecar can also die silently in these handovers: it logs "Server started" t
 which lib.rs drops (`let (_rx, child) = sidecar.spawn()`). If the app is up but login
 fails, check `lsof -nP -iTCP:29325 -sTCP:LISTEN` first. Recovery: stop tauri dev,
 pkill leftover `target/debug/app` / `gomuks-aarch64-apple-darwin`, relaunch.
+
+## actool "attempt to insert nil object" is a wedged ibtoold daemon, NOT the .icon content
+
+Correction to the earlier "Icon Composer SVG layer crashes actool deterministically"
+diagnosis: the crash `Exception while running actool: *** -[__NSPlaceholderArray
+initWithObjects:count:]: attempt to insert nil object from objects[0]` is caused by
+ibtoold (actool's persistent daemon) getting into a bad state. Once wedged, EVERY
+.icon compile fails — same package, any path, any layer type — and the identical
+command that succeeded minutes earlier fails. `killall ibtoold` fixes it
+deterministically (verified 2026-08-26: 3 consecutive failures → kill → same command
+clean). The SVG-vs-PNG-layer theory was a coincidence of daemon state. scripts/release.sh
+now does `killall ibtoold || true` before `npx tauri build`; do the same before any
+manual `actool`/`tauri build` run that fails this way.

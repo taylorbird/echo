@@ -181,6 +181,10 @@ rm -rf "$APP" "$TARBALL" "$SIG_FILE"
 rm -f "$BUNDLE_DIR"/dmg/echo_"$VERSION"_*.dmg
 
 step "Bundling, signing and notarizing (this waits on Apple; expect several minutes)"
+# ibtoold (actool's persistent daemon) can wedge and then every .icon compile crashes
+# with "attempt to insert nil object" regardless of package content (observed 2026-08-26).
+# A fresh daemon fixes it deterministically, so always start from one.
+killall ibtoold 2>/dev/null || true
 (
 	cd "$REPO_ROOT/web"
 	export TAURI_SIGNING_PRIVATE_KEY_PATH="$SIGNING_KEY"
