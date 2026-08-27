@@ -1,4 +1,5 @@
 use std::net::{SocketAddr, TcpStream};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
@@ -6,6 +7,93 @@ use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_shell::{ShellExt, process::CommandChild};
 
 struct BackendProcess(Mutex<Option<CommandChild>>);
+
+// Where the sidecar keeps its config, database, cache and logs.
+//
+// Left alone it picks these itself from platform convention, keyed on the name "gomuks"
+// (pkg/gomuks/gomuks.go). That costs us twice. The directories are named after the upstream
+// project rather than this app, so they collide with a real gomuks install and outlive an
+// uninstall of echo. And a `tauri dev` run shares both the SQLite database and port 29325 with
+// the installed app, so debugging contends with the live session on the same data.
+//
+// Passing GOMUKS_*_HOME pins all four to app-owned paths and gives debug builds a profile of
+// their own. It needs no change to the Go code, which keeps this fork's divergence from
+// upstream at nothing.
+struct GomuksDirs {
+  config: PathBuf,
+  data: PathBuf,
+  cache: PathBuf,
+  logs: PathBuf,
+}
+
+// What the sidecar called a directory before it was app-owned. Go used <platform base>/gomuks
+// and tauri resolves <platform base>/<bundle identifier>, so the old name is always a sibling.
+fn legacy_sibling(app_owned: &Path) -> PathBuf {
+  app_owned
+    .parent()
+    .map(|base| base.join("gomuks"))
+    .unwrap_or_else(|| PathBuf::from("gomuks"))
+}
+
+// Debug builds get their own profile, so `tauri dev` can never touch the installed app's data.
+fn per_profile(app_owned: PathBuf) -> PathBuf {
+  if !cfg!(debug_assertions) {
+    return app_owned;
+  }
+  match app_owned.file_name().and_then(|name| name.to_str()) {
+    Some(name) => app_owned.with_file_name(format!("{name}-dev")),
+    None => app_owned,
+  }
+}
+
+// Moves a pre-rename directory to its app-owned name, once, on the first launch that finds one.
+//
+// A rename within the same parent is atomic, so this cannot half-migrate and leave the database
+// split across two locations. If it fails anyway, carry on using the old directory rather than
+// starting empty: an update that appears to have logged the user out is far worse than one that
+// quietly postpones a tidy-up. Debug builds never migrate — a dev profile starts clean by design.
+fn adopt_or_migrate(app_owned: PathBuf) -> PathBuf {
+  if cfg!(debug_assertions) || app_owned.exists() {
+    return app_owned;
+  }
+  let legacy = legacy_sibling(&app_owned);
+  if !legacy.is_dir() {
+    return app_owned;
+  }
+  match std::fs::rename(&legacy, &app_owned) {
+    Ok(()) => {
+      log::info!("migrated {} -> {}", legacy.display(), app_owned.display());
+      app_owned
+    }
+    Err(err) => {
+      log::error!(
+        "failed to migrate {} -> {} ({err}); continuing to use the old location",
+        legacy.display(),
+        app_owned.display()
+      );
+      legacy
+    }
+  }
+}
+
+fn gomuks_dirs(app: &tauri::AppHandle) -> tauri::Result<GomuksDirs> {
+  let path = app.path();
+  let config = adopt_or_migrate(per_profile(path.app_config_dir()?));
+  // On macOS the sidecar deliberately keeps data in the config directory (gomuks.go sets
+  // DataDir = ConfigDir for darwin), so resolving the two separately here would split
+  // config.yaml from gomuks.db across two folders.
+  let data = if cfg!(target_os = "macos") {
+    config.clone()
+  } else {
+    adopt_or_migrate(per_profile(path.app_data_dir()?))
+  };
+  Ok(GomuksDirs {
+    config,
+    data,
+    cache: adopt_or_migrate(per_profile(path.app_cache_dir()?)),
+    logs: adopt_or_migrate(per_profile(path.app_log_dir()?)),
+  })
+}
 
 // Where the sidecar listens. Production loads the window from here rather than from the
 // bundled dist: the Go server embeds and serves the very same frontend, so the document
@@ -148,8 +236,17 @@ pub fn run() {
         )?;
       }
 
-      // Spawn the gomuks backend as a sidecar
-      let sidecar = app.shell().sidecar("gomuks").expect("failed to create sidecar");
+      // Spawn the gomuks backend as a sidecar, pointed at app-owned storage (see GomuksDirs).
+      let dirs = gomuks_dirs(app.handle())?;
+      log::info!("gomuks storage: config={} logs={}", dirs.config.display(), dirs.logs.display());
+      let sidecar = app
+        .shell()
+        .sidecar("gomuks")
+        .expect("failed to create sidecar")
+        .env("GOMUKS_CONFIG_HOME", &dirs.config)
+        .env("GOMUKS_DATA_HOME", &dirs.data)
+        .env("GOMUKS_CACHE_HOME", &dirs.cache)
+        .env("GOMUKS_LOGS_HOME", &dirs.logs);
       let (_rx, child) = sidecar.spawn().expect("failed to spawn gomuks backend");
       log::info!("gomuks backend started");
 

@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "echo",
   "version": "0.2.0",
-  "identifier": "com.tbird.echo",
+  "identifier": "dev.tbird.echo",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:6173",
