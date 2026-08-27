@@ -22,6 +22,7 @@ SIGNING_KEY="$HOME/.tauri/echo.key"
 APPLE_ACCOUNT="taylor.bird@gmail.com"
 APPLE_TEAM="UFCDGSKCXB"
 GH_REPO="taylorbird/echo"
+GH_ACCOUNT_REQUIRED="taylorbird"
 GH_REPO_URL="https://github.com/$GH_REPO"
 
 die() {
@@ -107,16 +108,29 @@ fi
 [[ -f "$SIGNING_KEY" ]] || die "updater signing key not found: $SIGNING_KEY"
 gh auth status >/dev/null 2>&1 || die "gh is not authenticated; run: gh auth login"
 
-# `gh auth status` only proves *some* account is signed in. With more than one account configured
-# it is easy to be active as one that has read-only access here, and GitHub answers a
-# permission-denied write with 404 rather than 403 — so the failure surfaces as a baffling "not
-# found" at `gh release create`, after the whole build and notarization have already run.
+# Pin the identity for the whole run instead of inheriting whichever account happens to be active.
+# `gh auth switch` writes global state that anything else on this machine can change, and a release
+# spends 10+ minutes building and waiting on Apple: on 2026-08-27 the active account flipped to a
+# read-only one *during* that window, so preflight passed as the right user and `gh release create`
+# then failed as the wrong one. Exporting GH_TOKEN makes every gh call below immune to that drift —
+# and the git credential helper is `gh auth git-credential`, which honours it too, so the push to
+# origin is pinned to the same account rather than to whoever is active when it runs.
+GH_TOKEN="$(gh auth token --user "$GH_ACCOUNT_REQUIRED" 2>/dev/null || true)"
+[[ -n "$GH_TOKEN" ]] \
+	|| die "no gh token for $GH_ACCOUNT_REQUIRED; run: gh auth login --user $GH_ACCOUNT_REQUIRED"
+export GH_TOKEN
+
+# Belt and braces: prove the pinned token is both who we expect and able to write here. GitHub
+# answers a permission-denied write with 404 rather than 403, so without this the failure surfaces
+# as a baffling "not found" at `gh release create` — after the entire build and notarization.
+GH_ACCOUNT="$(gh api user -q .login 2>/dev/null || echo "unknown")"
+[[ "$GH_ACCOUNT" == "$GH_ACCOUNT_REQUIRED" ]] \
+	|| die "pinned gh token resolves to $GH_ACCOUNT, expected $GH_ACCOUNT_REQUIRED"
 GH_PERMISSION="$(gh repo view "$GH_REPO" --json viewerPermission -q .viewerPermission 2>/dev/null || true)"
-GH_ACCOUNT="$(gh api user -q .login 2>/dev/null || echo "the active gh account")"
 case "$GH_PERMISSION" in
 ADMIN | MAINTAIN | WRITE) ;;
-"") die "cannot read $GH_REPO as $GH_ACCOUNT — wrong account signed in? try: gh auth switch" ;;
-*) die "$GH_ACCOUNT has $GH_PERMISSION on $GH_REPO and cannot publish a release; try: gh auth switch" ;;
+"") die "cannot read $GH_REPO as $GH_ACCOUNT — is that account still a collaborator?" ;;
+*) die "$GH_ACCOUNT has $GH_PERMISSION on $GH_REPO and cannot publish a release" ;;
 esac
 
 # Resolve the keychain secrets up front: they can prompt, and finding out after a 10-minute
