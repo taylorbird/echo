@@ -44,7 +44,10 @@ import UsersIcon from "@/icons/modern/users.svg?react"
 import SearchIcon from "@/icons/search.svg?react"
 import "./RoomList.css"
 
-const collapsedSectionsKey = "seabug.collapsed_room_list_sections"
+// Renamed from the pre-rebrand "seabug." prefix. Normally that would silently reset everyone's
+// collapsed sections, which is why it was left alone for months — but changing the bundle
+// identifier in 0.3.0 gave the webview a fresh store, so there was nothing left to preserve.
+const collapsedSectionsKey = "echo.collapsed_room_list_sections"
 
 function readCollapsedSections(): Set<string> {
 	try {

@@ -37,7 +37,9 @@ const CHEATS: Cheat[] = [{
 	],
 }]
 
-const ACTIVE_CHEATS_KEY = "seabug_active_cheats"
+// Renamed from the pre-rebrand "seabug_" prefix; see the note on collapsedSectionsKey in
+// RoomList.tsx for why this was safe to change when it was.
+const ACTIVE_CHEATS_KEY = "echo_active_cheats"
 
 function loadActiveCheats(): Set<string> {
 	try {

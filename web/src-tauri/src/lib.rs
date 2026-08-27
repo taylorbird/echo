@@ -499,7 +499,10 @@ web:\n    username: tbird\n    token_key: secret123\nmatrix:\n    username: not-
   // gomuks checks before it decides to prompt on a stdin the sidecar does not have.
   #[test]
   fn writes_credentials_that_stop_the_backend_prompting() {
-    let dir = std::env::temp_dir().join("echo-backend-config-test");
+    // Left in place deliberately: this is the artifact a real backend gets pointed at when
+    // checking by hand that a fresh install actually starts. Overwriting it here would mean the
+    // only end-to-end evidence came from a config written by the test rather than by the app.
+    let dir = std::env::temp_dir().join("echo-backend-config-test/fresh");
     let _ = std::fs::remove_dir_all(&dir);
     ensure_backend_config(&dir).expect("should write a config");
 
@@ -507,10 +510,17 @@ web:\n    username: tbird\n    token_key: secret123\nmatrix:\n    username: not-
     assert_eq!(read_web_config_value(&written, "username").as_deref(), Some(BACKEND_USERNAME));
     let hash = read_web_config_value(&written, "password_hash").expect("hash present");
     assert!(hash.starts_with("$2"), "not a bcrypt hash: {hash}");
+  }
 
-    // An existing config is never rewritten.
+  #[test]
+  fn never_rewrites_an_existing_config() {
+    let dir = std::env::temp_dir().join("echo-backend-config-test/existing");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("config.yaml"), "web:\n    username: preexisting\n").unwrap();
+
     ensure_backend_config(&dir).expect("should be a no-op");
+
     let after = std::fs::read_to_string(dir.join("config.yaml")).unwrap();
     assert_eq!(read_web_config_value(&after, "username").as_deref(), Some("preexisting"));
   }
