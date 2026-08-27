@@ -416,7 +416,14 @@ html[data-tauri] {
 	 * The band supplies the top offset, so panes no longer inset themselves.
 	 */
 	--titlebar-height: 2rem;
-	--titlebar-background: #232125;
+	/*
+	 * macOS draws the window title itself, in a colour that follows the system
+	 * appearance: dark text in light mode, light text in dark mode. This band was a
+	 * single dark value for both, so in light mode the title rendered dark-on-dark
+	 * and was effectively invisible. The band follows the appearance instead — this
+	 * is the light value, and the dark one is in the dark block further down.
+	 */
+	--titlebar-background: #eceaee;
 	--window-top-margin: 0px;
 
 	/*
@@ -522,6 +529,8 @@ html[data-tauri] {
 		--timeline-hover-bg-color: #565060;
 		--timeline-highlight-hover-bg-color: #625b6d;
 		--timeline-jump-hover-bg-color: #625b6d;
+		/* The warm near-black the band has always been; see --titlebar-background above. */
+		--titlebar-background: #232125;
 	}
 
 	/*
