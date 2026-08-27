@@ -16,7 +16,16 @@ Brand assets for the **echo** app mark: a low-poly, faceted penguin.
   future Icon Composer `.icon` package (the OS masks that path itself).
 - `echo-icon-facet-split-squircle.svg` / `.png` — the same composition
   pre-masked into the Apple icon-grid squircle (824px rounded rect, r=185,
-  100px transparent margin). **This PNG is the input to `npx tauri icon`**,
+  100px transparent margin). **The margin really is transparent now**: the
+  PNG was rendered with `qlmanage`, which bakes white behind transparency
+  (the same trap noted below for the penguin layer), so every icon derived
+  from it carried an opaque white square — invisible on a light background,
+  obvious in the dock on older macOS and in a dark-mode README. Re-masked
+  2026-08-27 by applying the documented rounded rect as an alpha channel;
+  the art edge was measured from the file first (x=100..923) rather than
+  assumed. If this PNG is ever re-rendered, check a corner pixel is
+  `(_,_,_,0)` before regenerating icons from it.
+  **This PNG is the input to `npx tauri icon`**,
   which regenerates `web/src-tauri/icons/`. Classic `.icns` icons are NOT
   masked by macOS (verified 2026-08-26: a full-bleed square shows raw in the
   dock), so the shape must be baked in for the icns path.

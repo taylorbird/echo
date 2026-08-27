@@ -28,7 +28,7 @@ import WebAuthLogin from "./ui/WebAuthLogin.tsx"
 import { LoginScreen, VerificationScreen } from "./ui/login"
 import { LightboxWrapper } from "./ui/modal"
 import { useEventAsState } from "./util/eventdispatcher.ts"
-import { checkForUpdates } from "./util/updater.ts"
+import { startUpdateChecks } from "./util/updater.ts"
 
 function makeRPCClient(): RPCClient {
 	if (window.gomuksDesktop) {
@@ -49,11 +49,10 @@ function App() {
 		window.client = client
 		return client.start()
 	}, [client])
-	// Runs regardless of auth state and is a no-op outside the packaged Tauri app.
-	// checkForUpdates() guards itself against running twice, so StrictMode double-invoke is fine.
-	useEffect(() => {
-		checkForUpdates()
-	}, [])
+	// Runs regardless of auth state and is a no-op outside the packaged Tauri app. Checks once now
+	// and then periodically — a launch-only check means a copy left open never sees a new release.
+	// The returned cleanup clears the interval, so StrictMode's double-invoke leaves one running.
+	useEffect(() => startUpdateChecks(), [])
 
 	const needsWebAuth = connState?.error === "AUTH_REQUIRED" || connState?.error === "Invalid credentials"
 	const afterConnectError = Boolean(connState?.error && connState.reconnecting && clientState?.is_verified)

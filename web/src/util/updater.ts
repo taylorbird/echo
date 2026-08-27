@@ -28,7 +28,15 @@ const updateStore = new Subscribable()
 // useSyncExternalStore compares snapshots with Object.is, so the snapshot has to be a stable
 // reference. Keeping the whole state in one string means getUpdateState can just return it.
 let updateState: UpdateState = "idle"
-let checkStarted = false
+let checkInProgress = false
+
+// How often to look again after a check finds nothing.
+//
+// A launch-only check is not enough: this app is one people leave open for days, so a release cut
+// an hour after launch would never be noticed. That is not hypothetical — on 2026-08-27 a running
+// copy sat on 0.3.5 for ninety minutes while three releases came and went, and every "just
+// relaunch to get the fix" was really "your app cannot see the fix yet".
+const RECHECK_INTERVAL_MS = 30 * 60 * 1000
 
 function setUpdateState(state: UpdateState) {
 	if (updateState === state) {
@@ -44,10 +52,11 @@ export const getUpdateState = (): UpdateState => updateState
 // Fire-and-forget: any failure here (no network, malformed feed, bad signature) must leave the
 // app exactly as it was, so everything is logged and swallowed rather than surfaced.
 export async function checkForUpdates() {
-	if (!updatesSupported || checkStarted) {
+	// Nothing to do once an update is staged, and never two checks at once.
+	if (!updatesSupported || checkInProgress || updateState === "downloading" || updateState === "ready") {
 		return
 	}
-	checkStarted = true
+	checkInProgress = true
 	try {
 		setUpdateState("checking")
 		// Dynamic so the plugin module body only runs once we've decided we're in the packaged
@@ -66,9 +75,21 @@ export async function checkForUpdates() {
 	} catch (err) {
 		console.warn("Update check failed:", err)
 		setUpdateState("idle")
-		// Allow a later call to retry: a failed check shouldn't permanently disable updating.
-		checkStarted = false
+	} finally {
+		// Always cleared, so a failed check never permanently disables updating and the next
+		// interval tick can try again.
+		checkInProgress = false
 	}
+}
+
+// Checks now, then keeps checking, so a copy left running for days still finds new releases.
+export function startUpdateChecks(): () => void {
+	if (!updatesSupported) {
+		return () => {}
+	}
+	checkForUpdates()
+	const timer = setInterval(checkForUpdates, RECHECK_INTERVAL_MS)
+	return () => clearInterval(timer)
 }
 
 // The staged bundle only takes effect after a relaunch. The Rust side kills the gomuks sidecar
