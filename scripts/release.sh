@@ -15,6 +15,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TAURI_CONF="$REPO_ROOT/web/src-tauri/tauri.conf.json"
 PACKAGE_JSON="$REPO_ROOT/web/package.json"
 CARGO_TOML="$REPO_ROOT/web/src-tauri/Cargo.toml"
+CARGO_LOCK="$REPO_ROOT/web/src-tauri/Cargo.lock"
 BUNDLE_DIR="$REPO_ROOT/web/src-tauri/target/release/bundle"
 
 SIGNING_KEY="$HOME/.tauri/echo.key"
@@ -42,7 +43,7 @@ for tool in jq gh go npx security xcrun spctl; do
 	command -v "$tool" >/dev/null 2>&1 || die "required tool not found on PATH: $tool"
 done
 
-# The three version files must already agree — otherwise "the current version" is undefined and
+# The four version files must already agree — otherwise "the current version" is undefined and
 # whichever one we read would silently win.
 read_tauri_version() { jq -r '.version' "$TAURI_CONF"; }
 read_package_version() { jq -r '.version' "$PACKAGE_JSON"; }
@@ -52,16 +53,26 @@ read_cargo_version() {
 		gsub(/^version[[:space:]]*=[[:space:]]*"|"[[:space:]]*$/, ""); print; exit
 	}' "$CARGO_TOML"
 }
+# Cargo.lock pins this crate's own version too, and `cargo build` rewrites it to match Cargo.toml.
+# Leaving it out of the bump means an aborted release strands it at the new version, and a
+# successful one tags a commit whose Cargo.toml and Cargo.lock disagree.
+read_lock_version() {
+	awk '/^name = "app"$/ {found=1; next} found && /^version = / {
+		gsub(/^version = "|"$/, ""); print; exit
+	}' "$CARGO_LOCK"
+}
 
 CUR_TAURI="$(read_tauri_version)"
 CUR_PACKAGE="$(read_package_version)"
 CUR_CARGO="$(read_cargo_version)"
+CUR_LOCK="$(read_lock_version)"
 
-if [[ "$CUR_TAURI" != "$CUR_PACKAGE" || "$CUR_TAURI" != "$CUR_CARGO" ]]; then
+if [[ "$CUR_TAURI" != "$CUR_PACKAGE" || "$CUR_TAURI" != "$CUR_CARGO" || "$CUR_TAURI" != "$CUR_LOCK" ]]; then
 	die "version files disagree — fix them before releasing:
   $TAURI_CONF:  $CUR_TAURI
   $PACKAGE_JSON: $CUR_PACKAGE
-  $CARGO_TOML:   $CUR_CARGO"
+  $CARGO_TOML:   $CUR_CARGO
+  $CARGO_LOCK:   $CUR_LOCK"
 fi
 CUR_VERSION="$CUR_TAURI"
 [[ "$CUR_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "current version is not semver: $CUR_VERSION"
@@ -113,16 +124,40 @@ UPDATER_KEY_PASSWORD="$(security find-generic-password -s echo-updater-key -w)" 
 NOTARY_PASSWORD="$(security find-generic-password -s echo-notary -w)" \
 	|| die "keychain item 'echo-notary' not found"
 
+# Updater signing is the very last thing `tauri build` does — after the compile, after Apple has
+# notarized. A bad key, wrong password or misnamed env var therefore costs a full build plus a
+# notarization round-trip before it surfaces. Prove the key works now, on a throwaway file.
+SIGNER_PROBE="$(mktemp -d)"
+echo "probe" >"$SIGNER_PROBE/probe.txt"
+if ! TAURI_SIGNING_PRIVATE_KEY="$(cat "$SIGNING_KEY")" \
+	TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$UPDATER_KEY_PASSWORD" \
+	"$REPO_ROOT/web/node_modules/.bin/tauri" signer sign "$SIGNER_PROBE/probe.txt" \
+	>"$SIGNER_PROBE/log" 2>&1; then
+	cat "$SIGNER_PROBE/log" >&2
+	rm -rf "${SIGNER_PROBE:?}"
+	die "the updater signing key or its password did not work; see log above"
+fi
+rm -rf "${SIGNER_PROBE:?}"
+
 cat <<EOF
 
 Releasing echo $CUR_VERSION -> $VERSION
   branch: $BRANCH
   tag:    $TAG
 
-NOTE: the release commit contains ONLY the three version files. Any other uncommitted work in
-this tree is built into the artifacts but is NOT part of the tagged commit, so $TAG will not
-reproduce this build from source. That is deliberate for this branch.
 EOF
+
+# The release commit carries only the version files, so anything else left uncommitted is built
+# into the artifacts without being part of the tagged commit — $TAG would then not reproduce this
+# build from source. Only worth saying when it is actually true.
+if [[ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]]; then
+	cat <<EOF
+NOTE: this tree has uncommitted changes. They are built into the artifacts but will NOT be part
+of the tagged commit, so $TAG will not reproduce this build from source.
+
+$(git -C "$REPO_ROOT" status --short)
+EOF
+fi
 
 # --------------------------------------------------------------------------------------------
 # 1. Version bump
@@ -137,9 +172,12 @@ write_versions() {
 	perl -0pi -e "s/(\"version\":\s*\")[^\"]*(\")/\${1}$to\${2}/" "$PACKAGE_JSON"
 	# Restricted to the [package] block so the dependency version constraints are left alone.
 	perl -0pi -e "s/(\[package\](?:.*?\n)*?version\s*=\s*\")[^\"]*(\")/\${1}$to\${2}/" "$CARGO_TOML"
+	# Anchored on the `name = "app"` entry: Cargo.lock lists every dependency in the same shape.
+	perl -0pi -e "s/(name = \"app\"\nversion = \")[^\"]*(\")/\${1}$to\${2}/" "$CARGO_LOCK"
 	[[ "$(read_tauri_version)" == "$to" ]] || die "failed to write version to $TAURI_CONF"
 	[[ "$(read_package_version)" == "$to" ]] || die "failed to write version to $PACKAGE_JSON"
 	[[ "$(read_cargo_version)" == "$to" ]] || die "failed to write version to $CARGO_TOML"
+	[[ "$(read_lock_version)" == "$to" ]] || die "failed to write version to $CARGO_LOCK"
 }
 
 # The bump happens before the builds, so a failure anywhere after it would otherwise leave three
@@ -201,6 +239,8 @@ step "Bundling, signing and notarizing (this waits on Apple; expect several minu
 # sometimes helps (observed 2026-08-26). So the bundler never runs actool: we compile
 # icons/echo.icon -> icons/Assets.car ourselves here, retrying with a daemon reset until
 # it works, and tauri.conf.json lists icons/Assets.car, which the bundler copies as-is.
+# Assets.car is gitignored, so this step is not an optimisation — it is the only thing that puts
+# the file where bundle.icon expects it. A bare `npx tauri build` on a fresh clone will fail here.
 step "Compiling icon Assets.car (retrying around flaky ibtoold)"
 CAR_TMP="$(mktemp -d)"
 car_ok=""
@@ -228,7 +268,10 @@ rm -rf "${CAR_TMP:?}"
 
 (
 	cd "$REPO_ROOT/web"
-	export TAURI_SIGNING_PRIVATE_KEY_PATH="$SIGNING_KEY"
+	# Not ..._KEY_PATH: that name appears only in the CLI's changelog, is read by nothing, and
+	# is silently ignored — the bundler gets all the way through notarization and then fails
+	# with "a public key has been found, but no private key". The var takes the key itself.
+	export TAURI_SIGNING_PRIVATE_KEY="$(cat "$SIGNING_KEY")"
 	export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$UPDATER_KEY_PASSWORD"
 	export APPLE_ID="taylor.bird@gmail.com"
 	export APPLE_PASSWORD="$NOTARY_PASSWORD"
@@ -311,7 +354,8 @@ step "Committing the version bump"
 git -C "$REPO_ROOT" add \
 	web/src-tauri/tauri.conf.json \
 	web/package.json \
-	web/src-tauri/Cargo.toml
+	web/src-tauri/Cargo.toml \
+	web/src-tauri/Cargo.lock
 git -C "$REPO_ROOT" commit -m "Release $TAG"
 # The bump now lives in a commit, so there's nothing left to roll back.
 VERSIONS_BUMPED=0
