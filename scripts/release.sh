@@ -18,7 +18,7 @@ CARGO_TOML="$REPO_ROOT/web/src-tauri/Cargo.toml"
 BUNDLE_DIR="$REPO_ROOT/web/src-tauri/target/release/bundle"
 
 SIGNING_KEY="$HOME/.tauri/echo.key"
-GH_REPO="taylorbird/gomuks"
+GH_REPO="taylorbird/echo"
 GH_REPO_URL="https://github.com/$GH_REPO"
 
 die() {
