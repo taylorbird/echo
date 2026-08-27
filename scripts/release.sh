@@ -159,6 +159,9 @@ step "Building the frontend (tsc -b + vite build)"
 
 step "Building the gomuks sidecar"
 # -tags goolm selects the pure-Go olm implementation, so no libolm/CGO flags are needed.
+# The binary is gitignored, so on a fresh clone binaries/ holds only .gitkeep — and `go build -o`
+# errors rather than creating a missing parent directory.
+mkdir -p "$REPO_ROOT/web/src-tauri/binaries"
 (cd "$REPO_ROOT" && go build -tags goolm \
 	-o web/src-tauri/binaries/gomuks-aarch64-apple-darwin ./cmd/gomuks)
 
