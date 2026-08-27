@@ -29,3 +29,12 @@ tauri-plugin-opener = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-updater = "2"
 percent-encoding = "2"
+# For minting the backend session token ourselves, exactly as pkg/gomuks/server.go signToken
+# does: HMAC-SHA256 over the compact JSON, both halves base64url-unpadded.
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+# Only to seed the backend's password field on a fresh install; the password is discarded
+# immediately, so nothing can ever authenticate with it. See ensure_backend_config in lib.rs.
+bcrypt = "0.17"
+rand = "0.9"

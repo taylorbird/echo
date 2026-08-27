@@ -76,6 +76,144 @@ fn adopt_or_migrate(app_owned: PathBuf) -> PathBuf {
   }
 }
 
+// --- Backend authentication -------------------------------------------------------------
+//
+// gomuks gates its HTTP API on a username and password, and the first time it runs without them
+// it asks on stdin (pkg/gomuks/config.go, PromptInput -> readline). A tauri sidecar is given
+// pipes, not a terminal, so on any machine with no pre-existing gomuks config that prompt fails
+// with EOF and the backend exits 9 before it ever binds its port. Verified 2026-08-27: the app is
+// unusable for anyone who has not previously run gomuks by hand in a shell.
+//
+// So we write the credentials ourselves, and then never ask anyone for them. The password is
+// random and thrown away on the spot: nothing can log in with it, and nothing needs to, because
+// the app mints its own session token the same way the server does and hands it to the webview.
+//
+// To switch this off and let the backend accept everything unauthenticated, set
+//   disable_auth_because_i_want_my_account_to_be_hacked: true
+// under `web:` in config.yaml. That name is upstream's, and the warning in it is fair: the
+// backend listens on 127.0.0.1:29325, so anything else running on the machine — another user
+// account, a page served from another localhost port — could then drive the already-logged-in
+// Matrix session and export the room keys via POST /_gomuks/keys/export.
+const BACKEND_USERNAME: &str = "echo";
+
+// Written only when there is no config at all. An existing config is never rewritten: it is the
+// user's file, it holds their token key and log configuration, and a partial rewrite that lost
+// any of that would be far worse than the prompt we are avoiding.
+fn ensure_backend_config(config_dir: &Path) -> std::io::Result<()> {
+  let config_path = config_dir.join("config.yaml");
+  if config_path.exists() {
+    return Ok(());
+  }
+  std::fs::create_dir_all(config_dir)?;
+
+  use rand::Rng;
+  let password: String = rand::rng()
+    .sample_iter(rand::distr::Alphanumeric)
+    .take(48)
+    .map(char::from)
+    .collect();
+  // Cost 12 to match what gomuks itself uses when it prompts.
+  let hash = bcrypt::hash(&password, 12)
+    .map_err(|err| std::io::Error::other(format!("failed to hash backend password: {err}")))?;
+  // `password` is dropped here and never stored. The token below is how we authenticate.
+
+  // Deliberately minimal: gomuks fills in every other default on first load (including the
+  // token_key we sign with) and writes the complete file back out itself.
+  let config = format!(
+    "web:\n    username: {BACKEND_USERNAME}\n    password_hash: {hash}\n    insecure_cookies: true\n"
+  );
+  std::fs::write(&config_path, config)?;
+  #[cfg(unix)]
+  {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&config_path, std::fs::Permissions::from_mode(0o600))?;
+  }
+  log::info!("wrote a fresh backend config to {}", config_path.display());
+  Ok(())
+}
+
+// Pulls one scalar out of the `web:` block of gomuks' config.yaml.
+//
+// Hand-rolled rather than pulling in a YAML parser for two string lookups. The file is written by
+// gomuks itself (yaml.v3, block style, consistent indentation), so this stays deliberately strict
+// and simply gives up on anything it does not recognise — a miss costs a login prompt, not a
+// failure, so being conservative is the right trade.
+fn read_web_config_value(config: &str, key: &str) -> Option<String> {
+  let mut in_web = false;
+  for line in config.lines() {
+    if !line.starts_with([' ', '\t']) {
+      // A new top-level key ends the web block.
+      in_web = line.trim_end().starts_with("web:");
+      continue;
+    }
+    if !in_web {
+      continue;
+    }
+    let trimmed = line.trim();
+    if let Some(value) = trimmed.strip_prefix(key).and_then(|r| r.strip_prefix(':')) {
+      let value = value.trim().trim_matches(['"', '\'']);
+      if !value.is_empty() {
+        return Some(value.to_string());
+      }
+    }
+  }
+  None
+}
+
+// Mints a session token the backend will accept, mirroring signToken in pkg/gomuks/server.go:
+// base64url(compact JSON of {username, expiry}) + "." + base64url(HMAC-SHA256 of that JSON).
+//
+// The JSON has to match Go's encoding/json byte for byte or the HMAC will not agree: compact, no
+// spaces, fields in struct order, and image_only omitted while false (it is `omitempty`).
+//
+// This reads the config only after the backend has started, because on a fresh install gomuks
+// generates token_key on its first load and writes it back — it does not exist before then.
+fn sign_backend_token(username: &str, token_key: &str, expiry_secs: u64) -> Option<String> {
+  use base64::Engine;
+  use hmac::{Hmac, Mac};
+
+  // Built by hand rather than via a serde struct so the byte layout is visible at the point it
+  // has to be right: compact, fields in the order Go declares them, and image_only left out
+  // entirely because it is `omitempty` and false here.
+  let payload = format!(
+    "{{\"username\":{},\"expiry\":{expiry_secs}}}",
+    serde_json::to_string(username).ok()?
+  );
+
+  let mut mac = Hmac::<sha2::Sha256>::new_from_slice(token_key.as_bytes()).ok()?;
+  mac.update(payload.as_bytes());
+  let engine = base64::engine::general_purpose::URL_SAFE_NO_PAD;
+  Some(format!(
+    "{}.{}",
+    engine.encode(payload.as_bytes()),
+    engine.encode(mac.finalize().into_bytes())
+  ))
+}
+
+fn mint_backend_token(config_dir: &Path) -> Option<String> {
+  let config = std::fs::read_to_string(config_dir.join("config.yaml")).ok()?;
+  let username = read_web_config_value(&config, "username")?;
+  let token_key = read_web_config_value(&config, "token_key")?;
+  // The server issues seven days; a day is plenty when every launch mints a fresh one.
+  let expiry = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok()?.as_secs()
+    + 24 * 60 * 60;
+  sign_backend_token(&username, &token_key, expiry)
+}
+
+// Runs in the page before any of its own scripts do, so the very first request the frontend makes
+// is already authenticated and the login form never appears. The document is served from the
+// backend origin, so this cookie is same-origin with the API it authenticates.
+//
+// The server's own cookie is HttpOnly and this one cannot be; that costs nothing here, because
+// script that could read it is already running inside the authenticated session.
+fn auth_cookie_script(token: &str) -> String {
+  format!(
+    "try {{ document.cookie = 'gomuks_auth=' + {} + '; path=/; SameSite=Lax; max-age=86400' }} \
+     catch (e) {{ console.warn('failed to seed auth cookie', e) }}",
+    serde_json::to_string(token).unwrap_or_else(|_| "''".to_string())
+  )
+}
+
 fn gomuks_dirs(app: &tauri::AppHandle) -> tauri::Result<GomuksDirs> {
   let path = app.path();
   let config = adopt_or_migrate(per_profile(path.app_config_dir()?));
@@ -239,6 +377,11 @@ pub fn run() {
       // Spawn the gomuks backend as a sidecar, pointed at app-owned storage (see GomuksDirs).
       let dirs = gomuks_dirs(app.handle())?;
       log::info!("gomuks storage: config={} logs={}", dirs.config.display(), dirs.logs.display());
+      // Must happen before the spawn: without credentials on disk the backend tries to prompt
+      // for them on a stdin it does not have, and exits before binding its port.
+      if let Err(err) = ensure_backend_config(&dirs.config) {
+        log::error!("failed to write backend config: {err}");
+      }
       let sidecar = app
         .shell()
         .sidecar("gomuks")
@@ -272,14 +415,27 @@ pub fn run() {
         window_config.url =
           WebviewUrl::External(BACKEND_ORIGIN.parse().expect("invalid backend origin"));
         let handle = app.handle().clone();
+        let config_dir = dirs.config.clone();
         std::thread::spawn(move || {
           if !wait_for_backend(BACKEND_STARTUP_TIMEOUT) {
             log::error!("gomuks backend didn't start listening in time, opening window anyway");
+          }
+          // Only now: on a fresh install the backend generates token_key during its first load
+          // and writes it back, so before this point there is nothing to sign with. If anything
+          // here fails we simply open the window without a token and the user gets the login
+          // form — degraded, not broken.
+          let auth_script = mint_backend_token(&config_dir).map(|token| auth_cookie_script(&token));
+          if auth_script.is_none() {
+            log::warn!("could not mint a backend token; the login form will be shown");
           }
           let builder_handle = handle.clone();
           let _ = handle.run_on_main_thread(move || {
             match WebviewWindowBuilder::from_config(&builder_handle, &window_config) {
               Ok(builder) => {
+                let builder = match auth_script {
+                  Some(script) => builder.initialization_script(&script),
+                  None => builder,
+                };
                 if let Err(err) = builder.build() {
                   log::error!("failed to create main window: {err}");
                 }
@@ -306,4 +462,56 @@ pub fn run() {
       }
     }
   });
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  // Pinned against an independent implementation of the same construction. If gomuks ever
+  // changes tokenData or signToken (pkg/gomuks/server.go), this is what will notice: the
+  // symptom in the app is only that the login form reappears, which is easy to misread.
+  #[test]
+  fn signs_a_token_the_backend_would_accept() {
+    assert_eq!(
+      sign_backend_token("echo", "testkey", 1700000000).unwrap(),
+      "eyJ1c2VybmFtZSI6ImVjaG8iLCJleHBpcnkiOjE3MDAwMDAwMDB9.\
+       VpAAUBvK9dGQ36GZxWfzCzrkxy99gOymvtTV-SnEAj4"
+    );
+  }
+
+  #[test]
+  fn reads_scalars_from_the_web_block_only() {
+    let config = "\
+web:\n    username: tbird\n    token_key: secret123\nmatrix:\n    username: not-this-one\n";
+    assert_eq!(read_web_config_value(config, "username").as_deref(), Some("tbird"));
+    assert_eq!(read_web_config_value(config, "token_key").as_deref(), Some("secret123"));
+    assert_eq!(read_web_config_value(config, "listen_address"), None);
+  }
+
+  #[test]
+  fn ignores_a_blank_or_missing_token_key() {
+    assert_eq!(read_web_config_value("web:\n    token_key:\n", "token_key"), None);
+    assert_eq!(read_web_config_value("web:\n    username: x\n", "token_key"), None);
+  }
+
+  // The whole point is that both fields end up non-empty, because that is exactly the condition
+  // gomuks checks before it decides to prompt on a stdin the sidecar does not have.
+  #[test]
+  fn writes_credentials_that_stop_the_backend_prompting() {
+    let dir = std::env::temp_dir().join("echo-backend-config-test");
+    let _ = std::fs::remove_dir_all(&dir);
+    ensure_backend_config(&dir).expect("should write a config");
+
+    let written = std::fs::read_to_string(dir.join("config.yaml")).unwrap();
+    assert_eq!(read_web_config_value(&written, "username").as_deref(), Some(BACKEND_USERNAME));
+    let hash = read_web_config_value(&written, "password_hash").expect("hash present");
+    assert!(hash.starts_with("$2"), "not a bcrypt hash: {hash}");
+
+    // An existing config is never rewritten.
+    std::fs::write(dir.join("config.yaml"), "web:\n    username: preexisting\n").unwrap();
+    ensure_backend_config(&dir).expect("should be a no-op");
+    let after = std::fs::read_to_string(dir.join("config.yaml")).unwrap();
+    assert_eq!(read_web_config_value(&after, "username").as_deref(), Some("preexisting"));
+  }
 }
