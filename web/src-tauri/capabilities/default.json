@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions. The remote URL is the sidecar origin the production window loads (see BACKEND_ORIGIN in src/lib.rs): tauri only treats devUrl/frontendDist as local, so without listing it here every IPC call from the shipped app is denied by the ACL. start-dragging is listed separately because core:window:default deliberately omits it (see the command table in tauri's build.rs), so data-tauri-drag-region is inert without it. updater:default is what lets the shipped app check/download updates at all — the updater only ever runs in release builds, i.e. exactly the remote-origin case, so omitting it here would break updates in the only build that uses them. NOTE: the shell:* permissions were removed deliberately. Everything granted here is granted to the remote origin above, and the frontend never used them — there is no @tauri-apps/plugin-shell dependency and no call site in web/src. The sidecar is spawned from Rust in lib.rs, and the ACL only gates IPC from the webview, so spawning is unaffected. Do not add them back to make the sidecar work; that is not what they do.",
+  "description": "enables the default permissions. The remote URL is the sidecar origin the production window loads (see BACKEND_ORIGIN in src/lib.rs): tauri only treats devUrl/frontendDist as local, so without listing it here every IPC call from the shipped app is denied by the ACL. start-dragging is listed separately because core:window:default deliberately omits it (see the command table in tauri's build.rs), so data-tauri-drag-region is inert without it. updater:default is what lets the shipped app check/download updates at all — the updater only ever runs in release builds, i.e. exactly the remote-origin case, so omitting it here would break updates in the only build that uses them. NOTE: the shell:* permissions were removed deliberately. Everything granted here is granted to the remote origin above, and the frontend never used them — there is no @tauri-apps/plugin-shell dependency and no call site in web/src. The sidecar is spawned from Rust in lib.rs, and the ACL only gates IPC from the webview, so spawning is unaffected. Do not add them back to make the sidecar work; that is not what they do. The two allow-* entries are this app's own commands: because the production window loads a remote origin, tauri denies every app command that a capability does not name, so without them restart_for_update and fetch_og_tags fail silently in release while working in dev. They are declared in build.rs.",
   "windows": [
     "main"
   ],
@@ -14,6 +14,8 @@
     "core:default",
     "core:window:allow-start-dragging",
     "opener:allow-open-url",
-    "updater:default"
+    "updater:default",
+    "allow-restart-for-update",
+    "allow-fetch-og-tags"
   ]
 }

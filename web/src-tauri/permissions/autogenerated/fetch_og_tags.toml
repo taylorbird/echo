@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-fetch-og-tags"
+description = "Enables the fetch_og_tags command without any pre-configured scope."
+commands.allow = ["fetch_og_tags"]
+
+[[permission]]
+identifier = "deny-fetch-og-tags"
+description = "Denies the fetch_og_tags command without any pre-configured scope."
+commands.deny = ["fetch_og_tags"]

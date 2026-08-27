@@ -77,5 +77,17 @@ export function restartToApply() {
 	if (!updatesSupported) {
 		return
 	}
-	invoke("restart_for_update").catch(err => console.error("Failed to restart for update:", err))
+	// Not swallowed into console.error: the update is already installed on disk by this point, so
+	// a failure here means the button does nothing at all and the user has no way to know why.
+	// That is exactly how the ACL denial of this command survived into a release — the production
+	// window loads the sidecar origin, which tauri treats as remote, and remote origins have every
+	// app command denied unless a capability grants it (see build.rs). Say something instead.
+	invoke("restart_for_update").catch(err => {
+		console.error("Failed to restart for update:", err)
+		window.alert(
+			"The update is installed, but echo couldn't relaunch itself automatically.\n\n" +
+			"Quit echo and open it again to finish updating.\n\n" +
+			`(${err})`,
+		)
+	})
 }
