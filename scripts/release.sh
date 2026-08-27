@@ -19,6 +19,8 @@ CARGO_LOCK="$REPO_ROOT/web/src-tauri/Cargo.lock"
 BUNDLE_DIR="$REPO_ROOT/web/src-tauri/target/release/bundle"
 
 SIGNING_KEY="$HOME/.tauri/echo.key"
+APPLE_ACCOUNT="taylor.bird@gmail.com"
+APPLE_TEAM="UFCDGSKCXB"
 GH_REPO="taylorbird/echo"
 GH_REPO_URL="https://github.com/$GH_REPO"
 
@@ -273,9 +275,9 @@ rm -rf "${CAR_TMP:?}"
 	# with "a public key has been found, but no private key". The var takes the key itself.
 	export TAURI_SIGNING_PRIVATE_KEY="$(cat "$SIGNING_KEY")"
 	export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$UPDATER_KEY_PASSWORD"
-	export APPLE_ID="taylor.bird@gmail.com"
+	export APPLE_ID="$APPLE_ACCOUNT"
 	export APPLE_PASSWORD="$NOTARY_PASSWORD"
-	export APPLE_TEAM_ID="UFCDGSKCXB"
+	export APPLE_TEAM_ID="$APPLE_TEAM"
 	npx tauri build
 )
 
@@ -303,13 +305,20 @@ echo "  dmg:     $DMG"
 step "Verifying notarization"
 xcrun stapler validate "$APP" || die "notarization ticket is not stapled to $APP"
 
-# The DMG is stapled separately from the .app inside it. spctl is the check Gatekeeper itself
-# runs on a downloaded disk image, so it's the one that matters.
+# The bundler notarizes and staples the .app, and only then builds the DMG around it — so the
+# DMG has never been submitted in its own right. Stapling it straight away fails with
+# "Record not found": a ticket exists per submitted artifact, and nothing was submitted for this
+# one. The DMG is what actually gets downloaded and quarantined, so it needs its own round trip.
 if ! spctl -a -t open --context context:primary-signature "$DMG"; then
-	echo "  DMG not accepted by Gatekeeper yet — stapling it"
+	step "Notarizing the DMG (a second wait on Apple)"
+	xcrun notarytool submit "$DMG" \
+		--apple-id "$APPLE_ACCOUNT" \
+		--password "$NOTARY_PASSWORD" \
+		--team-id "$APPLE_TEAM" \
+		--wait || die "notarytool rejected $DMG"
 	xcrun stapler staple "$DMG" || die "failed to staple $DMG"
 	spctl -a -t open --context context:primary-signature "$DMG" \
-		|| die "$DMG still rejected by Gatekeeper after stapling"
+		|| die "$DMG still rejected by Gatekeeper after notarizing and stapling"
 fi
 
 # --------------------------------------------------------------------------------------------
