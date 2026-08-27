@@ -91,3 +91,75 @@ deterministically (verified 2026-08-26: 3 consecutive failures → kill → same
 clean). The SVG-vs-PNG-layer theory was a coincidence of daemon state. scripts/release.sh
 now does `killall ibtoold || true` before `npx tauri build`; do the same before any
 manual `actool`/`tauri build` run that fails this way.
+
+## release.sh: Four Latent Bugs That Bite Only on Release
+
+These bugs were discovered by actually running the release script to completion (not
+just unit-testing the parts). Each one cost a full or nearly-full build cycle before
+failing, making them expensive to debug:
+
+### Bug 1: TAURI_SIGNING_PRIVATE_KEY env var name is wrong
+The Tauri CLI expects `TAURI_SIGNING_PRIVATE_KEY` (the key **contents**, not a path).
+An earlier implementation used `TAURI_SIGNING_PRIVATE_KEY_PATH`, which the CLI ignores.
+Signing fails silently after the entire build + Apple notarization (the most expensive
+step — 15+ minutes, then another 15+ waiting for Apple's servers). By the time it fails,
+you've burned 30+ minutes and can't retry until the notarization expires.
+
+**Fix:** preflight that signs a throwaway file before building. If key+password don't
+work, fail immediately (5 seconds) before any expensive operations.
+
+### Bug 2: Cargo.lock is a fourth version file
+`cargo build` automatically rewrites `Cargo.lock` to match the manifest. The release
+script bumped three version files (tauri.conf.json, package.json, Cargo.toml) but not
+Cargo.lock. If the release failed partway through, Cargo.lock was stranded at the new
+version while the other three reverted to the old version (via trap handler), leaving
+an inconsistent state. A successful release would tag a commit whose manifest and lock
+file disagreed (manifest = new, lock = new, but they were bumped separately and could
+diverge if `cargo build` had other interactions).
+
+**Fix:** include Cargo.lock in the `write_versions()` routine. Bump it explicitly, then
+`cargo check` to verify it's still consistent, then restore it along with the other
+three on abort.
+
+### Bug 3: DMG file never notarized
+Tauri's build pipeline notarizes and staples the `.app` bundle, then builds the DMG
+around it. But the DMG file itself is never notarized, so `stapler staple` on it fails
+with "Record not found" (Notary API found no record of the DMG's hash). Users downloading
+the DMG see "can't be opened because it hasn't been notarized by Apple" when trying to
+extract it.
+
+**Fix:** after the DMG is built, run a separate `notarytool submit` round-trip on it,
+then `stapler staple` on the DMG. Verify both succeed before uploading.
+
+### Bug 4: gh account drift during build
+The GitHub CLI (`gh release create`) uses the currently-active `gh auth` account, which
+can drift if you're logged in to multiple accounts. The preflight checks passed as the
+ADMIN account, but 12 minutes into the build, a browser session to another account
+became active and `gh auth` switched. When `git push` + `gh release create` ran, they
+used the READ-only account instead, and GitHub returned 403 as a 404 (GitHub's answer
+to permission-denied writes). The error message was misleading: "workflow scope may be
+required" (pointing at CI/CD, not auth).
+
+**Fix:** resolve the correct token upfront and export `GH_TOKEN=<token>`. This pins both
+`git push` (via the credential helper `gh auth git-credential`) and `gh release create`
+to use that token, independent of the active CLI account. Verify the token works before
+building (part of the preflight).
+
+## Git History Rewrite: Stripping 55MB Binary
+
+The sidecar binary (web/src-tauri/binaries/gomuks-aarch64-apple-darwin, 55MB) was
+accidentally committed twice in the unpushed commits (2026-08-27). Git history now
+carried 110MB total, and every `git push` would upload that chunk.
+
+**Fix:** git filter-branch to rewrite only unpushed commits (c1529c6c..HEAD, 4 commits):
+
+```bash
+git filter-branch --tree-filter 'rm -f web/src-tauri/binaries/gomuks-aarch64-apple-darwin' -- c1529c6c..HEAD
+```
+
+Verified the tree was identical before/after (0-byte diff). Kept a backup tag `pre-blob-strip`
+for recovery if needed. Upstream commits (at/below c1529c6c) were untouched, so the fork
+relationship and future `git merge upstream/main` still work correctly.
+
+After filtering, run `git gc` to reclaim the disk space (~110MB local storage in `.git/objects`).
+The local tag `pre-blob-strip` can then be deleted.

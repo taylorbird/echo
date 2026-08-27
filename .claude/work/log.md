@@ -2,6 +2,50 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-08-27 16:52
+
+**Session Summary**: Completed the full release pipeline with eight releases published (0.2.0 through 0.3.7), all verified working in production. Fixed four latent bugs in release.sh that were diagnosed by actually running it to completion (wrong signing env var name, Cargo.lock not bumped as a fourth version file, DMG missing its own notarization round-trip, gh account drift during build). Fixed the backend auth fresh-install trap where a config-less machine would see a stdin prompt that fails with EOF in a sidecar. Isolated sidecar storage via GOMUKS_*_HOME environment variables and debug `-dev` profile so tauri dev never touches installed-app data. Fixed external-link opening in production (three root-cause misdiagnoses before finding the tauri-plugin-shell competing body listener in the bubble phase; fixed via capture-phase + stopPropagation). Discovered and documented the Tauri ACL remote-origin rule (http://localhost:29325 = remote, all app commands denied unless in capability). Migrated data from old gomuks directories to dev.tbird.echo with fallback-on-failure, renamed localStorage keys seabug→echo (acceptable loss because bundle ID change had already reset WebKit). Changed bundle ID from com.tbird.echo to dev.tbird.echo to match naming convention. Published README with logo, badges, install instructions, data locations, and AGPL credit. Regenerated icon set after fixing the icon mask (white margin was being baked by qlmanage). Fixed three icon-mask-related display issues. Enabled 30-minute auto-update checks (was only at launch). Verified all: signed+notarized DMG, fresh install on machine that never saw gomuks, auto-update download+signature verification, Restart button, no login prompt beyond Matrix account, encrypted message decryption and key backup in production, URL previews work, external links open system browser, light-mode titlebar. All 8 releases tested end-to-end by user. Clean working tree, main in sync with origin.
+
+**Decisions Made**:
+- Bundle ID dev.tbird.echo to match debug-build naming convention (-dev suffix).
+- Sidecar data isolation via env vars, no Go code changes (stays zero-divergence from upstream).
+- Fallback-on-rename for data migration (postpone corruption risk over potential lost state).
+- WebKit store not migrated (acceptable one-time re-login; corrupting it is worse).
+- Backend password random + discarded (nothing can log in, nothing needs to).
+- App auth via minted session token in webview init script (no browser session needed).
+- External links fixed via capture-phase, not shell-plugin changes (shell plugin is mandatory for sidecar).
+- Auto-update checks every 30min (vs. launch-only), skip while download staged.
+- Tauri ACL: all app commands ACL-checked on remote origins, requires build.rs + capability entries.
+- opener: split permission (command + URL scope); both required.
+- Release.sh preflight signing test before expensive builds.
+- release.sh exports GH_TOKEN to pin both git push and gh release create.
+- Git blob-strip via filter-branch on unpushed commits only (preserves upstream fork relationship).
+
+**Actions Taken**:
+- web/src-tauri/src/lib.rs: ensure_backend_config generates random password, passes GOMUKS_*_HOME env vars, -dev profile for debug builds.
+- web/src/util/updater.ts: 30-minute recurring check (not just launch), skip while download staged, finally-block flag reset.
+- web/src-tauri/build.rs: AppManifest declares restart_for_update and fetch_og_tags commands.
+- web/src-tauri/capabilities/default.json: grant both generated allow-* identifiers, remote.urls block for localhost:29325, opener:allow-default-urls.
+- web/src/ui/externallinks.ts: capture-phase handler with stopPropagation, spoiler-override guard.
+- web/src/ui/TextMessageBody.tsx: spoiler guard on external-link clicks (prevent opening hidden links).
+- web/src-tauri/tauri.conf.json: identifier → dev.tbird.echo.
+- web/src/ui/settings/SettingsView.tsx: localStorage key rename seabug→echo.
+- scripts/release.sh: signing preflight, Cargo.lock in version-bump routine, DMG notarization, GH_TOKEN export.
+- design/: icon mask regenerated (rounded rect inset 100, radius 185 applied as alpha channel).
+- web/src-tauri/src/lib.rs: data migration with fs::rename + fallback, skips WebKit store.
+- web/README.md: new, targeted at first-time installers (DMG install, data locations, AGPL credit, logo with HTTP 200 verification).
+- .gitignore: added binaries/*, icons/Assets.car, .DS_Store.
+- git filter-branch: rewritten c1529c6c..HEAD (4 commits, 55MB binary stripped twice), backup tag pre-blob-strip, verified zero tree-diff.
+
+**Context/Thoughts**:
+- Three issues were "resolved" in questions.md in prior sessions but were actually still broken: external links (marked 2026-08-25 but wrong root cause), fetch_og_tags (same), restart button. All three ended up being the same root cause (tauri ACL remote-origin denial). Release-only bugs need release-environment testing because prod builds have no logging and no devtools.
+- The tauri-plugin-shell competing listener was invisible to search; only live inspection of the init script source revealed it. This is a pattern worth remembering: plugin side effects that are "magical" at runtime may be undocumented and need source-code archaeology.
+- The backend password generation could have been `random(32) → argon2` but bcrypt was simpler and sufficient (auth is process-internal anyway, nowhere this password is transmitted).
+- Capture-phase for external links is a solved pattern now; if external links ever break again, check for competing listeners (shell or otherwise) in the bubble phase.
+- External-link capture in bubble phase would have worked if the shell listener weren't injected, but the plugin is mandatory (no way to disable the script), so capture is the only fix.
+- Release identity pinning via GH_TOKEN is a win for reproducibility and safety; the old pattern of "whatever account is logged in" has too many drift vectors.
+- All eight releases (0.2.0–0.3.7) shipped successfully, verified working, no production rollbacks needed.
+
 ## 2026-08-27 08:50
 
 **Session Summary**: Completed the release pipeline (auto-update via tauri-plugin-updater 2.10.1, signed/notarized DMG, GitHub Releases with tauri's latest.json updater config, minisign keypair for artifact signatures) and diagnosed+fixed icon build pipeline. Root-caused two failed release runs to a wedged ibtoold daemon (not .icon content as earlier diagnosed), then fixed by pre-compiling icons/Assets.car with tauri-bundler accepting .car files as-is (tauri-cli 2.11.4 confirmed in source). scripts/release.sh now handles version bumping (3 version files), npm+go builds in strict order, signing/notarization from keychain (app-specific password "echo-notary", minisign key "echo-updater-key"), stapling verification, latest.json generation, and GitHub release creation — with version-restore trap on failure (tested twice). Permissions allowlisted to avoid constant prompts. All implementation verified: goolm sidecar decrypted live sessions, updater capability wired, GitHub endpoint live. Everything ready for 0.2.0 release except the release.sh run itself. Session ran on Fable with too-high token cost for implementation detail — finish in fresh session on Opus.

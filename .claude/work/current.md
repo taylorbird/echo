@@ -1,16 +1,16 @@
 # Current State
 
 ## Project
-echo (gomuks fork; renamed from Seabug 2026-08-25, bundle ID com.tbird.echo)
+echo (gomuks fork; renamed from Seabug 2026-08-25, repository `taylorbird/echo` on GitHub, bundle ID `dev.tbird.echo`)
 
 ## Objective
 Fork gomuks and redo the frontend to make it more visually appealing, wrapped as a native macOS app (with future iOS/Android support planned)
 
 ## Current Focus
-Release pipeline complete and verified actool-free. Three files staged uncommitted: web/src-tauri/tauri.conf.json (bundle.icon → Assets.car), scripts/release.sh (car pre-compile retry loop), web/src-tauri/icons/Assets.car (1.4MB binary). Two failed release runs diagnosed (ibtoold wedged daemon, not .icon content) and fixed with pre-compiled Assets.car + killall ibtoold in release.sh. Remaining steps: commit staged files, run release.sh 0.2.0, user verification of DMG install + auto-update flow. Finish in fresh session (cost control).
+Release pipeline complete and production-ready. Eight releases published (0.2.0 through 0.3.7), all verified working. App installs from DMG, data migrations preserved, auto-updates download+verify+install correctly, URL previews and external links work in production, and the Restart button functions. The backend auth issue was fixed so fresh installations no longer prompt for credentials. All work committed; main in sync with origin. Ready for beta users.
 
 ## Last Checkpoint
-2026-08-27 08:50 PDT
+2026-08-27 16:52 PDT
 
 ## Constraints
 See `.claude/work/constraints.md` for full ledger. Quick reference:
@@ -30,10 +30,16 @@ See `.claude/work/constraints.md` for full ledger. Quick reference:
 - Inter base font, Space Grotesk display font via --display-font-stack (names/titles/usernames only)
 - Bundler never runs actool: icons/Assets.car pre-compiled by release.sh (ibtoold flakiness; tauri-bundler accepts it as-is)
 - No tauri icon / tauri.conf edits while tauri dev runs (watcher restart storms kill sidecar)
+- New `#[tauri::command]` must be added to BOTH build.rs AppManifest and capabilities/default.json (remote origin = all app commands ACL-checked)
+- opener needs BOTH `opener:allow-open-url` (command) and `opener:allow-default-urls` (URL scope)
+- External-link click handler must stay in the CAPTURE phase — tauri-plugin-shell injects a competing body listener
+- Sidecar storage pinned via GOMUKS_*_HOME in lib.rs; debug builds use a `-dev` profile
+- Release identity pinned via GH_TOKEN in release.sh — never rely on the active gh account
+- Cargo.lock is a version file; release.sh bumps all four
 
 ## Next Actions
-1. Commit 3 staged files (message: actool-free icon pipeline via pre-compiled Assets.car)
-2. Run release: /Users/tbird/gomuks/scripts/release.sh 0.2.0 (allowlisted, unattended, ~5-15 min)
-3. User verifies: DMG downloads + installs, Gatekeeper-clean open, real Facet Split icon, encrypted decrypt, room-list 440, centered title
-4. Make trivial change, release 0.2.1, verify 0.2.0→0.2.1 auto-update + restart
-5. Deferred: tighten remote capability (drop shell perms); fetch_og_tags ACL fix; seabug→echo localStorage migration shim; light-mode titlebar contrast
+1. Send the beta link to beta users (README + releases are live and verified)
+2. Enable logging in release builds (tauri_plugin_log currently only initialises under cfg!(debug_assertions)) and consider devtools — three bugs today were diagnosed blind
+3. Delete the `pre-blob-strip` local git tag and run `git gc` to reclaim ~110MB
+4. Delete `~/Library/Application Support/gomuks.backup-pre-migration` now that 0.3.7 is verified healthy
+5. Add a screenshot to the README (Claude cannot take one — no Screen Recording permission)
