@@ -17,5 +17,12 @@ deb/usr
 *.dylib
 *.so
 
+.DS_Store
+
+# The Tauri sidecar: a ~55MB Mach-O binary rebuilt from ./cmd/gomuks on every
+# release (scripts/release.sh). It is a build artifact, not source — committing
+# it added 110MB of blobs to this history before it was stripped out.
+web/src-tauri/binaries/
+
 # Claude Code work state (optional - remove if you want to track)
 # .claude/work/
