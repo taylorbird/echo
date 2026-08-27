@@ -181,10 +181,36 @@ rm -rf "$APP" "$TARBALL" "$SIG_FILE"
 rm -f "$BUNDLE_DIR"/dmg/echo_"$VERSION"_*.dmg
 
 step "Bundling, signing and notarizing (this waits on Apple; expect several minutes)"
-# ibtoold (actool's persistent daemon) can wedge and then every .icon compile crashes
-# with "attempt to insert nil object" regardless of package content (observed 2026-08-26).
-# A fresh daemon fixes it deterministically, so always start from one.
-killall ibtoold 2>/dev/null || true
+# ibtoold (actool's persistent daemon) wedges unpredictably: .icon compiles crash with
+# "attempt to insert nil object" regardless of package content, and a daemon reset only
+# sometimes helps (observed 2026-08-26). So the bundler never runs actool: we compile
+# icons/echo.icon -> icons/Assets.car ourselves here, retrying with a daemon reset until
+# it works, and tauri.conf.json lists icons/Assets.car, which the bundler copies as-is.
+step "Compiling icon Assets.car (retrying around flaky ibtoold)"
+CAR_TMP="$(mktemp -d)"
+car_ok=""
+for attempt in 1 2 3 4 5; do
+	killall ibtoold 2>/dev/null || true
+	rm -rf "${CAR_TMP:?}"/out
+	mkdir -p "$CAR_TMP/out"
+	if xcrun actool "$REPO_ROOT/web/src-tauri/icons/echo.icon" \
+		--compile "$CAR_TMP/out" \
+		--output-format human-readable-text --notices --warnings \
+		--output-partial-info-plist "$CAR_TMP/out/partial.plist" \
+		--app-icon Icon --include-all-app-icons --accent-color AccentColor \
+		--enable-on-demand-resources NO --development-region en \
+		--target-device mac --minimum-deployment-target 26.0 \
+		--platform macosx >"$CAR_TMP/actool.log" 2>&1 \
+		&& [[ -f "$CAR_TMP/out/Assets.car" ]]; then
+		car_ok=1
+		break
+	fi
+	echo "  actool attempt $attempt failed; resetting ibtoold and retrying" >&2
+done
+[[ -n "$car_ok" ]] || { cat "$CAR_TMP/actool.log" >&2; die "actool failed 5 times; see log above"; }
+cp "$CAR_TMP/out/Assets.car" "$REPO_ROOT/web/src-tauri/icons/Assets.car"
+rm -rf "${CAR_TMP:?}"
+
 (
 	cd "$REPO_ROOT/web"
 	export TAURI_SIGNING_PRIVATE_KEY_PATH="$SIGNING_KEY"
