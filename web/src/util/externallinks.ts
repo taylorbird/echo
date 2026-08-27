@@ -24,6 +24,8 @@ import { openUrl } from "@tauri-apps/plugin-opener"
 // in-app to jump to the room or user, and must keep doing so.
 const externalProtocols = new Set(["http:", "https:", "mailto:"])
 
+let warnedAboutExternalLinks = false
+
 export default function handleExternalLinks() {
 	if (!window.__TAURI_INTERNALS__) {
 		return
@@ -53,6 +55,17 @@ export default function handleExternalLinks() {
 			return
 		}
 		evt.preventDefault()
-		openUrl(url.href).catch(err => console.error("Failed to open link externally:", url.href, err))
+		// We've already cancelled the click, so a rejection here means the link did nothing at
+		// all. Logging that to a console no one opens is how a dead-link bug survived from
+		// 2026-08-25 to 0.3.4: the capability granted opener's command but not its URL scope, so
+		// every call came back ForbiddenUrl. Say so once, and hand over the URL so it can at
+		// least be copied. Once per session — a broken scope would otherwise alert on every click.
+		openUrl(url.href).catch(err => {
+			console.error("Failed to open link externally:", url.href, err)
+			if (!warnedAboutExternalLinks) {
+				warnedAboutExternalLinks = true
+				window.alert(`echo couldn't hand this link to your browser:\n\n${url.href}\n\n(${err})`)
+			}
+		})
 	})
 }
