@@ -94,6 +94,18 @@ fi
 [[ -f "$SIGNING_KEY" ]] || die "updater signing key not found: $SIGNING_KEY"
 gh auth status >/dev/null 2>&1 || die "gh is not authenticated; run: gh auth login"
 
+# `gh auth status` only proves *some* account is signed in. With more than one account configured
+# it is easy to be active as one that has read-only access here, and GitHub answers a
+# permission-denied write with 404 rather than 403 — so the failure surfaces as a baffling "not
+# found" at `gh release create`, after the whole build and notarization have already run.
+GH_PERMISSION="$(gh repo view "$GH_REPO" --json viewerPermission -q .viewerPermission 2>/dev/null || true)"
+GH_ACCOUNT="$(gh api user -q .login 2>/dev/null || echo "the active gh account")"
+case "$GH_PERMISSION" in
+ADMIN | MAINTAIN | WRITE) ;;
+"") die "cannot read $GH_REPO as $GH_ACCOUNT — wrong account signed in? try: gh auth switch" ;;
+*) die "$GH_ACCOUNT has $GH_PERMISSION on $GH_REPO and cannot publish a release; try: gh auth switch" ;;
+esac
+
 # Resolve the keychain secrets up front: they can prompt, and finding out after a 10-minute
 # build that notarization has no password is a bad trade.
 UPDATER_KEY_PASSWORD="$(security find-generic-password -s echo-updater-key -w)" \
