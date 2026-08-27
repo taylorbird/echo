@@ -7,10 +7,10 @@ echo (gomuks fork; renamed from Seabug 2026-08-25, bundle ID com.tbird.echo)
 Fork gomuks and redo the frontend to make it more visually appealing, wrapped as a native macOS app (with future iOS/Android support planned)
 
 ## Current Focus
-Rebrand to echo complete (name, identifier, icon). Production architecture rewired to same-origin sidecar serving (localhost:29325, no more static dist). ACL fixed (drag regions, external link opener). Room-list width + title bar visible in 19:04 build awaiting user verification. Icon .icon package pending PNG-layer re-export. Next phase: distribution (sign/notarize/DMG/auto-update).
+Release pipeline complete and verified actool-free. Three files staged uncommitted: web/src-tauri/tauri.conf.json (bundle.icon → Assets.car), scripts/release.sh (car pre-compile retry loop), web/src-tauri/icons/Assets.car (1.4MB binary). Two failed release runs diagnosed (ibtoold wedged daemon, not .icon content) and fixed with pre-compiled Assets.car + killall ibtoold in release.sh. Remaining steps: commit staged files, run release.sh 0.2.0, user verification of DMG install + auto-update flow. Finish in fresh session (cost control).
 
 ## Last Checkpoint
-2026-08-25 23:03 PDT
+2026-08-27 08:50 PDT
 
 ## Constraints
 See `.claude/work/constraints.md` for full ledger. Quick reference:
@@ -28,11 +28,12 @@ See `.claude/work/constraints.md` for full ledger. Quick reference:
 - Frontend→prod requires: npm run build → go build ./cmd/gomuks → npx tauri build (sidecar embeds dist)
 - capabilities/default.json remote.urls entry for localhost:29325 must stay or all prod IPC silently dies
 - Inter base font, Space Grotesk display font via --display-font-stack (names/titles/usernames only)
+- Bundler never runs actool: icons/Assets.car pre-compiled by release.sh (ibtoold flakiness; tauri-bundler accepts it as-is)
+- No tauri icon / tauri.conf edits while tauri dev runs (watcher restart storms kill sidecar)
 
 ## Next Actions
-1. User verifies 19:04 build: window drag, echo title, room-list width, YouTube link
-2. User re-exports echo.icon from Icon Composer with PNG layer (SVG layer crashes actool); then rebuild with icons/echo.icon restored
-3. Distribution pipeline: Developer ID signing (app + Go sidecar hardened runtime), notarization, DMG on user's website, tauri-plugin-updater auto-update (minisign keys, latest.json)
-4. fetch_og_tags ACL fix (app permission file + capability entry) — URL-preview webview tier dead in prod
-5. Tighten capabilities (split local/remote; drop shell perms from remote) before distributing to friends
-6. Small fixes: light-mode titlebar text contrast; room-list unread emphasis; consider seabug→echo localStorage migration shim
+1. Commit 3 staged files (message: actool-free icon pipeline via pre-compiled Assets.car)
+2. Run release: /Users/tbird/gomuks/scripts/release.sh 0.2.0 (allowlisted, unattended, ~5-15 min)
+3. User verifies: DMG downloads + installs, Gatekeeper-clean open, real Facet Split icon, encrypted decrypt, room-list 440, centered title
+4. Make trivial change, release 0.2.1, verify 0.2.0→0.2.1 auto-update + restart
+5. Deferred: tighten remote capability (drop shell perms); fetch_og_tags ACL fix; seabug→echo localStorage migration shim; light-mode titlebar contrast
