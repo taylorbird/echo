@@ -201,15 +201,36 @@ fn mint_backend_token(config_dir: &Path) -> Option<String> {
 }
 
 // Runs in the page before any of its own scripts do, so the very first request the frontend makes
-// is already authenticated and the login form never appears. The document is served from the
-// backend origin, so this cookie is same-origin with the API it authenticates.
+// is already authenticated and the login form never appears. In release the document is served
+// from the backend origin, so this cookie is same-origin with the API it authenticates. In dev
+// it is set on the Vite origin instead, and rides along on the proxied /_gomuks requests.
 //
 // The server's own cookie is HttpOnly and this one cannot be; that costs nothing here, because
 // script that could read it is already running inside the authenticated session.
+//
+// The path is load-bearing, and it deliberately is NOT the server's own path.
+//
+// gomuks calls http.SetCookie from POST /_gomuks/auth without a Path, so the browser files the
+// server's cookie under the default-path /_gomuks — and it sets HttpOnly. A stale one of those
+// cannot be cleared from here at all: the cookie spec requires document.cookie to silently ignore
+// any write that would overwrite an HttpOnly cookie of the same name, domain and path. Writing at
+// /_gomuks is therefore a no-op, and writing at / leaves a second cookie that RFC 6265 orders
+// *after* the longer /_gomuks path, so Go's r.Cookie keeps returning the stale one. Either way the
+// login form appears with no password that can answer it.
+//
+// Seeding one level deeper wins the ordering for the only request that has to succeed. The auth
+// endpoint then replies with its own Set-Cookie, and an HTTP response *can* replace an HttpOnly
+// cookie, so /_gomuks is repaired for the websocket and media endpoints on the way through.
+//
+// This goes stale in dev routinely: an unbundled debug binary is named `app`, so WebKit files its
+// cookies under a generic ~/Library/HTTPStorages/app.binarycookies that survives every profile
+// reset, while a fresh -dev profile generates a new token_key that invalidates them.
+const AUTH_COOKIE_PATH: &str = "/_gomuks/auth";
+
 fn auth_cookie_script(token: &str) -> String {
   format!(
-    "try {{ document.cookie = 'gomuks_auth=' + {} + '; path=/; SameSite=Lax; max-age=86400' }} \
-     catch (e) {{ console.warn('failed to seed auth cookie', e) }}",
+    "try {{ document.cookie = 'gomuks_auth=' + {} + '; path={AUTH_COOKIE_PATH}; SameSite=Lax; \
+     max-age=86400' }} catch (e) {{ console.warn('failed to seed auth cookie', e) }}",
     serde_json::to_string(token).unwrap_or_else(|_| "''".to_string())
   )
 }
@@ -408,12 +429,17 @@ pub fn run() {
         .expect("no window configured in tauri.conf.json")
         .clone();
 
-      if cfg!(debug_assertions) {
-        // Dev keeps the configured devUrl (the Vite dev server), whose proxy forwards /_gomuks.
-        WebviewWindowBuilder::from_config(app.handle(), &window_config)?.build()?;
-      } else {
+      // Dev keeps the configured devUrl (the Vite dev server), whose proxy forwards /_gomuks to
+      // the sidecar and carries the cookie with it; release points the window straight at the
+      // backend so the document is same-origin with the API. Both paths wait for the backend and
+      // seed the auth cookie identically. Dev needs it just as much: a debug profile is a fresh
+      // install on every launch, and a fresh install's backend password is random and discarded,
+      // so the login form it would otherwise show has no answer.
+      if !cfg!(debug_assertions) {
         window_config.url =
           WebviewUrl::External(BACKEND_ORIGIN.parse().expect("invalid backend origin"));
+      }
+      {
         let handle = app.handle().clone();
         let config_dir = dirs.config.clone();
         std::thread::spawn(move || {
