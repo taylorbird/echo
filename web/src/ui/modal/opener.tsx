@@ -20,6 +20,7 @@ import { MainScreenContextFields } from "@/ui/MainScreenContext.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import CheatConsole from "../CheatConsole.tsx"
 import QuickSwitcher from "../QuickSwitcher.tsx"
+import ReleaseNotes from "../ReleaseNotes.tsx"
 import MediaUploadDialog, { UploadFileFunc } from "../composer/MediaUploadDialog.tsx"
 import VoiceRecorder from "../composer/VoiceRecorder.tsx"
 import CreateRoomView from "../roomview/CreateRoomView.tsx"
@@ -31,6 +32,15 @@ import EventEditHistory from "../timeline/EventEditHistory.tsx"
 import JSONView from "../util/JSONView.tsx"
 import { ShareModal } from "./ShareModal.tsx"
 import { ModalState, NestableModalState, NonNestableModalState } from "./contexts.ts"
+
+export function releaseNotes(version: string, notes: string, canRestart: boolean): ModalState {
+	return {
+		dimmed: true,
+		boxed: true,
+		innerBoxClass: "release-notes-box",
+		content: <ReleaseNotes version={version} notes={notes} canRestart={canRestart} />,
+	}
+}
 
 export function roomStateExplorer(room: RoomStateStore): ModalState {
 	return {

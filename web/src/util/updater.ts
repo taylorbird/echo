@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { invoke } from "@tauri-apps/api/core"
 import { isTauri } from "@/api/backend.ts"
+import { stashReleaseNotes } from "./releasenotes.ts"
 import Subscribable from "./subscribable.ts"
 
 // "ready" means a new version is downloaded and staged — restarting applies it.
@@ -29,6 +30,16 @@ const updateStore = new Subscribable()
 // reference. Keeping the whole state in one string means getUpdateState can just return it.
 let updateState: UpdateState = "idle"
 let checkInProgress = false
+/*
+ * What the feed said about the staged release. Held separately from updateState rather than folded
+ * into it because the state is a plain string, which is what makes it a stable useSyncExternalStore
+ * snapshot; putting an object in that slot would hand out a fresh reference every render and spin.
+ * It is always written before the state moves to "ready", so anything re-rendering on that
+ * transition sees it already populated.
+ */
+let pendingUpdate: { version: string; notes: string } | null = null
+
+export const getPendingUpdate = () => pendingUpdate
 
 // How often to look again after a check finds nothing.
 //
@@ -71,6 +82,12 @@ export async function checkForUpdates() {
 		console.log("Update available:", update.version)
 		setUpdateState("downloading")
 		await update.downloadAndInstall()
+		// `body` is the `notes` field of the updater feed. Absent on releases cut before notes
+		// existed, and on any release where the notes file was empty.
+		pendingUpdate = { version: update.version, notes: update.body ?? "" }
+		// Stashed now rather than at restart time: the user may quit and reopen instead of using
+		// the button, and the notes should still be waiting for them when they do.
+		stashReleaseNotes(update.version, pendingUpdate.notes)
 		setUpdateState("ready")
 	} catch (err) {
 		console.warn("Update check failed:", err)

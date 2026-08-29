@@ -137,6 +137,24 @@ div.sync-status {
  * of the mac chrome. Bottom-trailing keeps it clear of the sync status chip up top.
  */
 html[data-tauri] div.update-ready-chip {
+	/* The label doubles as the way into the release notes, so it is a button — but it has to keep
+	   reading as the chip's text, not as a second action competing with Restart. */
+	> button.update-chip-label {
+		font: inherit;
+		padding: 0;
+		border: none;
+		background: none;
+		color: inherit;
+		cursor: var(--clickable-cursor);
+		text-decoration: underline;
+		text-decoration-color: rgba(255, 255, 255, .25);
+		text-underline-offset: .1875rem;
+
+		&:hover {
+			text-decoration-color: currentColor;
+		}
+	}
+
 	position: fixed;
 	bottom: 1rem;
 	right: 1rem;

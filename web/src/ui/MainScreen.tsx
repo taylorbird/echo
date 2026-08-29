@@ -19,15 +19,17 @@ import { SyncLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomListFilter, RoomStateStore } from "@/api/statestore"
 import type { EventID, RoomID } from "@/api/types"
+import useAppVersion from "@/util/appversion.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { hackyIsSafari } from "@/util/ismobile.ts"
-import { getUpdateState, restartToApply, subscribeToUpdateState } from "@/util/updater.ts"
+import { claimReleaseNotes } from "@/util/releasenotes.ts"
+import { getPendingUpdate, getUpdateState, restartToApply, subscribeToUpdateState } from "@/util/updater.ts"
 import { ensureString, ensureStringArray, parseMatrixURI } from "@/util/validation.ts"
 import ClientContext from "./ClientContext.ts"
 import MainScreenContext, { MainScreenContextFields, SetActiveRoomExtra } from "./MainScreenContext.ts"
 import StylePreferences from "./StylePreferences.tsx"
 import Keybindings from "./keybindings.ts"
-import { ModalContext, ModalWrapper, NestableModalContext } from "./modal"
+import { ModalContext, ModalWrapper, NestableModalContext, modals } from "./modal"
 import RightPanel, { RightPanelProps } from "./rightpanel/RightPanel.tsx"
 import RoomList from "./roomlist/RoomList.tsx"
 import RoomPreview, { RoomPreviewProps } from "./roomview/RoomPreview.tsx"
@@ -368,14 +370,53 @@ const incrementReducer = (prev: number): number => prev + 1
  * the old version; the restart is the user's call.
  */
 const UpdateChip = () => {
+	const openModal = use(ModalContext)
 	const updateState = useSyncExternalStore(subscribeToUpdateState, getUpdateState)
 	if (updateState !== "ready") {
 		return null
 	}
+	// Read rather than subscribed: it is written before the state moves to "ready", so this render
+	// — which only happens because of that transition — always sees the final value.
+	const pending = getPendingUpdate()
+	const showNotes = () => {
+		if (pending) {
+			openModal(modals.releaseNotes(pending.version, pending.notes, true))
+		}
+	}
 	return <div className="update-ready-chip">
-		<span>Update ready</span>
+		{/* The label is the way into the notes, so it has to be a real control rather than a
+		    span with a click handler — it needs to be tabbable and to say what it does. */}
+		{pending?.notes
+			? <button className="update-chip-label" onClick={showNotes}>
+				Update ready &middot; {pending.version}
+			</button>
+			: <span>Update ready</span>}
 		<button className="primary-color-button" onClick={restartToApply}>Restart</button>
 	</div>
+}
+
+/*
+ * Shows the notes for the version now running, once, on the first launch after an update.
+ *
+ * Renders nothing — it exists to own an effect that needs the modal context, and the chip's slot
+ * is the only place inside it that is always mounted. The claim is one-shot by construction:
+ * claimReleaseNotes clears the stash as it reads it, so a dismissed set never comes back and a
+ * stash left by some other version is discarded rather than shown at the wrong moment.
+ */
+const ReleaseNotesOnLaunch = () => {
+	const openModal = use(ModalContext)
+	const appVersion = useAppVersion()
+	useEffect(() => {
+		if (!appVersion) {
+			// Still resolving over IPC, or not the packaged app at all.
+			return
+		}
+		const claimed = claimReleaseNotes(appVersion)
+		if (claimed) {
+			openModal(modals.releaseNotes(claimed.version, claimed.notes, false))
+		}
+	}, [appVersion, openModal])
+	return null
 }
 
 const MainScreen = () => {
@@ -538,6 +579,7 @@ const MainScreen = () => {
 				{mainContent}
 				{syncLoader}
 				<UpdateChip/>
+				<ReleaseNotesOnLaunch/>
 			</ModalWrapper>
 		</ModalWrapper>
 	</MainScreenContext>

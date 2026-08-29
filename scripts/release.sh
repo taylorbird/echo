@@ -105,6 +105,16 @@ if git -C "$REPO_ROOT" ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&
 	die "tag $TAG already exists on origin"
 fi
 
+# Notes for the release being cut. One file, rewritten each time: whatever is in it now describes
+# this version. It is read here rather than at publish time so a missing or empty file fails in
+# preflight instead of after the build and two notarization round trips.
+RELEASE_NOTES_FILE="$REPO_ROOT/RELEASE_NOTES.md"
+[[ -f "$RELEASE_NOTES_FILE" ]] || die "no release notes at $RELEASE_NOTES_FILE"
+RELEASE_NOTES="$(sed -e '/<!--/,/-->/d' -e 's/[[:space:]]*$//' "$RELEASE_NOTES_FILE" \
+	| awk 'NF {found = 1} found' )"
+[[ -n "$(printf '%s' "$RELEASE_NOTES" | tr -d '[:space:]')" ]] \
+	|| die "$RELEASE_NOTES_FILE is empty — write what changed before releasing"
+
 [[ -f "$SIGNING_KEY" ]] || die "updater signing key not found: $SIGNING_KEY"
 gh auth status >/dev/null 2>&1 || die "gh is not authenticated; run: gh auth login"
 
@@ -353,11 +363,13 @@ ASSET_NAME_ENCODED="$(jq -rn --arg n "$ASSET_NAME" '$n|@uri')"
 jq -n \
 	--arg version "$VERSION" \
 	--arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+	--arg notes "$RELEASE_NOTES" \
 	--rawfile signature "$SIG_FILE" \
 	--arg url "$GH_REPO_URL/releases/download/$TAG/$ASSET_NAME_ENCODED" \
 	'{
 		version: $version,
 		pub_date: $pub_date,
+		notes: $notes,
 		platforms: {
 			"darwin-aarch64": {
 				signature: ($signature | rtrimstr("\n")),
@@ -395,10 +407,16 @@ gh release create "$TAG" \
 	"$DMG" "$TARBALL" "$SIG_FILE" "$LATEST_JSON" \
 	--repo "$GH_REPO" \
 	--title "echo $TAG" \
-	--notes "echo $TAG
+	--notes "$RELEASE_NOTES
+
+---
 
 Download the DMG below. Existing installs update themselves." \
 	--latest
+
+# Archived before the notes file is reused for the next release, so the history survives.
+mkdir -p "$REPO_ROOT/release-notes"
+printf '%s\n' "$RELEASE_NOTES" >"$REPO_ROOT/release-notes/$VERSION.md"
 
 RELEASE_URL="$GH_REPO_URL/releases/tag/$TAG"
 
