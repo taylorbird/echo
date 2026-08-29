@@ -157,7 +157,7 @@ div.room-entry {
 	   somewhere before them get one, so a filtered-away first row leaves no
 	   orphan line. */
 	&:not(.hidden) ~ & {
-		box-shadow: inset 0 1px 0 rgba(254, 205, 178, .08);
+		box-shadow: inset 0 1px 0 rgba(var(--warm-tint-rgb), .08);
 	}
 
 	&:hover, &:focus {
@@ -185,6 +185,110 @@ div.room-entry {
 		background-color: var(--room-glow-color);
 		box-shadow: 0 0 6px var(--room-glow-near), 0 0 14px var(--room-glow-far);
 	}
+
+	/* --- Unread emphasis -------------------------------------------------
+	 * Entry.tsx only ever puts .active/.hidden on the row, so the unread tier
+	 * has to be read off the badge with :has(). UnreadCount renders nothing at
+	 * all for a read room, so the absence of .room-entry-unreads is what marks
+	 * one — no component change needed for any of this.
+	 *
+	 * The glow deliberately goes on the counter and NOT in the left lane: that
+	 * lane is the "you are here" marker, and a second pill in it would leave
+	 * the active row ambiguous with a merely-unread one.
+	 */
+	&:has(> div.room-entry-unreads > div.unread-count.highlighted) {
+		background-color: var(--room-list-entry-highlight-wash);
+	}
+
+	/* Any unread room gets a wash, not just a highlighted one. Reading down the
+	   list, the lit row is the thing you are looking for; which tier it is comes
+	   second, and the badge already says that. */
+	&:has(> div.room-entry-unreads) {
+		background-color: var(--room-list-entry-unread-wash);
+
+		/* Tier colours for the bar and its halo, picked up by the ::before below.
+		   Each rule is more specific than the last, so the ramp resolves by
+		   specificity rather than by source order. */
+		--unread-bar: var(--unread-counter-message-bg);
+		--unread-bar-near: var(--unread-glow-message-near);
+		--unread-bar-far: var(--unread-glow-message-far);
+	}
+
+	&:has(> div.room-entry-unreads > div.unread-count.notified),
+	&:has(> div.room-entry-unreads > div.unread-count.marked-unread) {
+		--unread-bar: var(--unread-counter-notification-bg);
+		--unread-bar-near: var(--unread-glow-notify-near);
+		--unread-bar-far: var(--unread-glow-notify-far);
+	}
+
+	&:has(> div.room-entry-unreads > div.unread-count.highlighted) {
+		--unread-bar: var(--unread-counter-highlight-bg);
+		--unread-bar-near: var(--unread-glow-highlight-near);
+		--unread-bar-far: var(--unread-glow-highlight-far);
+	}
+
+	/*
+	 * The same marker the active row uses, in the same lane, tinted by tier. That
+	 * lane now carries two meanings — "you are here" in green, "unread" in the
+	 * tier colour — which was the tension in keeping it single-purpose. The active
+	 * row wins outright: :not(.active) means an active room never shows the unread
+	 * bar, and they share the one ::before so they could not both render anyway.
+	 */
+	&:not(.active):has(> div.room-entry-unreads)::before {
+		content: "";
+		position: absolute;
+		left: calc((1rem - .1875rem) / 2);
+		top: 50%;
+		translate: 0 -50%;
+		width: .1875rem;
+		height: 1.5rem;
+		border-radius: 999px;
+		background-color: var(--unread-bar);
+		box-shadow: 0 0 6px var(--unread-bar-near), 0 0 14px var(--unread-bar-far);
+	}
+
+	/*
+	 * Read rows step back, and this is the lever that actually does the work: with
+	 * two or three unread rooms in a list of thirty, making the twenty-seven recede
+	 * separates them far more than making the three louder can. Applied to the
+	 * whole text column — .message-preview carries its own opacity and stacking a
+	 * second one on it compounds into unreadability.
+	 */
+	&:not(.active):not(:has(> div.room-entry-unreads)) > div.room-entry-right {
+		/* Colour removal below carries most of the recession now, so the dimming
+		   only has to do the rest — at .55 the greyscale and the fade compounded
+		   into something that read as broken rather than quiet. */
+		opacity: .72;
+	}
+
+	/*
+	 * A room you are not in and that does not want you goes monochrome: grey
+	 * avatar, grey name. Colour in this list now means exactly one thing — this
+	 * room needs you, or you are standing in it — so the per-room accents stop
+	 * competing with the unread markers for the same attention.
+	 *
+	 * The name is neutralised through `color` rather than through --room-accent:
+	 * that custom property is set inline per row by Entry.tsx, and an inline
+	 * declaration beats any stylesheet rule trying to redefine it.
+	 */
+	&:not(.active):not(:has(> div.room-entry-unreads)) {
+		> div.room-entry-left > img.room-avatar {
+			filter: grayscale(1);
+			opacity: .72;
+		}
+
+		/*
+		 * The name keeps its rank. Dropping it to --secondary-text-color put it on
+		 * exactly the tone the preview line under it already uses, which flattened
+		 * the two into one grey block — the hierarchy inside the row was doing as
+		 * much work as the colour was. Near-white here, with the preview's own .6
+		 * opacity below keeping it clearly subordinate.
+		 */
+		> div.room-entry-right > div.room-name {
+			color: #e4e2e0;
+		}
+	}
+
 
 	> div.room-entry-left {
 		height: 3.5rem;
@@ -455,8 +559,25 @@ div.room-entry-unreads {
 		line-height: 1;
 		font-size: .75em;
 
+		/*
+		 * Horizontal: proportional figures give "1" a narrower glyph than its
+		 * advance width, so a single-digit count sits visibly off to one side of
+		 * the circle. Tabular figures put every digit on the same advance, centred
+		 * within it.
+		 */
+		font-variant-numeric: tabular-nums;
+
 		padding-inline: var(--unread-count-padding-inline);
-		padding-block: var(--unread-count-padding-block);
+		/*
+		 * Vertical: with line-height 1 the line box is exactly the em box, and a
+		 * digit does not fill that symmetrically — the descender space under the
+		 * baseline goes unused, so the glyph rides high in the circle. Half a pixel
+		 * of content-box shift drops it onto the circle's centre. The two paddings
+		 * still sum to twice the original, so the badge stays square and therefore
+		 * stays a circle.
+		 */
+		padding-top: calc(var(--unread-count-padding-block) + .5px);
+		padding-bottom: calc(var(--unread-count-padding-block) - .5px);
 
 		&.big {
 			--unread-count-size: 1.5rem;
@@ -489,6 +610,57 @@ div.room-entry-unreads {
 			}
 		}
 	}
+}
+
+/* Two-layer falloff matching the room and space glow bars. The counter sits in
+   a 3rem centring lane plus .25rem margin inside .5rem of row padding, so a 15px
+   blur finishes well before div.room-entry's `overflow: hidden` would clip it. */
+div.room-entry > div.room-entry-unreads > div.unread-count {
+	/* Every tier glows, because every tier is red now. The counter's own text has
+	   to come with it: the shared --unread-counter-text-color is the inverted body
+	   colour, which is near-black, and near-black on this red is unreadable at
+	   badge size. */
+	color: var(--unread-counter-highlight-text);
+	box-shadow: 0 0 7px var(--unread-glow-message-near), 0 0 16px var(--unread-glow-message-far);
+
+	&.notified, &.marked-unread {
+		box-shadow: 0 0 7px var(--unread-glow-notify-near), 0 0 15px var(--unread-glow-notify-far);
+	}
+
+	&.highlighted {
+		box-shadow: 0 0 7px var(--unread-glow-highlight-near), 0 0 16px var(--unread-glow-highlight-far);
+		color: var(--unread-counter-highlight-text);
+		position: relative;
+
+		/* The breathing ring rides on a pseudo-element rather than animating the
+		   counter's own box-shadow: only this layer's opacity changes, so the
+		   badge itself is never repainted. Base opacity is 0, which is also the
+		   reduced-motion resting state below — the static glow above stays, and
+		   only the pulse goes away. Highlights pulse; notifications deliberately
+		   do not, or a busy list would be a light show. */
+		&::after {
+			content: "";
+			position: absolute;
+			inset: 0;
+			border-radius: inherit;
+			pointer-events: none;
+			opacity: 0;
+			box-shadow: 0 0 9px var(--unread-glow-highlight-near), 0 0 20px var(--unread-glow-highlight-far);
+			animation: unread-highlight-pulse 2.4s ease-in-out infinite;
+		}
+	}
+
+	/* Follows the "Ignore reduce motion" preference like the rest of the app. */
+	@media (prefers-reduced-motion: reduce) {
+		html:not([data-ignore-reduce-motion]) &.highlighted::after {
+			animation: none;
+		}
+	}
+}
+
+@keyframes unread-highlight-pulse {
+	0%, 100% { opacity: .2; }
+	50% { opacity: 1; }
 }
 
 img.avatar {

@@ -87,6 +87,11 @@
 	--timeline-soft-failed-bg-color: rgba(255, 0, 0, .3);
 	--timeline-policy-server-spammy-bg-color: rgba(255, 0, 75, .2);
 
+	/* Every warm tint in the dark theme derives from this one triplet, so the
+	   app's overall warmth is a single knob. Light keeps Ferra's original
+	   peach; the dark block below tempers it. See the theming TODO in
+	   .claude/work/questions.md — these two are the seed of a real theme. */
+	--warm-tint-rgb: 254, 205, 178;
 	--room-list-background: #232125;
 	--room-list-background-overlay: hsla(0, 0%, 96%, .9);
 	--room-list-search-background-overlay: var(--room-list-background-overlay);
@@ -166,8 +171,8 @@
 	@media (prefers-color-scheme: dark) {
 		color-scheme: dark;
 		/* Ferra theme colors */
-		--background-color: #2b292d;
-		--login-background-color: #383539;
+		--background-color: #28282d;
+		--login-background-color: #35353a;
 		/*
 		 * Body copy is a warm off-white, not Ferra's peach (#fecdb2). The peach is
 		 * a saturated colour in its own right, so with pastel sender names above it
@@ -179,50 +184,77 @@
 		--inverted-text-color: var(--background-color);
 		/* Warm gray. The old #d1d1e0 was a cool lavender pulling against the warm
 		   surfaces it sits on. */
-		--secondary-text-color: #b8aca6;
+		--secondary-text-color: #b0acaa;
 		--semisecondary-text-color: #ffb59a;
 		--link-text-color: #ffb59a;
 
-		--code-background-color: rgba(56, 53, 57, 0.8);
-		--media-placeholder-default-background: rgba(254, 205, 178, .1);
+		--code-background-color: rgba(53, 53, 58, 0.8);
+		/* Tempered: Ferra's 254, 205, 178 pulled toward neutral. Same warmth,
+		   less orange, so the browns stop dominating every surface. */
+		--warm-tint-rgb: 240, 226, 216;
+		--media-placeholder-default-background: rgba(var(--warm-tint-rgb), .1);
 		--media-placeholder-button-background: rgba(43, 41, 45, .7);
 
-		--primary-color: #fecdb2;
-		--primary-color-dark: #e6b89c;
+		--primary-color: #f0e2d8;
+		--primary-color-dark: #dcc9bc;
 		--error-color: #e06b75;
 
-		--border-color: #4d424b;
-		--hairline-color: rgba(254, 205, 178, .09);
-		--section-label-color: rgba(254, 205, 178, .45);
-		--pill-background-color: #6f5d63;
-		--disabled-input-background-color: #383539;
-		--url-preview-background-color: #383539;
-		--button-hover-color: rgba(254, 205, 178, .2);
-		--light-hover-color: rgba(254, 205, 178, .1);
+		--border-color: #46464e;
+		--hairline-color: rgba(var(--warm-tint-rgb), .09);
+		--section-label-color: rgba(var(--warm-tint-rgb), .45);
+		--pill-background-color: #64646e;
+		--disabled-input-background-color: #35353a;
+		--url-preview-background-color: #35353a;
+		--button-hover-color: rgba(var(--warm-tint-rgb), .2);
+		--light-hover-color: rgba(var(--warm-tint-rgb), .1);
 
-		--composer-background-color: #383539;
+		--composer-background-color: #35353a;
 
-		--timeline-hover-bg-color: #383539;
+		--timeline-hover-bg-color: #35353a;
 		--timeline-highlight-bg-color: rgba(255, 228, 132, .15);
-		--timeline-highlight-hover-bg-color: #4d424b;
+		--timeline-highlight-hover-bg-color: #46464e;
 		--timeline-jump-bg-color: rgba(160, 231, 200, .2);
-		--timeline-jump-hover-bg-color: #4d424b;
+		--timeline-jump-hover-bg-color: #46464e;
 
-		--room-list-background-overlay: #232125;
-		--space-list-background-overlay: #1a181c;
-		--room-list-scrollbar-color: rgba(254, 205, 178, .4) rgba(254, 205, 178, .1);
-		--room-list-entry-hover-color: rgba(254, 205, 178, 0.1);
-		--room-list-entry-selected-color: rgba(254, 205, 178, 0.15);
+		--room-list-background-overlay: #202024;
+		--space-list-background-overlay: #17171b;
+		--room-list-scrollbar-color: rgba(var(--warm-tint-rgb), .4) rgba(var(--warm-tint-rgb), .1);
+		--room-list-entry-hover-color: rgba(var(--warm-tint-rgb), 0.1);
+		--room-list-entry-selected-color: rgba(var(--warm-tint-rgb), 0.15);
 
 		--modal-box-shadow-color: rgba(0, 0, 0, 0.3);
 		--popout-widget-box-shadow-color: rgba(0, 0, 0, 0.5);
 
-		--emoji-selected-border-color: #6f5d63;
-		--image-pack-editor-selected-color: #6f5d63;
+		--emoji-selected-border-color: #64646e;
+		--image-pack-editor-selected-color: #64646e;
 
-		--unread-counter-message-bg: rgba(209, 209, 224, 0.6);
-		--unread-counter-notification-bg: rgba(160, 231, 200, 0.85);
-		--unread-counter-highlight-bg: rgba(255, 158, 181, 0.85);
+		/*
+		 * One colour for every unread tier, deliberately. gomuks distinguishes
+		 * three (a plain message, a notification-rule match, and being named), and
+		 * this collapses them: unread is unread, and the signal that matters is
+		 * that a room wants attention at all. The tiers still differ in one way —
+		 * only a highlight pulses — so being named is still distinguishable
+		 * without needing a colour vocabulary to read the list.
+		 *
+		 * To bring the ramp back, give message and notification their own values
+		 * here again: nothing downstream is hardcoded to red.
+		 */
+		--unread-counter-message-bg: #ff4d6d;
+		--unread-counter-notification-bg: #ff4d6d;
+		--unread-counter-highlight-bg: #ff4d6d;
+		--unread-counter-highlight-text: #fff2f4;
+		/* Halo around the counter, same two-layer falloff as the room/space
+		   glow bars so the app has one glow idiom rather than two. */
+		--unread-glow-notify-near: rgba(255, 77, 109, .9);
+		--unread-glow-notify-far: rgba(255, 77, 109, .45);
+		--unread-glow-highlight-near: rgba(255, 77, 109, .9);
+		--unread-glow-highlight-far: rgba(255, 77, 109, .45);
+		/* Barely-there wash so a shouting room reads at a glance down the list. */
+		--room-list-entry-highlight-wash: rgba(255, 77, 109, .06);
+		--unread-glow-message-near: rgba(255, 77, 109, .9);
+		--unread-glow-message-far: rgba(255, 77, 109, .45);
+		/* Lifts the whole row, not just the badge. */
+		--room-list-entry-unread-wash: rgba(255, 77, 109, .06);
 		--space-unread-counter-message-bg: rgba(209, 209, 224, 0.8);
 		--space-unread-counter-notification-bg: #a0e7c8;
 		--space-unread-counter-highlight-bg: #ff9eb5;
@@ -249,7 +281,7 @@
 
 		--sent-ok-color: #4d424b;
 		--blockquote-border-color: #4d424b;
-		--lightbox-button-color: #fecdb2;
+		--lightbox-button-color: #f0e2d8;
 	}
 }
 
@@ -508,7 +540,7 @@ html[data-tauri] {
 	 * chat. The rail paints on top of the wrapper, so its alpha is the higher
 	 * of the two in order to win rather than composite into the same value.
 	 */
-	--room-list-background: rgba(31, 29, 34, .78);
+	--room-list-background: rgba(30, 30, 36, .78);
 	--space-list-background-overlay: rgba(20, 18, 22, .85);
 	--room-list-background-overlay: transparent;
 	--room-list-search-background-overlay: transparent;
@@ -524,13 +556,13 @@ html[data-tauri] {
 	 * tell them apart.
 	 */
 	@media (prefers-color-scheme: dark) {
-		--background-color: #4a4553;
-		--composer-background-color: #3b3743;
-		--timeline-hover-bg-color: #565060;
-		--timeline-highlight-hover-bg-color: #625b6d;
-		--timeline-jump-hover-bg-color: #625b6d;
+		--background-color: #42424c;
+		--composer-background-color: #363640;
+		--timeline-hover-bg-color: #4e4e58;
+		--timeline-highlight-hover-bg-color: #5a5a66;
+		--timeline-jump-hover-bg-color: #5a5a66;
 		/* The warm near-black the band has always been; see --titlebar-background above. */
-		--titlebar-background: #232125;
+		--titlebar-background: #202024;
 	}
 
 	/*

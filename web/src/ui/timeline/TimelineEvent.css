@@ -324,9 +324,22 @@ div.event-reactions {
 
 			background-color: var(--background-color);
 			border: 1px solid var(--border-color);
-			border-radius: .25rem;
+			border-radius: .375rem;
 			box-shadow: 0 4px 12px var(--modal-box-shadow-color);
-			padding: .25rem .5rem;
+			/*
+			 * Breathing room is mostly bought horizontally, and the vertical budget
+			 * is genuinely tight: div.event-content above carries `overflow: hidden`
+			 * and `contain: content`, so this tooltip is clipped to that box. It
+			 * opens upward from a pill already near the bottom of it, which leaves
+			 * only a couple of lines of headroom over a short message. Taller
+			 * padding plus a looser line-height pushed the text straight through
+			 * the top edge and clipped it away entirely.
+			 *
+			 * Making this genuinely roomy means rendering it in a portal rather than
+			 * inside the clipped box — worth doing if the tooltip ever needs to hold
+			 * more than a few names.
+			 */
+			padding: .3125rem .625rem;
 
 			/* Names wrap; the pill itself never does. */
 			width: max-content;

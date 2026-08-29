@@ -1,7 +1,13 @@
 div.typing-notifications {
 	grid-area: typing;
 	height: 1.5rem;
-	margin: 0 var(--timeline-horizontal-padding);
+	/* This is the last row of div.room-view's grid, so its bottom edge IS the
+	   bottom of the window — without this the text sits flush against it. The
+	   element renders even with nobody typing (it just gets .empty), so the gap
+	   is constant and the composer never shifts when someone starts or stops.
+	   The env() follows --window-top-margin's lead: 0px on desktop, a real
+	   inset on a device with a home indicator. */
+	margin: 0 var(--timeline-horizontal-padding) calc(.5rem + env(safe-area-inset-bottom, 0px));
 	display: flex;
 	gap: 0.5rem;
 	align-items: center;
