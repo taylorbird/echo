@@ -119,7 +119,11 @@ func (gmx *Gomuks) PrepareSSO(w http.ResponseWriter, r *http.Request) {
 		Value:    gmx.signToken(json.RawMessage(cookieData)),
 		Expires:  data.Expiry,
 		HttpOnly: true,
-		Secure:   true,
+		// Matches writeTokenCookie rather than pinning Secure on: a Secure cookie is never sent
+		// back over a plain-HTTP origin, and this one has to survive the homeserver's redirect to
+		// http://localhost. Without this the SSO round-trip always fails with "no SSO session
+		// cookie", because the cookie set here is dropped before the redirect ever arrives.
+		Secure:   !gmx.Config.Web.InsecureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
 	w.Header().Set("Content-Type", "application/json")
