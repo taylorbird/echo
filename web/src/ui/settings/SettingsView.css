@@ -144,7 +144,417 @@ div.settings-view {
 
 	/* ── Section cards ────────────────────────────────────────────────── */
 
-	> section.settings-section {
+	/* ── Rail + content ───────────────────────────────────────────────── */
+
+	/*
+	 * The page used to be one column you scrolled through; it is now a rail and a
+	 * pane, and only the selected section is mounted. That is what keeps a 37-row
+	 * matrix from being the first thing between you and everything else.
+	 */
+	> div.settings-body {
+		display: grid;
+		grid-template-columns: 13rem minmax(0, 1fr);
+		gap: 1.25rem;
+		align-items: start;
+	}
+
+	nav.settings-rail {
+		display: flex;
+		flex-direction: column;
+		gap: .0625rem;
+		position: sticky;
+		/* Clears the masthead, which scrolls away above it. */
+		top: 0;
+
+		> div.rail-group-label {
+			font-size: .6875rem;
+			font-weight: 700;
+			letter-spacing: .12em;
+			text-transform: uppercase;
+			color: var(--section-label-color);
+			padding: .875rem .5rem .25rem;
+
+			&:first-child {
+				padding-top: 0;
+			}
+		}
+
+		> button.rail-item {
+			display: flex;
+			align-items: center;
+			/* The app's global button rule centres content; without this the More
+			   items (no trailing count to absorb the space) float to the middle. */
+			justify-content: flex-start;
+			gap: .5rem;
+			width: 100%;
+			text-align: left;
+			font: inherit;
+			font-size: .875rem;
+			padding: .4375rem .625rem;
+			border: none;
+			border-radius: var(--sidebar-item-radius);
+			background: none;
+			color: var(--secondary-text-color);
+			cursor: var(--clickable-cursor);
+
+			> svg {
+				width: 1rem;
+				height: 1rem;
+				flex-shrink: 0;
+			}
+
+			> span.rail-count {
+				margin-left: auto;
+				font-size: .75rem;
+				font-variant-numeric: tabular-nums;
+				opacity: .55;
+			}
+
+			&:hover {
+				background-color: var(--light-hover-color);
+				color: var(--text-color);
+			}
+
+			/* aria-current is the state, so it styles from the state rather than a
+			   parallel class that could disagree with it. */
+			&[aria-current="true"] {
+				background-color: var(--room-list-entry-selected-color);
+				color: var(--text-color);
+				font-weight: 600;
+			}
+		}
+	}
+
+	> div.settings-body > div.settings-content {
+		display: flex;
+		flex-direction: column;
+		gap: var(--settings-section-gap);
+		min-width: 0;
+	}
+
+	div.settings-toolbar {
+		display: flex;
+		align-items: center;
+		gap: .75rem;
+
+		/* The icon sits inside the field rather than beside it, so the whole bar
+		   reads as one control at full width instead of a glyph next to a box. */
+		> div.search-field {
+			flex: 1;
+			min-width: 0;
+			display: flex;
+			align-items: center;
+			gap: .5rem;
+			padding: .5rem .75rem;
+			border-radius: var(--sidebar-item-radius);
+			border: 1px solid var(--border-color);
+			background-color: var(--settings-inset-surface);
+
+			> svg {
+				width: 1rem;
+				height: 1rem;
+				flex-shrink: 0;
+				color: var(--secondary-text-color);
+			}
+
+			&:focus-within {
+				border-color: var(--primary-color);
+			}
+
+			> input.settings-search {
+				flex: 1;
+				min-width: 0;
+				font: inherit;
+				font-size: .9375rem;
+				border: none;
+				background: none;
+				color: var(--text-color);
+				outline: none;
+
+				/* Safari draws its own clear button on type=search and it lands on the
+				   wrong surface here; the field is cleared by selecting and deleting,
+				   or by leaving the section. */
+				&::-webkit-search-cancel-button {
+					appearance: none;
+				}
+
+				&::placeholder {
+					color: var(--secondary-text-color);
+				}
+			}
+		}
+
+		> label.scope-switch {
+			display: flex;
+			align-items: center;
+			gap: .5rem;
+			flex-shrink: 0;
+			font-size: .8125rem;
+			color: var(--secondary-text-color);
+			cursor: var(--clickable-cursor);
+		}
+	}
+
+	/* ── Simple preference rows ───────────────────────────────────────── */
+
+	div.simple-preference-list {
+		display: flex;
+		flex-direction: column;
+
+		> div.category-head {
+			padding-top: .75rem;
+		}
+
+		> div.simple-preference-row {
+			display: flex;
+			flex-direction: column;
+			border-top: 1px solid var(--hairline-color);
+
+			> div.row-main {
+				display: flex;
+				align-items: flex-start;
+				gap: 1rem;
+				padding: .6875rem 0;
+
+				> div.name {
+					flex: 1;
+					min-width: 0;
+					display: flex;
+					flex-direction: column;
+					gap: .125rem;
+
+					> div.pref-description {
+						max-width: 60ch;
+					}
+				}
+
+				/*
+				 * Fixed width, not content width. The control used to sit after a
+				 * variable-length tag, which left every switch on the page starting at a
+				 * different x — the misalignment was the tag, not the switches.
+				 */
+				> div.simple-control {
+					flex: none;
+					width: 12rem;
+					display: flex;
+					align-items: center;
+					justify-content: flex-end;
+					/* Matches .pref-label's first line so the control reads as belonging to
+					   the title rather than floating between title and description. */
+					padding-top: .0625rem;
+
+					gap: .375rem;
+
+					> button.expand-scopes {
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						width: 1.375rem;
+						height: 1.375rem;
+						flex-shrink: 0;
+						padding: 0;
+						border: none;
+						border-radius: var(--sidebar-item-radius);
+						background: none;
+						color: var(--secondary-text-color);
+						cursor: var(--clickable-cursor);
+
+						> svg {
+							width: 1rem;
+							height: 1rem;
+							transition: transform .15s ease;
+						}
+
+						&[aria-expanded="true"] > svg {
+							transform: rotate(180deg);
+						}
+
+						&:hover {
+							background-color: var(--light-hover-color);
+							color: var(--text-color);
+						}
+					}
+
+					/* Keeps the control column aligned on rows with no disclosure. */
+					> span.expand-scopes-spacer {
+						width: 1.375rem;
+						flex-shrink: 0;
+					}
+
+					/* :not(.toggle) is load-bearing: Toggle renders as an <input>, and the
+					   text-field chrome below was stretching the switch across the column. */
+					> select, > input:not(.toggle) {
+						font: inherit;
+						font-size: .875rem;
+						flex: 1;
+						min-width: 0;
+						padding: .25rem .4375rem;
+						border-radius: var(--sidebar-item-radius);
+						border: 1px solid var(--border-color);
+						background-color: var(--settings-inset-surface);
+						color: var(--text-color);
+					}
+				}
+			}
+
+			/* The line that replaced the scope tag: says what the value applies to in
+			   words, instead of naming the column it used to live in. */
+			> div.row-main > div.name > div.scope-meta {
+				display: flex;
+				align-items: center;
+				flex-wrap: wrap;
+				gap: .375rem .625rem;
+				margin-top: .1875rem;
+				font-size: .75rem;
+				color: var(--secondary-text-color);
+
+				> span.applies-to.set {
+					color: var(--accent-glow-color);
+					opacity: .8;
+				}
+
+				> button.clear-override {
+					display: inline-flex;
+					align-items: center;
+					justify-content: center;
+					width: 1.25rem;
+					height: 1.25rem;
+					padding: 0;
+					border: none;
+					border-radius: var(--sidebar-item-radius);
+					background: none;
+					color: var(--secondary-text-color);
+					cursor: var(--clickable-cursor);
+
+					> svg {
+						width: .8125rem;
+						height: .8125rem;
+					}
+
+					&:hover {
+						background-color: var(--light-hover-color);
+						color: var(--text-color);
+					}
+				}
+			}
+
+			/* ── Per-setting scope disclosure ─────────────────────────────── */
+
+			> div.scope-detail {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+				gap: .75rem;
+				margin: 0 0 .875rem;
+				padding: .75rem;
+				border-radius: .375rem;
+				background-color: var(--settings-inset-surface);
+
+				> div.scope-group {
+					display: flex;
+					flex-direction: column;
+					gap: .375rem;
+
+					> div.scope-group-title {
+						font-size: .6875rem;
+						font-weight: 700;
+						letter-spacing: .08em;
+						text-transform: uppercase;
+						color: var(--section-label-color);
+					}
+
+					/* The room half stays visually recessed, the same cue the old matrix
+					   used for its two right-hand columns. */
+					&.room {
+						padding-left: .75rem;
+						border-left: 1px solid var(--hairline-color);
+					}
+
+					> div.scope-line {
+						display: flex;
+						align-items: center;
+						gap: .5rem;
+						min-height: 1.75rem;
+
+						> span.scope-line-label {
+							flex: 1;
+							min-width: 0;
+							font-size: .8125rem;
+							color: var(--secondary-text-color);
+						}
+
+						> div.preference {
+							flex: none;
+							display: flex;
+							align-items: center;
+							gap: .375rem;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/*
+	 * A preference cell: the control plus its remover. Lives at pane level rather
+	 * than inside a table now that the only thing rendering one is the per-setting
+	 * scope disclosure.
+	 */
+	div.preference {
+		display: flex;
+		align-items: center;
+		gap: .25rem;
+		position: relative;
+		padding: .25rem .375rem;
+		border-radius: var(--sidebar-item-radius);
+
+		&.select-preference > select,
+		&.string-preference > input {
+			padding: .25rem .375rem;
+			border: 1px solid var(--border-color);
+			border-radius: var(--sidebar-item-radius);
+			background-color: var(--settings-card-surface);
+			color: inherit;
+			min-width: 0;
+			width: 100%;
+		}
+
+		/*
+		 * A scope that sets the value itself is highlighted with an accent edge
+		 * rather than marked with a dot: the × remover only renders when a value is
+		 * set, so a dot said nothing the × wasn't already saying.
+		 */
+		&.set {
+			background-image: linear-gradient(var(--light-hover-color), var(--light-hover-color));
+			box-shadow: inset 2px 0 0 var(--accent-glow-color);
+		}
+
+		> button {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 1.5rem;
+			height: 1.5rem;
+			flex-shrink: 0;
+			padding: 0;
+			border: none;
+			border-radius: var(--sidebar-item-radius);
+			background: none;
+			color: var(--secondary-text-color);
+			cursor: var(--clickable-cursor);
+
+			> svg {
+				width: .875rem;
+				height: .875rem;
+			}
+
+			&:hover {
+				background-color: var(--light-hover-color);
+				color: var(--text-color);
+			}
+		}
+	}
+
+	section.settings-section {
 		display: flex;
 		flex-direction: column;
 		gap: .75rem;
@@ -216,208 +626,6 @@ div.settings-view {
 
 	/* ── Preference matrix ────────────────────────────────────────────── */
 
-	div.preference-table {
-		display: grid;
-		grid-template-columns: minmax(14rem, 2fr) repeat(4, minmax(6rem, 1fr));
-		column-gap: .5rem;
-
-		/* Both header rows stick. Stated once so the second row's offset cannot
-		   drift out of step with the first row's height. */
-		--group-head-height: 2.75rem;
-
-		> div.group-head {
-			position: sticky;
-			top: 0;
-			z-index: 2;
-			/* Opaque: rows scroll underneath. */
-			background-color: var(--settings-card-surface);
-			height: var(--group-head-height);
-			box-sizing: border-box;
-			padding-bottom: .375rem;
-
-			> div.group-title {
-				font-size: .8125rem;
-				font-weight: 700;
-			}
-
-			> div.group-note {
-				font-size: .75rem;
-				color: var(--secondary-text-color);
-			}
-
-			/* Two columns each: the four scopes are a 2×2, not a flat four. */
-			&.everywhere {
-				grid-column: 2 / 4;
-			}
-
-			&.this-room {
-				grid-column: 4 / 6;
-				/* The one hard division in the table — everything right of it is
-				   scoped to a single room. The darker fill starts here so the band
-				   runs unbroken from the header down through the last row. */
-				border-left: 1px solid var(--border-color);
-				padding-left: .5rem;
-				background-color: var(--settings-room-head);
-			}
-		}
-
-		> div.column-head {
-			position: sticky;
-			top: var(--group-head-height);
-			z-index: 1;
-			background-color: var(--settings-card-surface);
-			padding: 0 0 .5rem;
-			border-bottom: 1px solid var(--border-color);
-
-			font-size: .6875rem;
-			font-weight: 700;
-			letter-spacing: .08em;
-			text-transform: uppercase;
-			color: var(--secondary-text-color);
-		}
-
-		/*
-		 * The room-scoped half of the table carries a faint wash for its whole
-		 * height, so the grouping in the header holds all the way down the list
-		 * instead of being forgotten after the first few rows.
-		 */
-		/* Body cells take the translucent wash; the sticky headers get the opaque
-		   match, since anything see-through there would let rows show through. */
-		> div.scope-room_account:not(.column-head),
-		> div.scope-room_device:not(.column-head) {
-			background-color: var(--settings-room-wash);
-		}
-
-		> div.column-head.scope-room_account,
-		> div.column-head.scope-room_device {
-			background-color: var(--settings-room-head);
-		}
-
-		/* Border rather than box-shadow: a set cell uses box-shadow for its accent
-		   edge, which would knock a shadow-drawn divider out and leave gaps down
-		   the line. Padding is matched on every cell in the column so the controls
-		   stay aligned with their header. */
-		> div.scope-room_account {
-			border-left: 1px solid var(--border-color);
-			padding-left: .5rem;
-		}
-
-		/*
-		 * Group labels inside the table, in the same tracked-uppercase treatment the
-		 * section cards use for their own headers — the table is a list of sections
-		 * now, so it should look like the rest of the screen does.
-		 *
-		 * Deliberately not sticky. Both header rows above already stick, and a third
-		 * sticky band would need its offset kept in step with the second row's
-		 * intrinsic height. These scroll away underneath instead: the sticky rows
-		 * carry z-index 1 and 2 against this one's auto, so they paint over it.
-		 */
-		> div.category-head {
-			grid-column: 1;
-			align-self: end;
-			padding: 1.125rem .75rem .25rem 0;
-
-			font-size: .6875rem;
-			font-weight: 700;
-			letter-spacing: .1em;
-			text-transform: uppercase;
-			color: var(--section-label-color);
-		}
-
-		/* Empty by design — see the comment on the header row in SettingsView.tsx. */
-		> div.category-head-filler {
-			min-height: 0;
-		}
-
-		> div.name {
-			display: flex;
-			flex-direction: column;
-			justify-content: center;
-			padding: .5rem .75rem .5rem 0;
-
-			> div.pref-label {
-				font-weight: 600;
-			}
-
-			/* Was hidden in a title tooltip. Capped so one verbose description
-			   cannot set the row height for the whole grid. */
-			> div.pref-description {
-				font-size: .8125rem;
-				line-height: 1.4;
-				color: var(--secondary-text-color);
-				display: -webkit-box;
-				-webkit-line-clamp: 2;
-				-webkit-box-orient: vertical;
-				overflow: hidden;
-			}
-		}
-
-		> div.preference {
-			display: flex;
-			align-items: center;
-			gap: .25rem;
-			/*
-			 * Block-only on purpose. As the `padding: .5rem 0` shorthand this reset
-			 * padding-left to zero for the room_account column, whose divider rule
-			 * sits earlier in the file at equal specificity — the controls in that
-			 * column would have sat half a rem left of their own header.
-			 */
-			padding-block: .5rem;
-			position: relative;
-
-			&.select-preference > select,
-			&.string-preference > input {
-				padding: .25rem .375rem;
-				border: 1px solid var(--border-color);
-				border-radius: var(--sidebar-item-radius);
-				background-color: var(--settings-inset-surface);
-				color: inherit;
-				min-width: 0;
-				width: 100%;
-			}
-
-			/*
-			 * A scope that sets the value itself is highlighted across the whole
-			 * cell with an accent edge, rather than marked with a dot: the × remover
-			 * only renders when a value is set, so a dot said nothing the × wasn't
-			 * already saying. Highlighting the cell instead makes overrides legible
-			 * as vertical runs down a column, which is the thing that is genuinely
-			 * hard to see otherwise.
-			 */
-			&.set {
-				/*
-				 * Painted as a background-image so it layers on top of whatever fill
-				 * the column already has instead of replacing it. As a background-color
-				 * it competed with the room band at equal specificity, and a set cell
-				 * inside the band would have dropped out of it.
-				 */
-				background-image: linear-gradient(var(--light-hover-color), var(--light-hover-color));
-				box-shadow: inset 2px 0 0 var(--accent-glow-color);
-			}
-
-			> button {
-				width: 1.5rem;
-				height: 1.5rem;
-				flex-shrink: 0;
-				border-radius: var(--sidebar-item-radius);
-
-				> svg {
-					width: .875rem;
-					height: .875rem;
-				}
-			}
-		}
-
-		> div.empty-cell {
-			/* Reads as "not available here" rather than as an empty control. */
-			align-self: center;
-			justify-self: start;
-			width: 1rem;
-			height: 1px;
-			background-color: var(--border-color);
-			opacity: .5;
-		}
-	}
 
 	/* ── Buttons ──────────────────────────────────────────────────────── */
 
@@ -485,7 +693,7 @@ div.settings-view {
 
 	/* ── Custom CSS ───────────────────────────────────────────────────── */
 
-	> section.custom-css-input {
+	section.custom-css-input {
 		> textarea {
 			width: 100%;
 			box-sizing: border-box;
@@ -528,7 +736,7 @@ div.settings-view {
 
 	/* ── Raw settings data ────────────────────────────────────────────── */
 
-	> section.applied-settings {
+	section.applied-settings {
 		> details {
 			border: 1px solid var(--border-color);
 			border-radius: var(--sidebar-item-radius);
@@ -549,7 +757,7 @@ div.settings-view {
 
 	/* ── Encryption keys ──────────────────────────────────────────────── */
 
-	> section.key-export {
+	section.key-export {
 		> input.passphrase, input.import-file {
 			border: 1px solid var(--border-color);
 			border-radius: var(--sidebar-item-radius);
@@ -575,6 +783,36 @@ div.settings-view {
 	/* ── Narrow windows ───────────────────────────────────────────────── */
 
 	@media screen and (max-width: 60rem) {
+		/* The rail becomes a scrollable strip above the pane: at this width a fixed
+		   13rem column costs more than the matrix it was making room for. */
+		> div.settings-body {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		nav.settings-rail {
+			position: static;
+			flex-direction: row;
+			flex-wrap: wrap;
+			gap: .25rem;
+
+			> div.rail-group-label {
+				width: 100%;
+				padding: .25rem .25rem .125rem;
+			}
+
+			> button.rail-item {
+				width: auto;
+
+				> span.rail-count {
+					margin-left: .25rem;
+				}
+			}
+		}
+
+		div.settings-toolbar {
+			flex-wrap: wrap;
+		}
+
 		width: 90vw;
 
 		/*
@@ -583,46 +821,6 @@ div.settings-view {
 		 * in a row beneath. The grid keeps its column count so the scope cells stay
 		 * aligned with each other down the list.
 		 */
-		div.preference-table {
-			grid-template-columns: repeat(4, 1fr);
-
-			> div.column-head:not(.name) {
-				font-size: .625rem;
-			}
-
-			> div.column-head.name, > div.name {
-				grid-column: 1 / -1;
-			}
-
-			/* No name column to sit in, so the label takes the full width and the
-			   fillers that carried the room band lose their columns with it. */
-			> div.category-head {
-				grid-column: 1 / -1;
-			}
-
-			> div.category-head-filler {
-				display: none;
-			}
-
-			> div.name {
-				padding-bottom: .25rem;
-				border-top: 1px solid var(--border-color);
-				padding-top: .625rem;
-			}
-
-			/* The name column is gone, so the groups shift left by one. */
-			> div.group-head.spacer {
-				display: none;
-			}
-
-			> div.group-head.everywhere {
-				grid-column: 1 / 3;
-			}
-
-			> div.group-head.this-room {
-				grid-column: 3 / 5;
-			}
-		}
 	}
 }
 

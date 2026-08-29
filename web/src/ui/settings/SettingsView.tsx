@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { Fragment, Suspense, lazy, use, useCallback, useRef, useState } from "react"
+import { Fragment, Suspense, lazy, use, useCallback, useMemo, useRef, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import { BACKEND_CROSS_ORIGIN, BACKEND_URL } from "@/api/backend.ts"
 import Client from "@/api/client.ts"
@@ -32,6 +32,7 @@ import {
 } from "@/api/types/preferences"
 import useAppVersion from "@/util/appversion.ts"
 import { NonNullCachedEventDispatcher, useEventAsState } from "@/util/eventdispatcher.ts"
+import { isMobileDevice } from "@/util/ismobile.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
 import { LightboxContext, ModalCloseContext, ModalContext, modals } from "../modal"
@@ -39,11 +40,13 @@ import JSONView from "../util/JSONView.tsx"
 import Toggle from "../util/Toggle.tsx"
 import CloseIcon from "@/icons/close.svg?react"
 import BracesIcon from "@/icons/modern/braces.svg?react"
+import ChevronDownIcon from "@/icons/modern/chevron-down.svg?react"
 import RoomIcon from "@/icons/modern/door-open.svg?react"
 import KeyIcon from "@/icons/modern/key.svg?react"
 import LogOutIcon from "@/icons/modern/log-out.svg?react"
 import PaletteIcon from "@/icons/modern/palette.svg?react"
 import SlidersIcon from "@/icons/modern/sliders-horizontal.svg?react"
+import SearchIcon from "@/icons/search.svg?react"
 import "./SettingsView.css"
 
 interface PreferenceCellProps<T extends PreferenceValueType> {
@@ -139,64 +142,237 @@ const preferencesByCategory = preferenceCategories
 	.map(category => [category, visiblePreferences.filter(([, pref]) => pref.category === category)] as const)
 	.filter(([, prefs]) => prefs.length > 0)
 
-const PreferenceRow = ({
-	name, pref, setPref, globalServer, globalLocal, roomServer, roomLocal,
-}: PreferenceRowProps) => {
-	const prefType = typeof pref.defaultValue
-	const makeContentCell = (
-		context: PreferenceContext,
-		val: PreferenceValueType | undefined,
-		inheritedVal: PreferenceValueType,
-	) => {
-		if (!pref.allowedContexts.includes(context)) {
-			return <div className={`empty-cell scope-${context}`} />
-		}
-		if (prefType === "boolean") {
-			return <BooleanPreferenceCell
-				name={name}
-				setPref={setPref}
-				context={context}
-				pref={pref as Preference<boolean>}
-				value={val as boolean | undefined}
-				inheritedValue={inheritedVal as boolean}
-			/>
-		} else if (pref.allowedValues) {
-			return <SelectPreferenceCell
-				name={name}
-				setPref={setPref}
-				context={context}
-				pref={pref as Preference<string>}
-				value={val as string | undefined}
-				inheritedValue={inheritedVal as string}
-			/>
-		} else if (prefType === "string") {
-			return <TextPreferenceCell
-				name={name}
-				setPref={setPref}
-				context={context}
-				pref={pref as Preference<string>}
-				value={val as string | undefined}
-				inheritedValue={inheritedVal as string}
-			/>
-		} else {
-			return null
+/*
+ * Simple mode shows one control per preference — the value actually in effect —
+ * rather than the four cells it could be set in. The chip beside it names where
+ * that value comes from, which is the one thing the matrix said structurally and
+ * a plain list would otherwise throw away.
+ */
+/* Highest precedence first, mirroring the inherit chain PreferenceRow walks. */
+const scopesByPrecedence = [
+	PreferenceContext.RoomDevice,
+	PreferenceContext.RoomAccount,
+	PreferenceContext.Device,
+	PreferenceContext.Account,
+] as const
+
+/*
+ * Editing in simple mode writes to whichever scope currently supplies the value,
+ * so the control you flip is the one you are looking at. Always writing to the
+ * account scope would silently do nothing whenever a room override was shadowing
+ * it — the switch would move and the app would not change. With nothing set
+ * anywhere, the broadest scope the preference allows takes the write, because
+ * "everywhere" is what a plain toggle in a settings page is expected to mean.
+ */
+const resolvePreference = (pref: Preference, values: (PreferenceValueType | undefined)[]) => {
+	for (let i = 0; i < scopesByPrecedence.length; i++) {
+		const value = values[i]
+		if (value !== undefined) {
+			return { value, source: scopesByPrecedence[i], editContext: scopesByPrecedence[i] }
 		}
 	}
-	let inherit: PreferenceValueType
-	return <>
-		{/* The description used to live only in a title tooltip, which meant the
-		    grid showed a column of switch labels with no way to learn what any of
-		    them did without hovering each one. */}
-		<div className="name">
-			<div className="pref-label">{pref.displayName}</div>
-			<div className="pref-description">{pref.description}</div>
-		</div>
-		{makeContentCell(PreferenceContext.Account, globalServer, inherit = pref.defaultValue)}
-		{makeContentCell(PreferenceContext.Device, globalLocal, inherit = globalServer ?? inherit)}
-		{makeContentCell(PreferenceContext.RoomAccount, roomServer, inherit = globalLocal ?? inherit)}
-		{makeContentCell(PreferenceContext.RoomDevice, roomLocal, inherit = roomServer ?? inherit)}
-	</>
+	const editContext = pref.allowedContexts.includes(PreferenceContext.Account)
+		? PreferenceContext.Account
+		: PreferenceContext.Device
+	return { value: pref.defaultValue, source: null, editContext }
 }
+
+/*
+ * How the value in effect is described in one line. Says what the setting applies
+ * to rather than naming an internal scope: "This device" told you which column a
+ * matrix cell was in, which stops meaning anything once the matrix is gone.
+ */
+const appliesTo = (source: PreferenceContext | null, roomName: string) => {
+	switch (source) {
+	case PreferenceContext.Account:
+		return "Applies everywhere, on all your devices"
+	case PreferenceContext.Device:
+		return "Applies everywhere, on this device only"
+	case PreferenceContext.RoomAccount:
+		return `Applies only in ${roomName}, on all your devices`
+	case PreferenceContext.RoomDevice:
+		return `Applies only in ${roomName}, on this device only`
+	default:
+		return "Using the built-in default"
+	}
+}
+
+interface ScopeLineProps extends PreferenceCellProps<PreferenceValueType> {
+	label: string
+}
+
+const ScopeLine = ({ label, ...cellProps }: ScopeLineProps) => {
+	const { pref, context } = cellProps
+	if (!pref.allowedContexts.includes(context)) {
+		return null
+	}
+	const prefType = typeof pref.defaultValue
+	let cell = null
+	if (prefType === "boolean") {
+		cell = <BooleanPreferenceCell {...cellProps as PreferenceCellProps<boolean>} />
+	} else if (pref.allowedValues) {
+		cell = <SelectPreferenceCell {...cellProps as PreferenceCellProps<string>} />
+	} else if (prefType === "string") {
+		cell = <TextPreferenceCell {...cellProps as PreferenceCellProps<string>} />
+	}
+	return <div className="scope-line">
+		<span className="scope-line-label">{label}</span>
+		{cell}
+	</div>
+}
+
+const SimplePreferenceRow = ({
+	name, pref, setPref, roomName, globalServer, globalLocal, roomServer, roomLocal,
+}: PreferenceRowProps & { roomName: string }) => {
+	const [expanded, setExpanded] = useState(false)
+	const { value, source, editContext } = resolvePreference(
+		pref, [roomLocal, roomServer, globalLocal, globalServer],
+	)
+	const prefType = typeof pref.defaultValue
+	const renderControl = () => {
+		if (prefType === "boolean") {
+			return <Toggle
+				checked={value as boolean}
+				onChange={evt => setPref(editContext, name, evt.target.checked)}
+			/>
+		} else if (pref.allowedValues) {
+			const stringPref = pref as Preference<string>
+			return <select
+				value={value as string}
+				onChange={evt => setPref(editContext, name, evt.target.value)}
+			>
+				{stringPref.allowedValues!.map((val, i) =>
+					<option key={i} value={val}>
+						{stringPref.valueLabels ? stringPref.valueLabels[i] : val}
+					</option>)}
+			</select>
+		} else if (prefType === "string") {
+			return <input
+				value={value as string}
+				onChange={evt => setPref(editContext, name, evt.target.value)}
+			/>
+		}
+		return null
+	}
+	/*
+	 * Same inherit chain PreferenceRow walked, kept in one place: each scope falls
+	 * back to the one above it, so an unset cell shows what it would be rather than
+	 * going blank.
+	 */
+	const fromDefault = pref.defaultValue
+	const fromAccount = globalServer ?? fromDefault
+	const fromDevice = globalLocal ?? fromAccount
+	const fromRoomAccount = roomServer ?? fromDevice
+	const scopeCount = pref.allowedContexts.filter(context =>
+		context !== PreferenceContext.Config).length
+	return <div className={`simple-preference-row${expanded ? " expanded" : ""}`}>
+		<div className="row-main">
+			<div className="name">
+				<div className="pref-label">{pref.displayName}</div>
+				<div className="pref-description">{pref.description}</div>
+				<div className="scope-meta">
+					<span className={`applies-to${source !== null ? " set" : ""}`}>
+						{appliesTo(source, roomName)}
+					</span>
+					{source !== null && <button
+						type="button"
+						className="clear-override"
+						title="Clear this override and go back to inheriting"
+						onClick={() => setPref(source, name, undefined)}
+					><CloseIcon /></button>}
+				</div>
+			</div>
+			<div className="simple-control">
+				{renderControl()}
+				{/* One scope means there is nothing to choose between — the control
+				    already is that scope, so the disclosure would open onto a single
+				    row restating it. The spacer keeps the controls in one column on
+				    rows where the chevron does not render. */}
+				{scopeCount > 1
+					? <button
+						type="button"
+						className="expand-scopes"
+						aria-expanded={expanded}
+						title={expanded ? "Hide per-room and per-device values" : "Set per room or per device"}
+						onClick={() => setExpanded(value => !value)}
+					><ChevronDownIcon /></button>
+					: <span className="expand-scopes-spacer" />}
+			</div>
+		</div>
+		{expanded && <div className="scope-detail">
+			<div className="scope-group">
+				<div className="scope-group-title">Everywhere</div>
+				<ScopeLine
+					label="All devices" context={PreferenceContext.Account}
+					name={name} pref={pref} setPref={setPref}
+					value={globalServer} inheritedValue={fromDefault}
+				/>
+				<ScopeLine
+					label="This device" context={PreferenceContext.Device}
+					name={name} pref={pref} setPref={setPref}
+					value={globalLocal} inheritedValue={fromAccount}
+				/>
+			</div>
+			<div className="scope-group room">
+				<div className="scope-group-title">Only in {roomName}</div>
+				<ScopeLine
+					label="All devices" context={PreferenceContext.RoomAccount}
+					name={name} pref={pref} setPref={setPref}
+					value={roomServer} inheritedValue={fromDevice}
+				/>
+				<ScopeLine
+					label="This device" context={PreferenceContext.RoomDevice}
+					name={name} pref={pref} setPref={setPref}
+					value={roomLocal} inheritedValue={fromRoomAccount}
+				/>
+			</div>
+		</div>}
+	</div>
+}
+
+type PreferenceGroups = readonly (readonly [PreferenceCategory, [keyof Preferences, Preference][]])[]
+
+interface PreferenceListProps {
+	groups: PreferenceGroups
+	setPref: SetPrefFunc
+	roomName: string
+	globalServer: Partial<Preferences>
+	globalLocal: Partial<Preferences>
+	roomServer: Partial<Preferences>
+	roomLocal: Partial<Preferences>
+}
+
+const SimplePreferenceList = ({
+	groups, setPref, roomName, globalServer, globalLocal, roomServer, roomLocal,
+}: PreferenceListProps) => <div className="simple-preference-list">
+	{groups.map(([category, prefs]) => <Fragment key={category}>
+		<div className="category-head">{categoryLabels[category]}</div>
+		{prefs.map(([key, pref]) => <SimplePreferenceRow
+			key={key}
+			name={key}
+			pref={pref}
+			setPref={setPref}
+			roomName={roomName}
+			globalServer={globalServer[key]}
+			globalLocal={globalLocal[key]}
+			roomServer={roomServer[key]}
+			roomLocal={roomLocal[key]}
+		/>)}
+	</Fragment>)}
+</div>
+
+/*
+ * Everything on this screen that is not a preference category. Kept in rail order
+ * rather than render order — the rail is the only thing that decides what is on
+ * screen now, so the two must not be able to drift apart.
+ */
+const extraSections = [
+	{ id: "room", label: "This room", Icon: RoomIcon },
+	{ id: "css", label: "Custom CSS", Icon: PaletteIcon },
+	{ id: "keys", label: "Encryption", Icon: KeyIcon },
+	{ id: "applied", label: "Applied settings", Icon: BracesIcon },
+	{ id: "account", label: "Account", Icon: LogOutIcon },
+] as const
 
 interface SettingsViewProps {
 	room: RoomStateStore
@@ -574,6 +750,30 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 		window.mainScreenContext.setActiveRoom(previousRoomID!)
 		closeModal()
 	}
+	const [section, setSection] = useState<string>(preferencesByCategory[0][0])
+	const [query, setQuery] = useState("")
+	const trimmedQuery = query.trim().toLowerCase()
+	const searching = trimmedQuery.length > 0
+	/*
+	 * Search deliberately ignores the rail: a query you typed is a stronger signal
+	 * about what you want than a category you clicked earlier. Results stay grouped
+	 * by category so a hit's context is still visible.
+	 */
+	const groups = useMemo(() => {
+		if (!trimmedQuery) {
+			return preferencesByCategory.filter(([category]) => category === section)
+		}
+		return preferencesByCategory
+			.map(([category, prefs]) => [category, prefs.filter(([, pref]) =>
+				pref.displayName.toLowerCase().includes(trimmedQuery)
+				|| (pref.description ?? "").toLowerCase().includes(trimmedQuery),
+			)] as const)
+			.filter(([, prefs]) => prefs.length > 0)
+	}, [trimmedQuery, section])
+	const isPreferenceSection = preferencesByCategory.some(([category]) => category === section)
+	const showingPreferences = searching || isPreferenceSection
+	const matchCount = groups.reduce((total, [, prefs]) => total + prefs.length, 0)
+
 	usePreferences(client.store, room)
 	const globalServer = client.store.serverPreferenceCache
 	const globalLocal = client.store.localPreferenceCache
@@ -613,110 +813,142 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			</div>
 		</div>
 
-		<section className="settings-section">
-			<header>
-				<SlidersIcon/>
-				<h3>Preferences</h3>
-			</header>
-			<div className="preference-table">
-				{/*
-				  * Two group headers spanning two columns each. The four scopes are
-				  * really a 2×2: where it applies (everywhere / this room) crossed with
-				  * which devices (all / just this one). Four flat columns hid that, and
-				  * left two of them labelled identically.
-				  */}
-				<div className="group-head spacer"/>
-				<div className="group-head everywhere">
-					<div className="group-title">Everywhere</div>
-					<div className="group-note">your default in every room</div>
-				</div>
-				<div className="group-head this-room">
-					<div className="group-title">Only in {roomMeta.name ?? "this room"}</div>
-					<div className="group-note">overrides the default above</div>
-				</div>
-
-				<div className="column-head name">Setting</div>
-				<div className="column-head">All devices</div>
-				<div className="column-head">This device</div>
-				<div className="column-head scope-room_account">All devices</div>
-				<div className="column-head scope-room_device">This device</div>
-
-				{/*
-				  * A category header is five cells, not one spanning row. The four
-				  * trailing cells are empty, but they carry the scope classes, so the
-				  * room band's tint and its divider run through the header instead of
-				  * being cut in half at every group boundary.
-				  */}
-				{preferencesByCategory.map(([category, prefs]) => <Fragment key={category}>
-					<div className="category-head">{categoryLabels[category]}</div>
-					<div className="category-head-filler"/>
-					<div className="category-head-filler"/>
-					<div className="category-head-filler scope-room_account"/>
-					<div className="category-head-filler scope-room_device"/>
-					{prefs.map(([key, pref]) => <PreferenceRow
-						key={key}
-						name={key}
-						pref={pref}
-						setPref={setPref}
-						globalServer={globalServer[key]}
-						globalLocal={globalLocal[key]}
-						roomServer={roomServer[key]}
-						roomLocal={roomLocal[key]}
-					/>)}
-				</Fragment>)}
+		{/*
+		  * Full width above the split, not tucked into the content column: it applies
+		  * to every category, and being the first thing under the masthead is what
+		  * makes it obvious you can just start typing. Autofocused on open — the
+		  * modal only claims focus when nothing inside it already has it, and
+		  * autoFocus commits before that runs. Skipped on touch, matching the app's
+		  * other modals, so it does not throw up a keyboard unasked.
+		  */}
+		<div className="settings-toolbar">
+			<div className="search-field">
+				<SearchIcon />
+				<input
+					className="settings-search"
+					type="search"
+					value={query}
+					spellCheck={false}
+					autoComplete="off"
+					autoCorrect="off"
+					autoCapitalize="off"
+					autoFocus={!isMobileDevice}
+					placeholder={`Search ${visiblePreferences.length} settings`}
+					aria-label="Search settings"
+					onChange={evt => setQuery(evt.target.value)}
+				/>
 			</div>
-			<p className="section-note">
-				Each column beats the ones to its left, so the rightmost value you have set is the one that
-				applies. Highlighted cells are set here; everything else is inherited. Use
-				{" "}<CloseIcon className="inline-icon"/>{" "}to clear one and go back to inheriting.
-			</p>
-		</section>
+		</div>
 
-		<section className="settings-section">
-			<header>
-				<RoomIcon/>
-				<h3>This room</h3>
-			</header>
-			{roomMeta.topic && <p className="room-topic">{roomMeta.topic}</p>}
-			<div className="room-buttons">
-				<button className="devtools" onClick={openDevtools}>Explore room state</button>
-				<select onChange={evt => {
-					window.activeRoomContext?.setForceViewType(evt.target.value as RoomType)
-					closeModal()
-				}} defaultValue="__null__">
-					{preferences.room_view_type.allowedValues!.map((val, i) =>
-						<option key={i} value={val ?? "__null__"} disabled={i === 0}>
-							{i === 0 ? "Override view" : preferences.room_view_type.valueLabels![i]}
-						</option>)}
-				</select>
-				{previousRoomID &&
+		<div className="settings-body">
+			{/*
+			  * The rail is the only thing that decides what is on screen. Every section
+			  * below renders only when its own rail entry is current, so nothing can be
+			  * reachable by scrolling past something else the way it used to be.
+			  */}
+			<nav className="settings-rail" aria-label="Settings sections">
+				<div className="rail-group-label">Preferences</div>
+				{preferencesByCategory.map(([category, prefs]) => <button
+					key={category}
+					type="button"
+					className="rail-item"
+					aria-current={!searching && section === category}
+					onClick={() => { setSection(category); setQuery("") }}
+				>
+					{categoryLabels[category]}
+					<span className="rail-count">{prefs.length}</span>
+				</button>)}
+				<div className="rail-group-label">More</div>
+				{extraSections.map(({ id, label, Icon }) => <button
+					key={id}
+					type="button"
+					className="rail-item"
+					aria-current={!searching && section === id}
+					onClick={() => { setSection(id); setQuery("") }}
+				>
+					<Icon />
+					{label}
+				</button>)}
+			</nav>
+
+			<div className="settings-content">
+				{showingPreferences && <section className="settings-section">
+					<header>
+						<SlidersIcon/>
+						<h3>{searching
+							? `${matchCount} ${matchCount === 1 ? "match" : "matches"}`
+							: categoryLabels[section as PreferenceCategory]}</h3>
+					</header>
+					{matchCount === 0
+						? <p className="section-note">
+							No setting matches that. Try a word from its name or description.
+						</p>
+						: <SimplePreferenceList
+							groups={groups}
+							setPref={setPref}
+							roomName={roomMeta.name ?? "this room"}
+							globalServer={globalServer}
+							globalLocal={globalLocal}
+							roomServer={roomServer}
+							roomLocal={roomLocal}
+						/>}
+					{matchCount > 0 && <p className="section-note">
+						Each control shows the value in effect, and the line under it says what that value
+						applies to. Open <strong>Where it applies</strong> on a setting to give this room or
+						this device its own value, or use
+						{" "}<CloseIcon className="inline-icon"/>{" "}to clear one and go back to inheriting.
+					</p>}
+				</section>}
+
+				{!searching && section === "room" && <section className="settings-section">
+					<header>
+						<RoomIcon/>
+						<h3>This room</h3>
+					</header>
+					{roomMeta.topic && <p className="room-topic">{roomMeta.topic}</p>}
+					<div className="room-buttons">
+						<button className="devtools" onClick={openDevtools}>Explore room state</button>
+						<select onChange={evt => {
+							window.activeRoomContext?.setForceViewType(evt.target.value as RoomType)
+							closeModal()
+						}} defaultValue="__null__">
+							{preferences.room_view_type.allowedValues!.map((val, i) =>
+								<option key={i} value={val ?? "__null__"} disabled={i === 0}>
+									{i === 0 ? "Override view" : preferences.room_view_type.valueLabels![i]}
+								</option>)}
+						</select>
+						{previousRoomID &&
 					<button className="previous-room" onClick={openPredecessorRoom}>
 						Open predecessor room
 					</button>}
-				<button className="leave-room danger" onClick={onClickLeave}>Leave room</button>
-			</div>
-		</section>
+						<button className="leave-room danger" onClick={onClickLeave}>Leave room</button>
+					</div>
+				</section>}
 
-		<CustomCSSInput setPref={setPref} room={room} />
-		<AppliedSettingsView room={room} />
-		<KeyExportView room={room} />
+				{!searching && section === "css" && <CustomCSSInput setPref={setPref} room={room} />}
+				{!searching && section === "applied" && <AppliedSettingsView room={room} />}
+				{!searching && section === "keys" && <KeyExportView room={room} />}
 
-		<section className="settings-section">
-			<header>
-				<LogOutIcon/>
-				<h3>Account</h3>
-			</header>
-			<div className="misc-buttons">
-				<button onClick={onClickOpenCSSApp}>Sign into css.gomuks.app</button>
-				{window.Notification && !window.gomuksAndroid && <button onClick={client.requestNotificationPermission}>
-					Request notification permission
-				</button>}
-				{!window.gomuksAndroid &&
+				{!searching && section === "account" && <section className="settings-section">
+					<header>
+						<LogOutIcon/>
+						<h3>Account</h3>
+					</header>
+					<div className="misc-buttons">
+						<button onClick={onClickOpenCSSApp}>Sign into css.gomuks.app</button>
+						{window.Notification && !window.gomuksAndroid && <button
+							onClick={client.requestNotificationPermission}
+						>
+							Request notification permission
+						</button>}
+						{!window.gomuksAndroid &&
 					<button onClick={client.registerURIHandler}>Register <code>matrix:</code> URI handler</button>
-				}
-				<button className="logout danger" onClick={onClickLogout}>Log out</button>
+						}
+						<button className="logout danger" onClick={onClickLogout}>Log out</button>
+					</div>
+				</section>}
 			</div>
-		</section>
+		</div>
 	</>
 }
 
