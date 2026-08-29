@@ -384,13 +384,19 @@ echo "  wrote $LATEST_JSON"
 # 7. Commit, tag, publish
 # --------------------------------------------------------------------------------------------
 
+# Archived so the notes file can be overwritten for the next release without losing this one.
+# Written before the commit below, and committed with it, or it would never be tracked at all.
+mkdir -p "$REPO_ROOT/release-notes"
+printf '%s\n' "$RELEASE_NOTES" >"$REPO_ROOT/release-notes/$VERSION.md"
+
 step "Committing the version bump"
 # Explicit paths only. `git add -A` here would sweep in the large unrelated work in this tree.
 git -C "$REPO_ROOT" add \
 	web/src-tauri/tauri.conf.json \
 	web/package.json \
 	web/src-tauri/Cargo.toml \
-	web/src-tauri/Cargo.lock
+	web/src-tauri/Cargo.lock \
+	"release-notes/$VERSION.md"
 git -C "$REPO_ROOT" commit -m "Release $TAG"
 # The bump now lives in a commit, so there's nothing left to roll back.
 VERSIONS_BUMPED=0
@@ -413,10 +419,6 @@ gh release create "$TAG" \
 
 Download the DMG below. Existing installs update themselves." \
 	--latest
-
-# Archived before the notes file is reused for the next release, so the history survives.
-mkdir -p "$REPO_ROOT/release-notes"
-printf '%s\n' "$RELEASE_NOTES" >"$REPO_ROOT/release-notes/$VERSION.md"
 
 RELEASE_URL="$GH_REPO_URL/releases/tag/$TAG"
 
