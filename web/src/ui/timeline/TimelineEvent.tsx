@@ -85,7 +85,7 @@ const newSafeDate = (val: number) => {
 
 interface EventReactionsProps {
 	reactions: Record<string, number>
-	onRereact: (mouseEvt: React.MouseEvent) => void
+	onRereact: (reaction: string) => void
 	client: Client
 	room: RoomStateStore
 	eventID: EventID
@@ -161,7 +161,12 @@ const EventReactions = ({ reactions, onRereact, client, room, eventID }: EventRe
 	}
 	return <div className="event-reactions">
 		{reactionEntries.map(([reaction, count]) =>
-			<div key={reaction} className="reaction" onClick={onRereact} onMouseEnter={loadSenders}>
+			<div
+				key={reaction}
+				className="reaction"
+				onClick={() => onRereact(reaction)}
+				onMouseEnter={loadSenders}
+			>
 				<div className="reaction-inner">
 					{reaction.startsWith("mxc://")
 						? <img className="reaction-emoji" src={getMediaURL(reaction)} alt=""/>
@@ -333,12 +338,12 @@ const TimelineEvent = ({
 			/>,
 		})
 	}
-	const onRereact = useCallback((mouseEvt: React.MouseEvent) => {
+	const onRereact = useCallback((reaction: string) => {
 		client.sendEvent(evt.room_id, "m.reaction", {
 			"m.relates_to": {
 				rel_type: "m.annotation",
 				event_id: evt.event_id,
-				key: mouseEvt.currentTarget.getAttribute("title"),
+				key: reaction,
 			},
 		}).catch(err => {
 			console.error("Failed to send reaction", err)

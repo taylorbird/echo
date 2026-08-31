@@ -255,10 +255,10 @@ div.room-entry {
 	 * second one on it compounds into unreadability.
 	 */
 	&:not(.active):not(:has(> div.room-entry-unreads)) > div.room-entry-right {
-		/* Colour removal below carries most of the recession now, so the dimming
-		   only has to do the rest — at .55 the greyscale and the fade compounded
-		   into something that read as broken rather than quiet. */
-		opacity: .72;
+		/* The row keeps its colour now, only muted, so the fade does not have to
+		   carry the recession on its own. Full greyscale plus a deep fade was the
+		   combination that read as switched-off rather than quiet. */
+		opacity: .82;
 	}
 
 	/*
@@ -272,20 +272,23 @@ div.room-entry {
 	 * declaration beats any stylesheet rule trying to redefine it.
 	 */
 	&:not(.active):not(:has(> div.room-entry-unreads)) {
+		/* Desaturated rather than drained: enough of the avatar's own colour
+		   survives to keep rooms telling apart at a glance. */
 		> div.room-entry-left > img.room-avatar {
-			filter: grayscale(1);
-			opacity: .72;
+			filter: grayscale(.6);
+			opacity: .85;
 		}
 
 		/*
-		 * The name keeps its rank. Dropping it to --secondary-text-color put it on
-		 * exactly the tone the preview line under it already uses, which flattened
-		 * the two into one grey block — the hierarchy inside the row was doing as
-		 * much work as the colour was. Near-white here, with the preview's own .6
-		 * opacity below keeping it clearly subordinate.
+		 * The room's accent, pulled most of the way toward neutral instead of
+		 * replaced by it. The live rule mixes the accent 70% with off-white; this
+		 * mixes far less of it, so the hue is still identifiably the room's while
+		 * sitting well below an unread row. Flat grey here lost the per-room
+		 * colour entirely and put the name on the same tone as the preview under
+		 * it, flattening the row into one block.
 		 */
 		> div.room-entry-right > div.room-name {
-			color: #e4e2e0;
+			color: color-mix(in oklab, var(--room-accent, var(--text-color)) 38%, #cbc7c4);
 		}
 	}
 
@@ -578,12 +581,6 @@ div.room-entry-unreads {
 		 */
 		padding-top: calc(var(--unread-count-padding-block) + .5px);
 		padding-bottom: calc(var(--unread-count-padding-block) - .5px);
-
-		&.big {
-			--unread-count-size: 1.5rem;
-			font-size: 1em;
-			font-weight: bold;
-		}
 
 		&.marked-unread {
 			background-color: var(--unread-counter-marked-unread-bg);

@@ -44,9 +44,6 @@ const UnreadCount = ({ counts, space, onClick }: UnreadCountProps) => {
 		unreadCountDisplay = "999+"
 	}
 	const classNames = ["unread-count"]
-	if (countIsBig) {
-		classNames.push("big")
-	}
 	if (space) {
 		classNames.push("space")
 	}
