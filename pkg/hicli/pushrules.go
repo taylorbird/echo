@@ -107,6 +107,17 @@ var (
 	_ pushrules.PowerLevelfulRoom = (*pushRoom)(nil)
 )
 
+// Reports whether evt invites this account to a room, which is the only membership
+// change allowed to notify. Anything unparsed is treated as not an invite: failing
+// closed here only costs a missed badge, while failing open restores the noise.
+func isInviteForMe(h *HiClient, evt *event.Event) bool {
+	if evt.GetStateKey() != string(h.Account.UserID) {
+		return false
+	}
+	content, ok := evt.Content.Parsed.(*event.MemberEventContent)
+	return ok && content.Membership == event.MembershipInvite
+}
+
 func (h *HiClient) evaluatePushRules(ctx context.Context, llSummary *mautrix.LazyLoadSummary, baseType database.UnreadType, evt *event.Event) (database.UnreadType, string) {
 	if !h.firstSyncReceived && baseType == database.UnreadTypeNone {
 		// Skip evaluating push rules that are unlikely to match for the initial sync
@@ -129,6 +140,19 @@ func (h *HiClient) evaluatePushRules(ctx context.Context, llSummary *mautrix.Laz
 		if ok && msg.Mentions != nil && len(msg.Mentions.UserIDs) > 15 {
 			return baseType, combinedRuleID
 		}
+	}
+	// Membership churn does not earn a badge. Older Synapse defaults ship
+	// .m.rule.member_event with `notify` rather than the current spec's empty action
+	// list, so on those accounts every join, leave and profile change counts as a
+	// notification — one person being re-added to twenty rooms lights up the whole
+	// room list. The events still render in the timeline; this only stops them
+	// driving unread counts and notifications.
+	//
+	// Invites for this account are the deliberate exception: being invited somewhere
+	// is the one membership change worth interrupting for, and it is what
+	// .m.rule.invite_for_me exists to catch.
+	if evt.Type == event.StateMember && !isInviteForMe(h, evt) {
+		return baseType, combinedRuleID
 	}
 	if should.Notify {
 		baseType |= database.UnreadTypeNotify
