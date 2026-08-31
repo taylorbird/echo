@@ -12,21 +12,19 @@
      Anything else comes through as plain text. Links must be http(s) or they render as their
      label alone. -->
 
-## Room list
-
-- Unread rooms now carry a red glow bar and a matching badge, in the same lane as the "you are
-  here" marker. A room you were named in pulses; everything else glows steadily.
-- Rooms you are not in and that do not want you go monochrome, so colour in the list means
-  exactly one thing.
-
-## Settings
-
-- Rebuilt around a category rail with search, instead of one long scroll of every preference.
-- Each setting shows the value in effect and says what it applies to. The chevron beside a
-  control opens per-room and per-device values for just that setting.
-
 ## Fixes
 
-- SSO sign-in works again: the session cookie was marked `Secure` and so was never sent back over
-  the app's plain-HTTP origin.
-- The app no longer shows an unanswerable login form in development builds.
+- Clicking someone else's reaction to add your own now works. It had been sending an empty
+  reaction and failing silently.
+- Unread badges are all one size again. Mentions and notifications were drawing a larger dot than
+  ordinary unread messages, which put two sizes of the same red badge down one list.
+
+## Room list
+
+- Rooms you are not in keep their own colour, just muted, instead of being drained to grey. They
+  still sit back from unread rooms, but stay tellable apart at a glance.
+
+## Known issue
+
+- Read receipts are not always sent, so a room can stay marked unread after you have read it.
+  Marking it read from another client clears it. Under investigation.
