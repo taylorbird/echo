@@ -14,17 +14,11 @@
 
 ## Fixes
 
-- Clicking someone else's reaction to add your own now works. It had been sending an empty
-  reaction and failing silently.
-- Unread badges are all one size again. Mentions and notifications were drawing a larger dot than
-  ordinary unread messages, which put two sizes of the same red badge down one list.
-
-## Room list
-
-- Rooms you are not in keep their own colour, just muted, instead of being drained to grey. They
-  still sit back from unread rooms, but stay tellable apart at a glance.
+- People joining or leaving no longer marks rooms unread. One person rejoining a lot of rooms
+  used to light up the whole room list at once. The joins still appear in the timeline — you
+  just aren't notified about them. Invites to you still notify, as before.
 
 ## Known issue
 
 - Read receipts are not always sent, so a room can stay marked unread after you have read it.
-  Marking it read from another client clears it. Under investigation.
+  Marking it read from another client clears it. Still under investigation.
