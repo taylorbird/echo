@@ -4,7 +4,7 @@
 
 # echo
 
-**A Matrix client for macOS that feels like a Mac app.**
+A custom Matrix client for macOS, based on [gomuks](https://github.com/gomuks/gomuks).
 
 [![Latest release](https://img.shields.io/github/v/release/taylorbird/echo?label=download&color=7C3AED)](https://github.com/taylorbird/echo/releases/latest)
 [![Platform](https://img.shields.io/badge/macOS-Apple%20Silicon-8B5CF6)](https://github.com/taylorbird/echo/releases/latest)
