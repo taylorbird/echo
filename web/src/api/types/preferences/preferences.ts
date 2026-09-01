@@ -138,7 +138,19 @@ export const preferences = {
 		description: "Color every room name in the sidebar the same accent color instead of giving each room its own color.",
 		category: "appearance",
 		allowedContexts: anyGlobalContext,
-		defaultValue: false,
+		// On by default: thirty differently-coloured names spends a lot of signal on
+		// something that carries no meaning, and it competes with the unread markers —
+		// the one thing in that list colour should be saying.
+		defaultValue: true,
+	}),
+	room_list_color: new Preference<string>({
+		displayName: "Room list color",
+		description: "The accent color for room names in the sidebar, when they all share one color.",
+		category: "appearance",
+		allowedContexts: anyGlobalContext,
+		// Ferra's peach, which is what uniform mode was hardcoded to before this
+		// preference existed — so nothing looks different until it is changed.
+		defaultValue: "#fecdb2",
 	}),
 	custom_css: new Preference<string>({
 		displayName: "Custom CSS",

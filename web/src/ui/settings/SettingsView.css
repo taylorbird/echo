@@ -383,6 +383,29 @@ div.settings-view {
 
 					/* :not(.toggle) is load-bearing: Toggle renders as an <input>, and the
 					   text-field chrome below was stretching the switch across the column. */
+					/* A swatch, not a field: the native colour input is a bordered box the
+					   size of a text field unless it is told otherwise, which looked like a
+					   broken input sitting in the control column. */
+					> input[type="color"] {
+						flex: none;
+						width: 2.5rem;
+						height: 1.5rem;
+						padding: 0;
+						border: 1px solid var(--border-color);
+						border-radius: var(--sidebar-item-radius);
+						background: none;
+						cursor: var(--clickable-cursor);
+
+						&::-webkit-color-swatch-wrapper {
+							padding: .1875rem;
+						}
+
+						&::-webkit-color-swatch {
+							border: none;
+							border-radius: calc(var(--sidebar-item-radius) - .0625rem);
+						}
+					}
+
 					> select, > input:not(.toggle) {
 						font: inherit;
 						font-size: .875rem;
@@ -506,6 +529,25 @@ div.settings-view {
 		position: relative;
 		padding: .25rem .375rem;
 		border-radius: var(--sidebar-item-radius);
+
+		&.color-preference > input[type="color"] {
+			width: 2.5rem;
+			height: 1.5rem;
+			padding: 0;
+			border: 1px solid var(--border-color);
+			border-radius: var(--sidebar-item-radius);
+			background: none;
+			cursor: var(--clickable-cursor);
+
+			&::-webkit-color-swatch-wrapper {
+				padding: .1875rem;
+			}
+
+			&::-webkit-color-swatch {
+				border: none;
+				border-radius: calc(var(--sidebar-item-radius) - .0625rem);
+			}
+		}
 
 		&.select-preference > select,
 		&.string-preference > input {

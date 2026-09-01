@@ -90,6 +90,17 @@ const TextPreferenceCell = ({ context, name, setPref, value, inheritedValue }: P
 	</div>
 }
 
+const ColorPreferenceCell = ({ context, name, setPref, value, inheritedValue }: PreferenceCellProps<string>) => {
+	return <div className={cellClass("color-preference", context, value)}>
+		<input
+			type="color"
+			value={value ?? inheritedValue}
+			onChange={evt => setPref(context, name, evt.target.value)}
+		/>
+		{makeRemover(context, setPref, name, value)}
+	</div>
+}
+
 const SelectPreferenceCell = ({ context, name, pref, setPref, value, inheritedValue }: PreferenceCellProps<string>) => {
 	if (!pref.allowedValues) {
 		return null
@@ -114,6 +125,16 @@ interface PreferenceRowProps {
 	roomServer?: PreferenceValueType
 	roomLocal?: PreferenceValueType
 }
+
+/*
+ * String preferences that hold a colour, and so get a swatch instead of a hex field.
+ * A set here rather than a flag on Preference: how a value is edited is a fact about
+ * this screen, not about the preference, and the same list already works that way for
+ * customUIPrefs below.
+ */
+const colorPreferences = new Set([
+	"room_list_color",
+] as (keyof Preferences)[])
 
 const customUIPrefs = new Set([
 	"custom_css",
@@ -213,7 +234,9 @@ const ScopeLine = ({ label, ...cellProps }: ScopeLineProps) => {
 	} else if (pref.allowedValues) {
 		cell = <SelectPreferenceCell {...cellProps as PreferenceCellProps<string>} />
 	} else if (prefType === "string") {
-		cell = <TextPreferenceCell {...cellProps as PreferenceCellProps<string>} />
+		cell = colorPreferences.has(cellProps.name)
+			? <ColorPreferenceCell {...cellProps as PreferenceCellProps<string>} />
+			: <TextPreferenceCell {...cellProps as PreferenceCellProps<string>} />
 	}
 	return <div className="scope-line">
 		<span className="scope-line-label">{label}</span>
@@ -247,10 +270,16 @@ const SimplePreferenceRow = ({
 					</option>)}
 			</select>
 		} else if (prefType === "string") {
-			return <input
-				value={value as string}
-				onChange={evt => setPref(editContext, name, evt.target.value)}
-			/>
+			return colorPreferences.has(name)
+				? <input
+					type="color"
+					value={value as string}
+					onChange={evt => setPref(editContext, name, evt.target.value)}
+				/>
+				: <input
+					value={value as string}
+					onChange={evt => setPref(editContext, name, evt.target.value)}
+				/>
 		}
 		return null
 	}

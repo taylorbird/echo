@@ -139,6 +139,11 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 		document.documentElement.toggleAttribute(
 			"data-uniform-room-list-color", preferences.uniform_room_list_color)
 	}, [preferences.uniform_room_list_color])
+	// The colour itself is a custom property rather than part of the attribute rule, so
+	// changing it repaints without the stylesheet needing to know the value.
+	useEffect(() => {
+		document.documentElement.style.setProperty("--room-list-color", preferences.room_list_color)
+	}, [preferences.room_list_color])
 	return null
 }
 
