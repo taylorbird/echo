@@ -11,7 +11,11 @@
 	/* Mac-native chrome: inset sidebar rows, hairline seams, rounded reading surface. */
 	--sidebar-inset: .5rem;
 	--sidebar-item-radius: .5rem;
-	--space-bar-width: 4.5rem;
+	/* Set by what has to fit rather than by taste: a 3.125rem tile plus enough
+	   gutter for the active pill, which hangs .75rem past the tile's left edge.
+	   The 5.5rem under html[data-tauri] already clears that, so only this one
+	   needed the room. */
+	--space-bar-width: 5.25rem;
 
 	/*
 	 * Height of the header band in every pane: the room header, the room-list
@@ -96,6 +100,11 @@
 	--room-list-background-overlay: hsla(0, 0%, 96%, .9);
 	--room-list-search-background-overlay: var(--room-list-background-overlay);
 	--space-list-background-overlay: hsla(0, 0%, 96%, .8);
+	/* The layer the rail parts to reveal when a space is opened. It has to read
+	   as a surface *under* the rail, so it steps away from the rail's tone in the
+	   direction the theme calls "deeper": down in light, up in dark. */
+	--space-bar-under-layer: hsla(0, 0%, 89%, .95);
+	--space-sub-filter-selected-bg: rgba(214, 168, 0, .18);
 	--room-list-scrollbar-color: rgba(0, 0, 0, .4) rgba(0, 0, 0, .1);
 	--room-list-entry-hover-color: rgba(0, 0, 0, 0.075);
 	--room-list-entry-selected-color: rgba(0, 0, 0, 0.125);
@@ -218,6 +227,8 @@
 
 		--room-list-background-overlay: #202024;
 		--space-list-background-overlay: #17171b;
+		--space-bar-under-layer: #2b2b33;
+		--space-sub-filter-selected-bg: rgba(255, 228, 132, .16);
 		--room-list-scrollbar-color: rgba(var(--warm-tint-rgb), .4) rgba(var(--warm-tint-rgb), .1);
 		--room-list-entry-hover-color: rgba(var(--warm-tint-rgb), 0.1);
 		--room-list-entry-selected-color: rgba(var(--warm-tint-rgb), 0.15);
@@ -542,6 +553,10 @@ html[data-tauri] {
 	 */
 	--room-list-background: rgba(30, 30, 36, .78);
 	--space-list-background-overlay: rgba(20, 18, 22, .85);
+	/* Translucent like the rail above it so the vibrancy still modulates the
+	   revealed band, just several stops lighter — the whole point of the parted
+	   rail is that the layer underneath is a different surface, not a tint. */
+	--space-bar-under-layer: rgba(43, 43, 51, .9);
 	--room-list-background-overlay: transparent;
 	--room-list-search-background-overlay: transparent;
 

@@ -18,7 +18,7 @@ import { RoomListFilter, Space } from "@/api/statestore/space.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import UnreadCount from "./UnreadCount.tsx"
 import BellIcon from "@/icons/modern/bell.svg?react"
-import HashIcon from "@/icons/modern/hash.svg?react"
+import BubbleNetworkIcon from "@/icons/modern/bubble-network.svg?react"
 import HomeIcon from "@/icons/modern/home.svg?react"
 import UserIcon from "@/icons/modern/user.svg?react"
 import "./RoomList.css"
@@ -32,14 +32,20 @@ export interface FakeSpaceProps {
 
 const getFakeSpaceMeta = (space: RoomListFilter | null): [string | undefined, JSX.Element | null] => {
 	switch (space?.id) {
+	// No filter at all: every chat you are in. The rail pairs it with the
+	// orphans entry below, which is the narrower "no space claims these" view.
+	// The unfiltered null state and the real all-chats filter are the same view,
+	// so they share an entry — the rail shows null at boot and swaps to the
+	// filter object once the tile is clicked and its drawer opens.
 	case undefined:
-		return ["Home", <HomeIcon />]
+	case "fi.mau.gomuks.all_chats":
+		return ["All chats", <HomeIcon />]
 	case "fi.mau.gomuks.direct_chats":
 		return ["Direct chats", <UserIcon />]
 	case "fi.mau.gomuks.unreads":
 		return ["Unread chats", <BellIcon />]
 	case "fi.mau.gomuks.space_orphans":
-		return ["Rooms outside spaces", <HashIcon />]
+		return ["Outside spaces", <BubbleNetworkIcon />]
 	default:
 		return [undefined, null]
 	}

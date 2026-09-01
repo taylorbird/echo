@@ -41,7 +41,15 @@ import {
 } from "../types"
 import { InvitedRoomStore } from "./invitedroom.ts"
 import { RoomStateStore } from "./room.ts"
-import { DirectChatSpace, RoomListFilter, Space, SpaceEdgeStore, SpaceOrphansSpace, UnreadsSpace } from "./space.ts"
+import {
+	AllChatsSpace,
+	DirectChatSpace,
+	RoomListFilter,
+	Space,
+	SpaceEdgeStore,
+	SpaceOrphansSpace,
+	UnreadsSpace,
+} from "./space.ts"
 
 export interface RoomListEntry {
 	room_id: RoomID
@@ -86,15 +94,25 @@ export class StateStore {
 	readonly roomListEntries = new Map<RoomID, RoomListEntry>()
 	readonly topLevelSpaces = new NonNullCachedEventDispatcher<RoomID[]>([])
 	readonly spaceEdges: Map<RoomID, SpaceEdgeStore> = new Map()
+	readonly allChatsSpace = new AllChatsSpace()
 	readonly spaceOrphans = new SpaceOrphansSpace(this)
 	readonly directChatsSpace = new DirectChatSpace()
 	readonly unreadsSpace = new UnreadsSpace(this)
+	/*
+	 * Listed here so getSpaceByID can resolve them out of history state. Note
+	 * that unread aggregation does NOT walk this array — #applyUnreadModification
+	 * names the spaces it feeds — so adding an entry here cannot double-count
+	 * anyone's badges. allChatsSpace deliberately never gets fed: a running total
+	 * of every unread in the account is what the unreads entry is for.
+	 */
 	readonly pseudoSpaces = [
+		this.allChatsSpace,
 		this.spaceOrphans,
 		this.directChatsSpace,
 		this.unreadsSpace,
 	] as const
 	currentRoomListQuery: string = ""
+	/* No filter is the rail's "All chats" view: every chat, nothing hidden. */
 	currentRoomListFilter: RoomListFilter | null = null
 	readonly accountData: Map<string, UnknownEventContent> = new Map()
 	readonly accountDataSubs = new MultiSubscribable()

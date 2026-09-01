@@ -22,6 +22,7 @@ import type { EventID, RoomID } from "@/api/types"
 import useAppVersion from "@/util/appversion.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { hackyIsSafari } from "@/util/ismobile.ts"
+import { prefersReducedMotion } from "@/util/reducedmotion.ts"
 import { claimReleaseNotes } from "@/util/releasenotes.ts"
 import { getPendingUpdate, getUpdateState, restartToApply, subscribeToUpdateState } from "@/util/updater.ts"
 import { ensureString, ensureStringArray, parseMatrixURI } from "@/util/validation.ts"
@@ -340,14 +341,6 @@ const handleURLHash = (client: Client, context: MainScreenContextFields, hashOnl
 }
 
 type ActiveRoomType = [RoomStateStore | RoomPreviewProps | null, RoomStateStore | RoomPreviewProps | null]
-
-// Mirrors the CSS: the system preference is honoured unless the "Ignore reduce
-// motion" preference has set the attribute on <html>. Without this the toggle
-// would be half-applied on narrow layouts — the CSS transition would run, but the
-// outgoing room would not be kept mounted for it to animate.
-const prefersReducedMotion = () =>
-	window.matchMedia("(prefers-reduced-motion: reduce)").matches
-	&& !document.documentElement.hasAttribute("data-ignore-reduce-motion")
 
 const activeRoomReducer = (
 	prev: ActiveRoomType,

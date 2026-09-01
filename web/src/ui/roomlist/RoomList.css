@@ -33,16 +33,20 @@ div.space-bar {
 	display: flex;
 	flex-direction: column;
 	padding-top: var(--window-top-margin);
-	padding-left: .5rem;
-	padding-right: .5rem;
+	/* No horizontal padding: the parted rail's segments and revealed band have to
+	   run edge to edge for their cut to read as the whole strip separating.
+	   Entries are centred by their own auto margins, so nothing else moves. */
 
-	> div.space-entry {
+	div.space-entry {
 		position: relative;
-		width: 2.5rem;
-		height: 2.5rem;
-		padding: .25rem;
+		/* A quarter larger than the original 2.5rem tile. The padding scales with
+		   it so the avatar inside lands on exactly 2.5rem — the tile grows, the
+		   breathing room around the avatar stays proportionally the same. */
+		width: 3.125rem;
+		height: 3.125rem;
+		padding: .3125rem;
 		margin: .3125rem auto;
-		border-radius: .625rem;
+		border-radius: .78125rem;
 		box-sizing: border-box;
 		cursor: var(--clickable-cursor);
 
@@ -63,7 +67,7 @@ div.space-bar {
 			top: 50%;
 			translate: 0 -50%;
 			width: .1875rem;
-			height: 1.25rem;
+			height: 1.5625rem;
 			border-radius: 999px;
 			background-color: var(--accent-glow-color);
 			box-shadow: 0 0 6px var(--accent-glow-near), 0 0 14px var(--accent-glow-far);
@@ -73,14 +77,16 @@ div.space-bar {
 		   full tile size is what made the rail read as heavy blocks. */
 		> svg {
 			display: block;
-			width: 1.375rem;
-			height: 1.375rem;
-			margin: .3125rem auto 0;
+			width: 1.75rem;
+			height: 1.75rem;
+			/* Half the leftover height in the 2.5rem content box, so the glyph
+			   stays centred in the tile as both grow. */
+			margin: .375rem auto 0;
 		}
 
 		> img.avatar {
 			display: block;
-			border-radius: .5rem;
+			border-radius: .625rem;
 			clip-path: none;
 			width: 100%;
 			height: 100%;
@@ -95,13 +101,270 @@ div.space-bar {
 
 			> div.unread-count {
 				position: absolute;
-				/* This positioning doesn't feel very precise, but it looks correct enough */
-				margin-top: .75rem;
-				margin-right: .25rem;
+				/* This positioning doesn't feel very precise, but it looks correct
+				   enough. Both offsets scale with the tile, or the badge creeps
+				   toward the middle of it as the tile grows. */
+				margin-top: .9375rem;
+				margin-right: .3125rem;
 			}
 		}
 	}
 }
+
+/*
+ * The parted rail. Opening a space slides the dark strip apart to reveal a
+ * lighter layer beneath, which carries the space and its sub-filters. The cut is
+ * square on purpose — a rounded one reads as a card laid on top rather than as
+ * the strip itself having separated.
+ *
+ * The segments deliberately have no background of their own: they inherit the
+ * rail's, which is translucent over vibrancy under Tauri, and repainting it here
+ * would composite the tint twice. All they contribute is the drop shadow that
+ * puts the dark layer above the revealed one, which needs the stacking order
+ * below to land on top of the band rather than under it.
+ */
+div.space-bar-segment {
+	display: flex;
+	flex-direction: column;
+	/* Never a shrink candidate: during a space switch two bands briefly inflate
+	   the rail's content, and a segment allowed to shrink can be crushed to
+	   nothing for exactly the length of the transition. The rail scrolls;
+	   compression buys nothing. */
+	flex-shrink: 0;
+	position: relative;
+	z-index: 1;
+	border-radius: 0;
+
+	&.top {
+		box-shadow: 0 2px 5px rgba(0, 0, 0, .45);
+	}
+
+	&.bottom {
+		box-shadow: 0 -2px 5px rgba(0, 0, 0, .45);
+	}
+
+	/* Only reachable mid-switch, with the outgoing band above it and the incoming
+	   one below. Two shadows rather than one rule per edge, because a segment in
+	   that position genuinely has a cut on both sides. */
+	&.between {
+		box-shadow: 0 2px 5px rgba(0, 0, 0, .45), 0 -2px 5px rgba(0, 0, 0, .45);
+	}
+}
+
+/*
+ * The revealed band, and the thing that actually slides: its height is a single
+ * grid track animating 0fr -> 1fr, so the dark segment below is pushed down by
+ * ordinary layout rather than by anything measuring or transforming it. No
+ * max-height guess to outgrow, and the open height is always the true content
+ * height.
+ *
+ * min-height: 0 is load-bearing — as a flex item of the rail this would
+ * otherwise take an automatic content-based minimum and refuse to collapse to
+ * the 0fr track at all.
+ */
+div.space-bar-under-layer {
+	/* The glow marks the active view. With the space open, the view is whichever
+	   sub-filter is selected — the row below carries the pill, so the tile
+	   showing it too would put two "you are here" marks in one band. */
+	div.space-entry.active::before {
+		content: none;
+	}
+
+	display: grid;
+	grid-template-rows: 1fr;
+	min-height: 0;
+	/* min-height 0 lets the grid track collapse the band; without this the flex
+	   algorithm reads that same 0 as licence to crush the band during the
+	   two-band overlap, fighting the very animation it exists to run. */
+	flex-shrink: 0;
+	position: relative;
+	z-index: 0;
+	border-radius: 0;
+	background-color: var(--space-bar-under-layer);
+	/* The curve the Toggle knob already travels on, so the rail opens with the
+	   same hand as the rest of the app: almost all of the distance is covered
+	   early, then it settles rather than arriving. */
+	animation: space-bar-part .26s cubic-bezier(.32, .72, 0, 1);
+
+	/*
+	 * Leaving is quicker than arriving, but it lands on the same house curve the
+	 * open uses: most of the distance goes early — which is what reads as an
+	 * accelerated exit — and the end settles. The previous ease-out-style curve
+	 * had the band at its highest velocity at the instant it vanished, so
+	 * everything sliding up beneath it slammed to a stop; that terminal snap was
+	 * the whole of what read as jarring.
+	 *
+	 * forwards is not optional: without it the band snaps back to its full height
+	 * for the frames between the animation ending and React unmounting it, which
+	 * reads as the rail flicking open again just as it finishes closing.
+	 */
+	&.closing {
+		animation: space-bar-close .52s cubic-bezier(.32, .72, 0, 1) forwards;
+		/* It is on its way out and its sub-filters belong to a filter that is no
+		   longer active — a click landing here would select something invisible. */
+		pointer-events: none;
+	}
+}
+
+/*
+ * Carries everything the band shows, plus the padding and the overflow clip. A
+ * grid track can only compress a child that agrees to be compressed, which is
+ * what these two declarations buy; padding up on the outer element would leave
+ * the closed band its own height tall and the slide would start from a visible
+ * sliver.
+ */
+div.space-bar-under-layer-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow: hidden;
+	min-height: 0;
+	padding: .375rem 0 .5rem;
+	/*
+	 * The overflow clip means the contents are wiped in against a hard edge as
+	 * the track grows, and that edge is most of what read as rough. Fading over
+	 * the first half of the open softens it — and the close needs the mirror
+	 * image for the same reason: without it the sub-filters are crushed against
+	 * the clip at full opacity on the way out.
+	 */
+	animation: space-bar-part-fade .26s cubic-bezier(.32, .72, 0, 1);
+
+	div.space-bar-under-layer.closing > & {
+		animation: space-bar-part-fade-out .52s cubic-bezier(.32, .72, 0, 1) forwards;
+	}
+}
+
+@keyframes space-bar-part {
+	from { grid-template-rows: 0fr; }
+	to { grid-template-rows: 1fr; }
+}
+
+@keyframes space-bar-close {
+	from { grid-template-rows: 1fr; }
+	to { grid-template-rows: 0fr; }
+}
+
+/* Front-loaded: the contents are fully there by the time the band is only part
+   way open, so this covers the hard clip edge without the band ever looking
+   half-drawn once it has settled. */
+@keyframes space-bar-part-fade {
+	0% { opacity: 0; }
+	55%, 100% { opacity: 1; }
+}
+
+/* Mirror of the above: contents are gone well before the band is, so the crush
+   against the clip edge never happens at visible opacity. */
+@keyframes space-bar-part-fade-out {
+	0% { opacity: 1; }
+	45%, 100% { opacity: 0; }
+}
+
+/*
+ * Reduced motion: the rail parts and closes instantly, which is this design's
+ * resting state rather than a degraded version of it. Kept at the top level
+ * rather than nested into each rule because it has to silence three selectors
+ * at once — the band, its outgoing variant and the inner fade — and three
+ * copies of the escape-hatch condition is three chances to get one wrong.
+ *
+ * This is the belt to the JS side's braces. RoomList skips tracking a closing
+ * band at all for these users, which matters because `animation: none` means no
+ * animationend ever fires, and anything waiting on one would wedge the band open
+ * until the timeout swept it away.
+ */
+@media (prefers-reduced-motion: reduce) {
+	html:not([data-ignore-reduce-motion]) {
+		div.space-bar-under-layer,
+		div.space-bar-under-layer.closing,
+		div.space-bar-under-layer-inner {
+			animation: none;
+		}
+	}
+}
+
+/* Engraved, not drawn: the dark line is the groove and the warm line under it is
+   the lit lip below it. Reversing that pair is what makes it read as a raised
+   rule instead. */
+div.space-sub-divider {
+	width: 2.5rem;
+	height: 1px;
+	margin: .4375rem 0 .3125rem;
+	background: rgba(0, 0, 0, .4);
+	box-shadow: 0 1px 0 rgba(var(--warm-tint-rgb), .08);
+}
+
+/*
+ * The same groove at rail level, separating the filters you stand in from the
+ * unreads lookup below them. A sibling of the sub-divider rather than the same
+ * class: the treatment is deliberately identical, but this one is centred by
+ * auto margins in a stretch-aligned column and needs its own breathing room.
+ * Decoration between groups, so it takes no hover and no pointer.
+ */
+div.space-bar-divider {
+	width: 2.5rem;
+	height: 1px;
+	margin: .5rem auto;
+	background: rgba(0, 0, 0, .4);
+	box-shadow: 0 1px 0 rgba(var(--warm-tint-rgb), .08);
+}
+
+button.space-sub-filter {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* Stretched to the full rail width so the selected state can be a band across
+	   the layer rather than a pill floating on it. */
+	align-self: stretch;
+	height: 3.125rem;
+	padding: 0;
+	border: none;
+	border-radius: 0;
+	background: none;
+	color: var(--secondary-text-color);
+	cursor: var(--clickable-cursor);
+
+	&:hover, &:focus-visible {
+		background-color: var(--room-list-entry-hover-color);
+		color: var(--text-color);
+	}
+
+	/* Flat band with a solid left edge — no blur. The glow treatment belongs to
+	   the rail's active markers; repeating it here would put two competing
+	   "current" signals inside the same band. */
+	position: relative;
+
+	&[aria-pressed="true"] {
+		color: var(--text-color);
+		background-color: var(--space-sub-filter-selected-bg);
+
+		/* The same "you are here" pill the rail's tiles use, at the same x: the
+		   tiles are centred, so their pill sits (railwidth − tile)/2 − .75rem from
+		   the rail's edge — this button spans the full rail, so that offset is
+		   computed instead of inherited. Replaces the old flat inset edge; the
+		   glow is the marker language everywhere else, and this row is now the
+		   active view. */
+		&::before {
+			content: "";
+			position: absolute;
+			left: calc((var(--space-bar-width) - 3.125rem) / 2 - .75rem);
+			top: 50%;
+			translate: 0 -50%;
+			width: .1875rem;
+			height: 1.5625rem;
+			border-radius: 999px;
+			background-color: var(--accent-glow-color);
+			box-shadow: 0 0 6px var(--accent-glow-near), 0 0 14px var(--accent-glow-far);
+		}
+	}
+
+	/* Smaller than the 3.125rem space tiles: these are a property of the space
+	   above them, not peers of it. */
+	> svg {
+		display: block;
+		width: 1.4375rem;
+		height: 1.4375rem;
+	}
+}
+
 
 div.room-search-wrapper {
 	width: 100%;
@@ -164,8 +427,26 @@ div.room-entry {
 		background-color: var(--room-list-entry-hover-color);
 	}
 
-	&.active {
-		background-color: var(--room-list-entry-selected-color);
+	/*
+	 * The open room's surface: the warm wash, strong enough to stop reading as a
+	 * stuck hover (the hover sits at .1, the old active at .15 — same family,
+	 * nearly the same strength, which is why "open" and "hovered" blurred
+	 * together), framed by the app's card edges: a lit line above, a dark seam
+	 * below. Deliberately NOT the selected-color token — that token also paints
+	 * the rail tiles and the settings rail, and this treatment is the room
+	 * row's own.
+	 */
+	&.active,
+	&:not(.hidden) ~ &.active {
+		background-color: rgba(var(--warm-tint-rgb), .24);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, .08),
+			inset 0 -1px 0 rgba(0, 0, 0, .35);
+	}
+
+	/* The row after the active one would stack its hairline on the seam. */
+	&.active + &:not(.hidden) {
+		box-shadow: none;
 	}
 
 	/* Same "you are here" marker as the space rail's active tile, centred in
@@ -357,7 +638,10 @@ div.room-entry {
 				   from — so it reads as the theme rather than an extra hue. Set
 				   as an attribute by StylePreferences. */
 				html[data-uniform-room-list-color] & {
-					color: #fecdb2;
+					/* Falls back to the value this was hardcoded to before the colour
+					   became a preference, so a profile that has never set it is
+					   unchanged. */
+					color: var(--room-list-color, #fecdb2);
 				}
 			}
 		}
@@ -477,6 +761,9 @@ button.room-list-section-header {
 div.space-bar-footer {
 	position: sticky;
 	bottom: 0;
+	/* Above the parted rail's segments, which raise themselves to cast onto the
+	   revealed band and would otherwise scroll over the footer. */
+	z-index: 2;
 	margin-top: auto;
 	display: flex;
 	flex-direction: column;
@@ -490,11 +777,11 @@ div.space-bar-footer {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 2.5rem;
-		height: 2.5rem;
+		width: 3.125rem;
+		height: 3.125rem;
 		padding: 0;
 		border: none;
-		border-radius: .625rem;
+		border-radius: .78125rem;
 		background: none;
 		color: var(--secondary-text-color);
 		cursor: var(--clickable-cursor);
@@ -515,13 +802,13 @@ div.space-bar-footer {
 		}
 
 		> svg {
-			width: 1.375rem;
-			height: 1.375rem;
+			width: 1.75rem;
+			height: 1.75rem;
 		}
 
 		> img.avatar {
-			width: 1.75rem;
-			height: 1.75rem;
+			width: 2.1875rem;
+			height: 2.1875rem;
 		}
 	}
 

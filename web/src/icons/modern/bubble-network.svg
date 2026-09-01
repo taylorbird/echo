@@ -1,0 +1,9 @@
+<!-- Three chats of different sizes, linked: the "everything outside spaces" glyph.
+     Filled dots rather than the set's usual outlines — at rail size an outlined
+     triangle of circles reads as a molecule; filled, it reads as a network. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+	<path d="M6.5 8.5 17 6M17 6l-2.5 11.5M6.5 8.5l8 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+	<circle cx="6.5" cy="8.5" r="3.1" fill="currentColor"/>
+	<circle cx="17" cy="6" r="2.2" fill="currentColor"/>
+	<circle cx="14.5" cy="17.5" r="1.6" fill="currentColor"/>
+</svg>

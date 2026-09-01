@@ -73,6 +73,24 @@ export abstract class Space implements RoomListFilter {
 	}
 }
 
+/*
+ * Every chat, unfiltered. This exists so the rail's All chats entry can be a
+ * real filter object rather than the absence of one: only a filter has an id to
+ * key the parted drawer on, and only a filter can be wrapped by
+ * SubFilteredSpace to give that drawer its Rooms and DMs sub-views.
+ *
+ * The unfiltered null state still exists — it is what the app boots into and
+ * what a history entry with no space carries — and this agrees with it exactly,
+ * so the two are interchangeable everywhere except in the rail.
+ */
+export class AllChatsSpace extends Space {
+	id = "fi.mau.gomuks.all_chats"
+
+	include(): boolean {
+		return true
+	}
+}
+
 export class DirectChatSpace extends Space {
 	id = "fi.mau.gomuks.direct_chats"
 
@@ -200,7 +218,35 @@ export class SpaceOrphansSpace extends SpaceEdgeStore {
 		super(SpaceOrphansSpace.id, parent)
 	}
 
+	/*
+	 * Everything that belongs to no space, direct chats included. This is what the
+	 * rail's Home button selects, so "Home" means the chats no space has claimed
+	 * rather than every chat you are in — the spaces below it cover the rest.
+	 */
 	include(room: RoomListEntry): boolean {
-		return !super.include(room) && !room.dm_user_id
+		return !super.include(room)
+	}
+}
+
+export type SpaceSubFilterID = "rooms" | "dms"
+
+/*
+ * A space narrowed to one kind of chat, used by the rail's All/Rooms/DMs
+ * sub-filters. It reports the wrapped space's id so everything that resolves a
+ * space by id — history state, the rail's active marker, the unread jump — still
+ * sees the space itself; only the room list narrows.
+ */
+export class SubFilteredSpace implements RoomListFilter {
+	constructor(readonly parent: RoomListFilter, readonly sub: SpaceSubFilterID) {}
+
+	get id(): string {
+		return this.parent.id
+	}
+
+	include(room: RoomListEntry): boolean {
+		if (!this.parent.include(room)) {
+			return false
+		}
+		return this.sub === "dms" ? Boolean(room.dm_user_id) : !room.dm_user_id
 	}
 }
