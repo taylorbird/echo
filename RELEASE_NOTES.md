@@ -12,11 +12,26 @@
      Anything else comes through as plain text. Links must be http(s) or they render as their
      label alone. -->
 
-## Fixes
+## The rail opens up
 
-- People joining or leaving no longer marks rooms unread. One person rejoining a lot of rooms
-  used to light up the whole room list at once. The joins still appear in the timeline — you
-  just aren't notified about them. Invites to you still notify, as before.
+- Clicking a space now slides the sidebar apart, revealing the space with its own sub-filters
+  underneath: everything, just its rooms, or just its direct messages.
+- **All chats** and **Outside spaces** get the same treatment — Outside spaces is the new
+  network-of-bubbles icon, covering every chat no space has claimed, direct messages included.
+  The DMs filter under All chats brings back the old direct-chats view.
+- Unreads moved below your spaces, behind its own divider.
+- The yellow marker now follows the view you are actually in — select Rooms inside a space and
+  the marker moves with you.
+- Everything is a little bigger, and opening and closing is animated (when "Ignore reduce
+  motion" is on).
+
+## Room list
+
+- The open room sits on a stronger highlight with a lit edge, so it no longer looks like a
+  hover that got stuck.
+- A new **Room list color** setting picks the accent used when every room shares one color —
+  which is now the default. Per-room colors are still there as a toggle.
+- New button in the header to mark every unread room read at once, with a confirmation.
 
 ## Known issue
 
