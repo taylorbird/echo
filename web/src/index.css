@@ -146,7 +146,10 @@
 	--room-list-padding: .125rem;
 
 	--timeline-avatar-size: 2.5rem;
-	--timeline-avatar-gap: 1rem;
+	/* Wide enough to hold the sender rail with air on both sides: the avatar's
+	   colour ring bleeds 4px into this gutter, the rail wants clear space from
+	   both the ring and the text edge. 1rem left the three touching. */
+	--timeline-avatar-gap: 1.5rem;
 	--timeline-avatar-total-size: calc(var(--timeline-avatar-size) + var(--timeline-avatar-gap));
 	--timeline-message-gap: 1.5rem;
 	--timeline-message-gap-same-sender: .35rem;
@@ -227,7 +230,10 @@
 
 		--room-list-background-overlay: #202024;
 		--space-list-background-overlay: #17171b;
-		--space-bar-under-layer: #2b2b33;
+		/* A warm step up from the rail, not just a lighter grey: mixed toward the
+		   Tempered tint so the parted band reads as a different surface against
+		   the room list beside it rather than blending into it. */
+		--space-bar-under-layer: color-mix(in oklab, #2b2b33 85%, rgb(var(--warm-tint-rgb)));
 		--space-sub-filter-selected-bg: rgba(255, 228, 132, .16);
 		--room-list-scrollbar-color: rgba(var(--warm-tint-rgb), .4) rgba(var(--warm-tint-rgb), .1);
 		--room-list-entry-hover-color: rgba(var(--warm-tint-rgb), 0.1);
@@ -283,7 +289,7 @@
 		--sender-color-3: #a78bfa;
 		--sender-color-4: #4db8f5;
 		/* Honey gold, not pure yellow — #ffd93d went mustardy under the
-	   sender-name dim (opacity .75) on the dark warm background. */
+	   sender names, back when they were dimmed to .75, on the dark warm background. */
 	--sender-color-5: #f0c674;
 		--sender-color-6: #ff7ac6;
 		--sender-color-7: #4de0e0;
@@ -554,9 +560,10 @@ html[data-tauri] {
 	--room-list-background: rgba(30, 30, 36, .78);
 	--space-list-background-overlay: rgba(20, 18, 22, .85);
 	/* Translucent like the rail above it so the vibrancy still modulates the
-	   revealed band, just several stops lighter — the whole point of the parted
-	   rail is that the layer underneath is a different surface, not a tint. */
-	--space-bar-under-layer: rgba(43, 43, 51, .9);
+	   revealed band, just several stops lighter and warmer — the whole point of
+	   the parted rail is that the layer underneath is a different surface. The
+	   value is the solid theme's warm-mixed band, flattened to an rgb. */
+	--space-bar-under-layer: rgba(72, 69, 74, .9);
 	--room-list-background-overlay: transparent;
 	--room-list-search-background-overlay: transparent;
 
