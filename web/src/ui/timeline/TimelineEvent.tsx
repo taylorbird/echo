@@ -18,8 +18,7 @@ import { HexColorPicker } from "react-colorful"
 import { createPortal } from "react-dom"
 import type Client from "@/api/client.ts"
 import {
-	getAvatarThumbnailURL, getCustomUserColor, getMediaURL, getUserColorIndex, getUserColorOverride,
-	setCustomUserColor,
+	getAvatarThumbnailURL, getCustomUserColor, getMediaURL, getSenderColor, setCustomUserColor,
 } from "@/api/media.ts"
 import {
 	RoomStateStore,
@@ -83,39 +82,53 @@ const newSafeDate = (val: number) => {
 	return date
 }
 
+interface ReactionRelations {
+	senders: Map<string, UserID[]>
+	own: Map<string, EventID>
+}
+
 interface EventReactionsProps {
 	reactions: Record<string, number>
-	onRereact: (reaction: string) => void
+	onToggle: (reaction: string, ownEventID: EventID | null) => Promise<unknown>
 	client: Client
 	room: RoomStateStore
 	eventID: EventID
 }
 
-const EventReactions = ({ reactions, onRereact, client, room, eventID }: EventReactionsProps) => {
+// A chip stays dimmed until the send or redact echoes back through /sync, and
+// that round trip can take tens of seconds when the homeserver is struggling.
+// This only exists so a lost echo doesn't leave a chip dimmed forever.
+const PENDING_FALLBACK_TIMEOUT = 20_000
+
+const EventReactions = ({ reactions, onToggle, client, room, eventID }: EventReactionsProps) => {
 	const reactionEntries = Object.entries(reactions).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1])
+	const hasReactions = reactionEntries.length > 0
 	// Senders are not part of the event's reaction data — the backend aggregates
 	// m.reaction events down to counts before sending them. The individual
-	// annotations have to be fetched separately, so it happens on first hover
-	// rather than for every reacted event in the timeline.
-	const [senders, setSenders] = useState<Map<string, UserID[]> | null>(null)
+	// annotations have to be fetched separately, but that's a read from the local
+	// sidecar database rather than a federated round trip, so it happens up front
+	// instead of on hover: clicking a chip has to know whether one of those
+	// annotations is ours to redact, and the "mine" state has to be right before
+	// the click, not after it.
+	const [relations, setRelations] = useState<ReactionRelations | null>(null)
 	const [failed, setFailed] = useState(false)
-	const requested = useRef(false)
-	// Counts changing means someone reacted or unreacted, so any names already
-	// fetched are stale and the next hover should fetch again.
-	const countSignature = reactionEntries.map(([key, count]) => `${key}:${count}`).join(",")
-	useEffect(() => {
-		requested.current = false
-		setSenders(null)
-		setFailed(false)
-	}, [countSignature, eventID])
-	const loadSenders = () => {
+	const requested = useRef<Promise<ReactionRelations | null> | null>(null)
+	// Keys with a send or redact in flight, mapped to the count delta to show
+	// optimistically until the real counts arrive.
+	const [pending, setPending] = useState<Map<string, number>>(new Map())
+	const pendingTimers = useRef(new Map<string, number>())
+	// Guards a second click during the window where the annotation fetch is
+	// still in flight and there's no delta to put in `pending` yet.
+	const toggling = useRef(new Set<string>())
+	const loadRelations = useCallback(() => {
 		if (requested.current) {
-			return
+			return requested.current
 		}
-		requested.current = true
-		client.getRelatedEvents(room, eventID, "m.annotation").then(
-			events => {
-				const bySender = new Map<string, UserID[]>()
+		const promise: Promise<ReactionRelations | null> = client
+			.getRelatedEvents(room, eventID, "m.annotation")
+			.then(events => {
+				const senders = new Map<string, UserID[]>()
+				const own = new Map<string, EventID>()
 				for (const reactionEvt of events) {
 					if (reactionEvt.redacted_by) {
 						continue
@@ -124,28 +137,116 @@ const EventReactions = ({ reactions, onRereact, client, room, eventID }: EventRe
 					if (typeof key !== "string") {
 						continue
 					}
-					const existing = bySender.get(key)
+					const existing = senders.get(key)
 					if (existing) {
 						existing.push(reactionEvt.sender)
 					} else {
-						bySender.set(key, [reactionEvt.sender])
+						senders.set(key, [reactionEvt.sender])
+					}
+					if (reactionEvt.sender === client.userID) {
+						// A confirmed annotation beats a pending one: only the
+						// former has an ID the server will accept a redaction for.
+						const known = own.get(key)
+						if (known === undefined || known.startsWith("~")) {
+							own.set(key, reactionEvt.event_id)
+						}
 					}
 				}
-				setSenders(bySender)
-			},
-			err => {
+				const loaded = { senders, own }
+				if (requested.current === promise) {
+					setRelations(loaded)
+				}
+				return loaded
+			}, err => {
 				console.error("Failed to get reaction senders", err)
-				setFailed(true)
-			},
+				if (requested.current === promise) {
+					setFailed(true)
+				}
+				return null
+			})
+		requested.current = promise
+		return promise
+	}, [client, room, eventID])
+	const clearPending = useCallback((reaction: string) => {
+		const timer = pendingTimers.current.get(reaction)
+		if (timer !== undefined) {
+			window.clearTimeout(timer)
+			pendingTimers.current.delete(reaction)
+		}
+		toggling.current.delete(reaction)
+		setPending(prev => {
+			if (!prev.has(reaction)) {
+				return prev
+			}
+			const next = new Map(prev)
+			next.delete(reaction)
+			return next
+		})
+	}, [])
+	const clearAllPending = useCallback(() => {
+		for (const timer of pendingTimers.current.values()) {
+			window.clearTimeout(timer)
+		}
+		pendingTimers.current.clear()
+		toggling.current.clear()
+		setPending(prev => prev.size > 0 ? new Map() : prev)
+	}, [])
+	// Counts changing means someone reacted or unreacted, so anything already
+	// fetched is stale, and whatever we were waiting on has landed. The stale
+	// relations stay on screen while the refetch runs instead of being nulled:
+	// dropping them made every chip lose its "mine" edge for a beat on any count
+	// change. A hover tooltip one fetch behind is the cheaper wrong.
+	const countSignature = reactionEntries.map(([key, count]) => `${key}:${count}`).join(",")
+	useEffect(() => {
+		requested.current = null
+		setFailed(false)
+		clearAllPending()
+		if (hasReactions) {
+			loadRelations()
+		}
+		// The map instance is never reassigned, only mutated, so holding it here
+		// is the same map the cleanup needs to drain.
+		const timers = pendingTimers.current
+		return () => {
+			for (const timer of timers.values()) {
+				window.clearTimeout(timer)
+			}
+			timers.clear()
+		}
+	}, [countSignature, eventID, hasReactions, loadRelations, clearAllPending])
+	const onClickReaction = async (reaction: string) => {
+		if (toggling.current.has(reaction)) {
+			return
+		}
+		toggling.current.add(reaction)
+		// Sending is the fallback when the lookup failed: the server rejects a
+		// duplicate annotation, which at least surfaces as an error.
+		const loaded = relations ?? (failed ? null : await loadRelations())
+		const ownEventID = loaded?.own.get(reaction) ?? null
+		if (ownEventID?.startsWith("~")) {
+			// Our own reaction isn't confirmed yet, so there's no event ID the
+			// server would accept a redaction for.
+			toggling.current.delete(reaction)
+			return
+		}
+		setPending(prev => new Map(prev).set(reaction, ownEventID ? -1 : 1))
+		pendingTimers.current.set(
+			reaction,
+			window.setTimeout(() => clearPending(reaction), PENDING_FALLBACK_TIMEOUT),
 		)
+		try {
+			await onToggle(reaction, ownEventID)
+		} catch {
+			clearPending(reaction)
+		}
 	}
 	const tooltipText = (reaction: string): string => {
 		if (failed) {
 			return "Failed to load who reacted"
-		} else if (senders === null) {
+		} else if (relations === null) {
 			return "Loading…"
 		}
-		const users = senders.get(reaction)
+		const users = relations.senders.get(reaction)
 		if (!users?.length) {
 			return "Nobody?"
 		}
@@ -156,25 +257,40 @@ const EventReactions = ({ reactions, onRereact, client, room, eventID }: EventRe
 			))
 			.join(", ")
 	}
-	if (reactionEntries.length === 0) {
+	if (!hasReactions) {
 		return null
 	}
 	return <div className="event-reactions">
-		{reactionEntries.map(([reaction, count]) =>
-			<div
+		{reactionEntries.map(([reaction, count]) => {
+			const delta = pending.get(reaction)
+			const classNames = ["reaction"]
+			// While a toggle is in flight the delta is the truth about whether the
+			// reaction is ours; the cached relations still describe the state we're
+			// moving away from.
+			if (delta !== undefined ? delta > 0 : relations?.own.has(reaction)) {
+				classNames.push("mine")
+			}
+			if (delta !== undefined) {
+				classNames.push("pending")
+			}
+			const displayCount = count + (delta ?? 0)
+			return <div
 				key={reaction}
-				className="reaction"
-				onClick={() => onRereact(reaction)}
-				onMouseEnter={loadSenders}
+				className={classNames.join(" ")}
+				onClick={() => void onClickReaction(reaction)}
+				onMouseEnter={() => void loadRelations()}
 			>
 				<div className="reaction-inner">
 					{reaction.startsWith("mxc://")
 						? <img className="reaction-emoji" src={getMediaURL(reaction)} alt=""/>
 						: <span className="reaction-emoji">{reaction}</span>}
-					<span className="reaction-count">{count}</span>
+					{/* Removing the last reaction leaves a dimmed bare emoji rather
+					    than a chip claiming a count of zero. */}
+					{displayCount > 0 && <span className="reaction-count">{displayCount}</span>}
 				</div>
 				<div className="reaction-tooltip">{tooltipText(reaction)}</div>
-			</div>)}
+			</div>
+		})}
 	</div>
 }
 
@@ -338,8 +454,17 @@ const TimelineEvent = ({
 			/>,
 		})
 	}
-	const onRereact = useCallback((reaction: string) => {
-		client.sendEvent(evt.room_id, "m.reaction", {
+	// Errors are rethrown so the chip can drop its pending state; EventReactions
+	// swallows them from there.
+	const onToggleReaction = useCallback((reaction: string, ownEventID: EventID | null): Promise<unknown> => {
+		if (ownEventID) {
+			return client.rpc.redactEvent(evt.room_id, ownEventID, "").catch(err => {
+				console.error("Failed to remove reaction", err)
+				window.alert(`Failed to remove reaction: ${err}`)
+				throw err
+			})
+		}
+		return client.sendEvent(evt.room_id, "m.reaction", {
 			"m.relates_to": {
 				rel_type: "m.annotation",
 				event_id: evt.event_id,
@@ -348,6 +473,7 @@ const TimelineEvent = ({
 		}).catch(err => {
 			console.error("Failed to send reaction", err)
 			window.alert(`Failed to send reaction: ${err}`)
+			throw err
 		})
 	}, [client, evt])
 	const onClick = (mouseEvt: React.MouseEvent) => {
@@ -380,7 +506,11 @@ const TimelineEvent = ({
 		const displayName = mouseEvt.currentTarget.textContent || userID
 		const member = roomCtx.store.getStateEvent("m.room.member", userID)
 		const avatarUrl = getAvatarThumbnailURL(
-			userID, member?.content as import("@/api/types").UserProfile | undefined)
+			userID,
+			member?.content as import("@/api/types").UserProfile | undefined,
+			false,
+			getSenderColor(roomCtx.store.roomID, userID),
+		)
 
 		const style = getModalStyleFromMouse(mouseEvt, 280)
 		openModal({
@@ -401,6 +531,9 @@ const TimelineEvent = ({
 	const memberEvt = useRoomMember(client, roomCtx.store, evt.sender)
 	const memberEvtContent = maybeRedactMemberEvent(memberEvt)
 	const renderMemberEvtContent = applyPerMessageSender(memberEvtContent, perMessageSender)
+	// The sender as displayed: a per-message profile stands in for the real
+	// sender wherever one is set (relay bridges and the like).
+	const senderID = perMessageSender?.id ?? evt.sender
 
 	const eventTS = newSafeDate(evt.timestamp)
 	const editEventTS = evt.last_edit ? newSafeDate(evt.last_edit.timestamp) : null
@@ -523,6 +656,9 @@ const TimelineEvent = ({
 	const mainEvent = <div
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
+		// Set on the row rather than on the name, so the rail down the left of a
+		// consecutive run and the ring round the avatar can read it too.
+		style={{ "--sender-color": getSenderColor(evt.room_id, senderID) } as React.CSSProperties}
 		onContextMenu={onContextMenu}
 		onClick={!disableMenu && viewType !== "edit-history" && isMobileDevice && !isSmallThreadMessage
 			? onClick : undefined}
@@ -548,34 +684,41 @@ const TimelineEvent = ({
 			<img
 				className={`${smallAvatar ? "small" : ""} avatar`}
 				loading="lazy"
-				src={getAvatarThumbnailURL(perMessageSender?.id ?? evt.sender, renderMemberEvtContent)}
+				src={getAvatarThumbnailURL(
+					senderID, renderMemberEvtContent, false, getSenderColor(evt.room_id, senderID),
+				)}
 				alt=""
 			/>
 		</div>}
 		{!eventTimeOnly ? <div className="event-sender-and-time">
 			<span
-				className={`event-sender sender-color-${getUserColorIndex(perMessageSender?.id ?? evt.sender)}`}
-				data-target-user={perMessageSender?.id ?? evt.sender}
+				className="event-sender"
+				data-target-user={senderID}
 				onClick={perMessageSender ? undefined : roomCtx.appendMentionToComposer}
 				onContextMenu={onSenderContextMenu}
 				title={`${perMessageSender ? perMessageSender.id : evt.sender} (right-click for color)`}
-				style={getUserColorOverride(perMessageSender?.id ?? evt.sender)
-					? { color: getUserColorOverride(perMessageSender?.id ?? evt.sender) }
-					: undefined}
 			>
-				{getDisplayname(evt.sender, renderMemberEvtContent)}
+				{/* The plate behind the name lives on this inner span so the outer
+				    one can keep clipping overlong names outside of it. */}
+				<span className="event-sender-text">
+					{getDisplayname(evt.sender, renderMemberEvtContent)}
+				</span>
 			</span>
 			{perMessageSender && <div className="per-message-event-sender">
 				<span className="via">via</span>
 				<span
-					className={`event-sender sender-color-${getUserColorIndex(evt.sender)}`}
+					className="event-sender"
 					data-target-user={evt.sender}
 					onClick={roomCtx.appendMentionToComposer}
 					onContextMenu={onSenderContextMenu}
 					title={`${evt.sender} (right-click for color)`}
-					style={getUserColorOverride(evt.sender) ? { color: getUserColorOverride(evt.sender) } : undefined}
+					// The relaying account is a different person from the
+					// per-message sender the row is coloured for.
+					style={{ color: getSenderColor(evt.room_id, evt.sender) }}
 				>
-					{getDisplayname(evt.sender, memberEvtContent)}
+					<span className="event-sender-text">
+						{getDisplayname(evt.sender, memberEvtContent)}
+					</span>
 				</span>
 			</div>}
 			<span className="event-time" title={fullTime} onClick={onClickTimestamp}>{shortTime}</span>
@@ -590,7 +733,7 @@ const TimelineEvent = ({
 			timelineThreadMsg={true}
 			reactions={evt.reactions ? <EventReactions
 				reactions={evt.reactions}
-				onRereact={onRereact}
+				onToggle={onToggleReaction}
 				client={client}
 				room={roomCtx.store}
 				eventID={evt.event_id}
@@ -610,7 +753,7 @@ const TimelineEvent = ({
 			</div> : null}
 			{evt.reactions ? <EventReactions
 				reactions={evt.reactions}
-				onRereact={onRereact}
+				onToggle={onToggleReaction}
 				client={client}
 				room={roomCtx.store}
 				eventID={evt.event_id}

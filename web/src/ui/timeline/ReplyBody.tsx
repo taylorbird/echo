@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, MouseEvent, use } from "react"
-import { getAvatarThumbnailURL, getUserColorIndex, getUserColorOverride } from "@/api/media.ts"
+import { getAvatarThumbnailURL, getRoomAccentColor, getSenderColor } from "@/api/media.ts"
 import {
 	applyPerMessageSender,
 	maybeRedactMemberEvent,
@@ -109,12 +109,19 @@ export const ReplyBody = ({
 	}
 	const perMessageSender = getPerMessageProfile(event)
 	const renderMemberEvtContent = applyPerMessageSender(memberEvtContent, perMessageSender)
-	let userColorIndex = getUserColorIndex(perMessageSender?.id ?? event.sender)
+	// Same room-aware colour the timeline row uses, so a quote's spine and name
+	// match whatever the quoted person is actually wearing in this room —
+	// including a custom colour, which the old sender-color-N class on the
+	// blockquote could never see.
+	const senderColor = getSenderColor(room.roomID, perMessageSender?.id ?? event.sender)
+	// A collapsed thread message takes the thread's own colour on its spine so
+	// the strand reads as one thing. Thread roots are event IDs, not senders, so
+	// there is nothing to allocate for them — they stay on the plain hash.
+	let spineColor = senderColor
 	if (timelineThreadMsg && threadRoot) {
 		classNames.push("timeline-thread-msg")
-		userColorIndex = getUserColorIndex(threadRoot)
+		spineColor = getRoomAccentColor(threadRoot)
 	}
-	classNames.push(`sender-color-${userColorIndex}`)
 	const onClick = (evt: MouseEvent<HTMLQuoteElement>) => {
 		if (isThread && threadRoot) {
 			mainScreen.setRightPanel({
@@ -125,7 +132,11 @@ export const ReplyBody = ({
 			jumpToEvent(roomCtx, event.event_id)
 		}
 	}
-	return <blockquote className={classNames.join(" ")} onClick={onClick}>
+	return <blockquote
+		className={classNames.join(" ")}
+		onClick={onClick}
+		style={{ "--reply-border-color": spineColor } as React.CSSProperties}
+	>
 		{small && <div className="reply-spine"/>}
 		<div className="reply-sender">
 			{!timelineThreadMsg && <div
@@ -135,16 +146,16 @@ export const ReplyBody = ({
 				<img
 					className="small avatar"
 					loading="lazy"
-					src={getAvatarThumbnailURL(perMessageSender?.id ?? event.sender, renderMemberEvtContent)}
+					src={getAvatarThumbnailURL(
+						perMessageSender?.id ?? event.sender, renderMemberEvtContent, false, senderColor,
+					)}
 					alt=""
 				/>
 			</div>}
 			<span
-				className={`event-sender sender-color-${userColorIndex}`}
+				className="event-sender"
 				title={perMessageSender ? perMessageSender.id : event.sender}
-				style={getUserColorOverride(perMessageSender?.id ?? event.sender)
-					? { color: getUserColorOverride(perMessageSender?.id ?? event.sender) }
-					: undefined}
+				style={{ color: senderColor }}
 			>
 				{getDisplayname(event.sender, renderMemberEvtContent)}
 			</span>
@@ -157,11 +168,9 @@ export const ReplyBody = ({
 			{perMessageSender && <div className="per-message-event-sender">
 				<span className="via">via</span>
 				<span
-					className={`event-sender sender-color-${getUserColorIndex(event.sender)}`}
+					className="event-sender"
 					title={event.sender}
-					style={getUserColorOverride(event.sender)
-						? { color: getUserColorOverride(event.sender) }
-						: undefined}
+					style={{ color: getSenderColor(room.roomID, event.sender) }}
 				>
 					{getDisplayname(event.sender, memberEvtContent)}
 				</span>

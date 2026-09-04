@@ -16,6 +16,7 @@
 import { isCheatActive } from "@/util/cheats.ts"
 import { parseMXC } from "@/util/validation.ts"
 import { BACKEND_URL } from "./backend.ts"
+import { createSenderColorAllocator, localSenderColorStorage } from "./sendercolor.ts"
 import { ContentURI, RoomID, UserID, UserProfile } from "./types"
 
 export const getMediaURL = (mxc?: string, encrypted: boolean = false): string | undefined => {
@@ -77,6 +78,13 @@ function initFallbackColors(): string[] {
 
 let fallbackColors: string[]
 
+function getFallbackColors(): string[] {
+	if (!fallbackColors) {
+		fallbackColors = initFallbackColors()
+	}
+	return fallbackColors
+}
+
 // Candy green, in the same pastel family as the sender colors.
 const RAAM_GREEN = "#50fa7b"
 
@@ -92,8 +100,8 @@ function getLocalpart(userID: UserID): string {
 // The color that beats the palette for this user, if any: an active cheat
 // first (the whole point of a cheat is that it holds everywhere, custom colors
 // included), then the user's own custom color. Exported separately because the
-// timeline colors senders with sender-color-N CSS classes rather than through
-// getUserColor, and applies this as an inline style override on top.
+// per-room allocator needs to know an override applies before it hands out a
+// palette slot — an overridden user's hue counts as taken in the room.
 export const getUserColorOverride = (userID: UserID): string | undefined => {
 	if (isCheatActive("raam-green") && getLocalpart(userID) === "raam") {
 		return RAAM_GREEN
@@ -101,24 +109,36 @@ export const getUserColorOverride = (userID: UserID): string | undefined => {
 	return getCustomUserColor(userID) ?? undefined
 }
 
+// The hash-based color, for the places that have no room to allocate within:
+// the member list, mention pills, avatar fallbacks.
 export const getUserColor = (userID: UserID) => {
 	const override = getUserColorOverride(userID)
 	if (override) {
 		return override
 	}
-	if (!fallbackColors) {
-		fallbackColors = initFallbackColors()
-	}
-	return fallbackColors[getUserColorIndex(userID)]
+	return getFallbackColors()[getUserColorIndex(userID)]
 }
 
 // Rooms hash into the same palette as users, but never through the per-user custom color map.
 export const getRoomAccentColor = (roomID: string): string => {
-	if (!fallbackColors) {
-		fallbackColors = initFallbackColors()
-	}
-	return fallbackColors[getUserColorIndex(roomID)]
+	return getFallbackColors()[getUserColorIndex(roomID)]
 }
+
+// The timeline colors senders per room rather than by hash, so that the people
+// talking in one room never land on the same or a neighbouring hue. See
+// sendercolor.ts for why, and for the order-dependence that buys it.
+const senderColors = createSenderColorAllocator({
+	getPalette: getFallbackColors,
+	getOverride: getUserColorOverride,
+	getHashIndex: getUserColorIndex,
+	...localSenderColorStorage,
+})
+
+export const getSenderColor = (roomID: RoomID, userID: UserID): string =>
+	senderColors.getColor(roomID, userID)
+
+export const getSenderColorIndex = (roomID: RoomID, userID: UserID): number | null =>
+	senderColors.getIndex(roomID, userID)
 
 // note: this should stay in sync with fallbackAvatarTemplate in cmd/gomuks/media.go
 function makeFallbackAvatar(backgroundColor: string, fallbackCharacter: string): string {
@@ -152,9 +172,12 @@ export const getAvatarURL = (
 	content?: UserProfile | null,
 	thumbnail = false,
 	forceFallback = false,
+	// The generated-avatar ground. Callers with a room in hand pass the
+	// room-aware sender colour so the letter tile matches the name beside it;
+	// everything else falls back to the per-user colour.
+	backgroundColor: string = getUserColor(userID),
 ): string | undefined => {
 	const fallbackCharacter = getFallbackCharacter(content?.displayname, 0) || getFallbackCharacter(userID, 1)
-	const backgroundColor = getUserColor(userID)
 	const [server, mediaID] = parseMXC(content?.avatar_file?.url ?? content?.avatar_url)
 	if (!mediaID || forceFallback) {
 		return makeFallbackAvatar(backgroundColor, fallbackCharacter)
@@ -169,8 +192,9 @@ export const getAvatarThumbnailURL = (
 	userID: UserID,
 	content?: UserProfile | null,
 	forceFallback = false,
+	backgroundColor?: string,
 ): string | undefined => {
-	return getAvatarURL(userID, content, true, forceFallback)
+	return getAvatarURL(userID, content, true, forceFallback, backgroundColor)
 }
 
 interface RoomForAvatarURL {
