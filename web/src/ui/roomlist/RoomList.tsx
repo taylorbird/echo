@@ -40,6 +40,7 @@ import Space from "./Space.tsx"
 import AddCircleIcon from "@/icons/add-circle.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
 import MarkReadIcon from "@/icons/mark-read.svg?react"
+import BellIcon from "@/icons/modern/bell.svg?react"
 import ChevronDownIcon from "@/icons/modern/chevron-down.svg?react"
 import GamepadIcon from "@/icons/modern/gamepad-2.svg?react"
 import HashIcon from "@/icons/modern/hash.svg?react"
@@ -104,6 +105,21 @@ interface RoomListProps {
 }
 
 /*
+ * What "unread" means everywhere in this file: the rooms that would show a badge.
+ * Shared by the mark-all-read button and the Unread section so the two can never
+ * drift apart on the question.
+ *
+ * Deliberately not UnreadsSpace.include, which also keeps the open room in the
+ * rail's unreads view unconditionally — that is a filter's stickiness, not an
+ * answer about badges, and this file has its own (see unreadPin below).
+ */
+const isUnread = (entry: RoomListEntry) =>
+	entry.marked_unread
+	|| entry.unread_messages > 0
+	|| entry.unread_notifications > 0
+	|| entry.unread_highlights > 0
+
+/*
  * Clears every unread room at once.
  *
  * The receipt is sent for each room's preview event rather than its true latest event:
@@ -143,12 +159,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const spaces = useEventAsState(client.store.topLevelSpaces)
 	const initComplete = useEventAsState(client.initComplete)
 	// Every room that would currently show a badge, in room-list order.
-	const unreadRooms = useMemo(() => roomList.filter(entry =>
-		entry.marked_unread
-		|| entry.unread_messages > 0
-		|| entry.unread_notifications > 0
-		|| entry.unread_highlights > 0,
-	), [roomList])
+	const unreadRooms = useMemo(() => roomList.filter(isUnread), [roomList])
 	const markAllRead = useMarkAllRead(unreadRooms)
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
@@ -253,27 +264,59 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	}
 
 	const showInviteAvatars = usePreference(client.store, null, "show_invite_avatars")
+	const unreadSection = usePreference(client.store, null, "unread_section")
 	const roomListFilter = client.store.roomListFilterFunc
+	/*
+	 * Which room is currently held in the Unread section despite its counts, and the
+	 * room the decision was made for. Opening a room clears its badge within a frame
+	 * or two, so without this the row you just clicked would slide out from under the
+	 * cursor and reappear further down the list while you are still reading it.
+	 *
+	 * The pin is decided once, at the moment a room becomes the active one, and lasts
+	 * only as long as it stays active — navigate away and the room falls back to
+	 * wherever its counts put it. A ref rather than state because nothing re-renders
+	 * on it: the sections memo is its only reader and already re-runs whenever
+	 * activeRoomID changes.
+	 */
+	const unreadPin = useRef<{ forRoom: RoomID | null, pinned: boolean }>({ forRoom: null, pinned: false })
 	// Group rooms from direct messages. dm_user_id is the same signal DirectChatSpace
 	// filters on, so the grouping here always agrees with the built-in DM space.
 	// roomList is ordered oldest-first, so walk it backwards to keep each group
 	// most-recent-first, matching the ungrouped list's ordering.
+	//
+	// With the Unread section on, a badged room is taken out of its usual group
+	// entirely rather than shown twice — the section is where it lives until it is
+	// read. With the section off the two groups are the whole list, as before.
 	const sections = useMemo(() => {
+		if (unreadPin.current.forRoom !== activeRoomID) {
+			unreadPin.current = {
+				forRoom: activeRoomID,
+				pinned: activeRoomID !== null
+					&& roomList.some(room => room.room_id === activeRoomID && isUnread(room)),
+			}
+		}
+		const pinnedRoom = unreadPin.current.pinned ? activeRoomID : null
+		const unread: RoomListEntry[] = []
 		const rooms: RoomListEntry[] = []
 		const directMessages: RoomListEntry[] = []
 		for (let i = roomList.length - 1; i >= 0; i--) {
 			const room = roomList[i]
-			if (room.dm_user_id) {
+			if (unreadSection && (isUnread(room) || room.room_id === pinnedRoom)) {
+				unread.push(room)
+			} else if (room.dm_user_id) {
 				directMessages.push(room)
 			} else {
 				rooms.push(room)
 			}
 		}
+		// Always listed, even empty: the renderer already drops a section with nothing
+		// visible under it, which is also what hides this one when the preference is off.
 		return [
+			{ id: "unread", name: "Unread", icon: BellIcon, entries: unread },
 			{ id: "rooms", name: "Rooms", icon: UsersIcon, entries: rooms },
 			{ id: "dms", name: "Direct messages", icon: UserIcon, entries: directMessages },
 		]
-	}, [roomList])
+	}, [roomList, activeRoomID, unreadSection])
 	const [collapsedSections, setCollapsedSections] = useState(readCollapsedSections)
 	const toggleSection = useCallback((evt: React.MouseEvent<HTMLButtonElement>) => {
 		const sectionID = evt.currentTarget.getAttribute("data-section-id")

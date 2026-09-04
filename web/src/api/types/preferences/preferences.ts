@@ -135,7 +135,7 @@ export const preferences = {
 		displayName: "Uniform room list color",
 		// The room list is one list. A per-room override would only ever have recolored the
 		// room you happened to have open.
-		description: "Color every room name in the sidebar the same accent color instead of giving each room its own color.",
+		description: "Give every room name in the sidebar the same tinted color, instead of giving each room its own.",
 		category: "appearance",
 		allowedContexts: anyGlobalContext,
 		// On by default: thirty differently-coloured names spends a lot of signal on
@@ -145,12 +145,23 @@ export const preferences = {
 	}),
 	room_list_color: new Preference<string>({
 		displayName: "Room list color",
-		description: "The accent color for room names in the sidebar, when they all share one color.",
+		description: "The sidebar accent: the color of the room glyphs, and the tint room names are mixed from when uniform room list color is on.",
 		category: "appearance",
 		allowedContexts: anyGlobalContext,
-		// Ferra's peach, which is what uniform mode was hardcoded to before this
-		// preference existed — so nothing looks different until it is changed.
-		defaultValue: "#fecdb2",
+		// A rich purple rather than the surface tint: with every name sharing one
+		// colour, the list can afford a hue of its own again, and this one still
+		// clears 6:1 on the room-list ground. It is the same purple the section
+		// headers are mixed from, so the column reads as one family.
+		defaultValue: "#bd93f9",
+	}),
+	unread_section: new Preference<boolean>({
+		displayName: "Unread section",
+		description: "Show rooms with unread messages in their own section at the top of the room list.",
+		category: "appearance",
+		allowedContexts: anyGlobalContext,
+		// On by default: the rooms wanting attention are the reason to look at the list at
+		// all, and gathering them saves scanning thirty rows for the two lit ones.
+		defaultValue: true,
 	}),
 	custom_css: new Preference<string>({
 		displayName: "Custom CSS",

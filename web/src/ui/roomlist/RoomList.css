@@ -414,6 +414,15 @@ div.room-entry {
 	position: relative;
 	overflow: hidden;
 
+	/* The name colour used when the uniform-colour preference is on: a cool ink
+	   grey, deliberately not derived from the accent, so thirty names read as one
+	   quiet column of text and the accent is left to the kind glyphs, which are
+	   small enough to carry it undiluted. Both uniform overrides below read this,
+	   so a lavender tint is `color-mix(in oklab, var(--room-list-color, #bd93f9)
+	   40%, var(--text-color))` and the plain accent is `var(--room-list-color,
+	   #bd93f9)` — one line either way. */
+	--room-list-name-color: #c9c2cc;
+
 	/* Full-width hairline between rows, drawn as an inset shadow so it adds
 	   no layout height inside the fixed `contain: strict` box. Light line on
 	   a dark surface, per the app's idiom. Only rows with a *visible* row
@@ -442,6 +451,18 @@ div.room-entry {
 		box-shadow:
 			inset 0 1px 0 rgba(255, 255, 255, .08),
 			inset 0 -1px 0 rgba(0, 0, 0, .35);
+	}
+
+	/* The open room's name goes to full white under the uniform preference. The
+	   ink names read as one column of text, and the room you are standing in is
+	   the one line in it that is lit; the wash and glow bar say the same thing in
+	   surface and colour, this says it in the type. (0,5,4), so it beats the
+	   shared uniform override at (0,4,4); resting rows never match .active so
+	   their (0,6,5) copy is not in play. Per-room colour mode keeps its accent. */
+	@media (prefers-color-scheme: dark) {
+		html[data-uniform-room-list-color] &.active > div.room-entry-right > div.room-name {
+			color: #ffffff;
+		}
 	}
 
 	/* The row after the active one would stack its hairline on the seam. */
@@ -509,8 +530,13 @@ div.room-entry {
 	}
 
 	/*
-	 * The same marker the active row uses, in the same lane, tinted by tier. That
-	 * lane now carries two meanings — "you are here" in green, "unread" in the
+	 * The same marker the active row uses, in the same lane and at the same 2rem
+	 * height, tinted by tier. It was shorter for a while, on the theory that a
+	 * smaller bar would rank an unread room below the open one — but the two never
+	 * appear on the same row, so the difference only read as the list being drawn
+	 * inconsistently. Colour already separates them.
+	 *
+	 * That lane now carries two meanings — "you are here" in green, "unread" in the
 	 * tier colour — which was the tension in keeping it single-purpose. The active
 	 * row wins outright: :not(.active) means an active room never shows the unread
 	 * bar, and they share the one ::before so they could not both render anyway.
@@ -522,54 +548,45 @@ div.room-entry {
 		top: 50%;
 		translate: 0 -50%;
 		width: .1875rem;
-		height: 1.5rem;
+		height: 2rem;
 		border-radius: 999px;
 		background-color: var(--unread-bar);
 		box-shadow: 0 0 6px var(--unread-bar-near), 0 0 14px var(--unread-bar-far);
 	}
 
 	/*
-	 * Read rows step back, and this is the lever that actually does the work: with
-	 * two or three unread rooms in a list of thirty, making the twenty-seven recede
-	 * separates them far more than making the three louder can. Applied to the
-	 * whole text column — .message-preview carries its own opacity and stacking a
-	 * second one on it compounds into unreadability.
-	 */
-	&:not(.active):not(:has(> div.room-entry-unreads)) > div.room-entry-right {
-		/* The row keeps its colour now, only muted, so the fade does not have to
-		   carry the recession on its own. Full greyscale plus a deep fade was the
-		   combination that read as switched-off rather than quiet. */
-		opacity: .82;
-	}
-
-	/*
-	 * A room you are not in and that does not want you goes monochrome: grey
-	 * avatar, grey name. Colour in this list now means exactly one thing — this
-	 * room needs you, or you are standing in it — so the per-room accents stop
-	 * competing with the unread markers for the same attention.
+	 * Resting rows are not dimmed. Earlier passes faded the whole text column
+	 * (.82, then .62) and desaturated the avatar so the open and unread rows
+	 * would be the only things the eye landed on; the result read as a list of
+	 * switched-off rooms. The open row's wash, the glow bars and the badge
+	 * already carry that emphasis on their own, so a room that is neither open
+	 * nor unread now simply looks like a room.
 	 *
-	 * The name is neutralised through `color` rather than through --room-accent:
-	 * that custom property is set inline per row by Entry.tsx, and an inline
-	 * declaration beats any stylesheet rule trying to redefine it.
+	 * What is left of the resting rule is the per-room colour case: with the
+	 * uniform preference off, a resting name is neutralised through `color`
+	 * rather than through --room-accent, because that custom property is set
+	 * inline per row by Entry.tsx and an inline declaration beats any
+	 * stylesheet rule trying to redefine it.
 	 */
 	&:not(.active):not(:has(> div.room-entry-unreads)) {
-		/* Desaturated rather than drained: enough of the avatar's own colour
-		   survives to keep rooms telling apart at a glance. */
-		> div.room-entry-left > img.room-avatar {
-			filter: grayscale(.6);
-			opacity: .85;
-		}
-
 		/*
-		 * The room's accent, pulled most of the way toward neutral instead of
-		 * replaced by it. The live rule mixes the accent 70% with off-white; this
-		 * mixes far less of it, so the hue is still identifiably the room's while
-		 * sitting well below an unread row. Flat grey here lost the per-room
-		 * colour entirely and put the name on the same tone as the preview under
-		 * it, flattening the row into one block.
+		 * With per-room colour (the uniform preference off): the room's accent pulled
+		 * most of the way toward neutral instead of replaced by it, so the hue is still
+		 * identifiably the room's while sitting well below an unread row.
 		 */
 		> div.room-entry-right > div.room-name {
 			color: color-mix(in oklab, var(--room-accent, var(--text-color)) 38%, #cbc7c4);
+
+			/* A copy of the uniform override in the .room-name block below, carried here
+			   purely for weight: from inside the resting rule the selector picks up both
+			   :not()s and lands at (0,6,5), which beats the mix directly above it — the
+			   shared one is only (0,4,4) and would lose on a resting row. What the
+			   preference does, and why, is documented there. */
+			@media (prefers-color-scheme: dark) {
+				html[data-uniform-room-list-color] & {
+					color: var(--room-list-name-color);
+				}
+			}
 		}
 	}
 
@@ -600,9 +617,16 @@ div.room-entry {
 		 */
 		> div.room-name {
 			font-family: var(--display-font-stack);
-			font-weight: bold;
-			font-size: 1.1875rem;
+			font-weight: 600;
+			font-size: 1.0625rem;
 			line-height: 1.35;
+			/* Set as a tracked-out cap line rather than as a bold headline. Caps have
+			   no descenders and near-uniform height, so the column of names reads as a
+			   list of labels; the letterspacing is what keeps them from clotting, and
+			   the size comes down a step because caps spend far more width per
+			   character than mixed case. */
+			text-transform: uppercase;
+			letter-spacing: .08em;
 			display: flex;
 			align-items: center;
 			gap: .625rem;
@@ -625,23 +649,44 @@ div.room-entry {
 				height: .9375rem;
 				flex-shrink: 0;
 				opacity: .65;
+
+				/* With the uniform preference on the names are the tinted grey above,
+				   which leaves the glyphs as the only place the chosen colour is shown
+				   at full strength — so this takes the accent directly instead of
+				   currentColor, and brighter than the inherited dim. A glyph this small
+				   can carry a saturated hue without shouting; a whole column of names
+				   could not. */
+				@media (prefers-color-scheme: dark) {
+					html[data-uniform-room-list-color] & {
+						color: var(--room-list-color, #bd93f9);
+						opacity: .9;
+					}
+				}
 			}
 
-			/* Hash-derived accent softened toward off-white — bright-but-soft candy,
-			   not full saturation. */
+			/*
+			 * Hash-derived accent softened toward off-white — bright-but-soft candy, not
+			 * full saturation. This is the per-room colour of an open or unread row; the
+			 * resting rows above pull the same accent further toward neutral.
+			 *
+			 * With the uniform-colour preference on, every name in the list — open, unread
+			 * and resting alike — is painted --room-list-name-color instead. Nothing is
+			 * lost by flattening them: a row's state is already carried by its wash, its
+			 * glow bar and its badge, so thirty hues down the column were spending signal
+			 * on the one thing the column does not have to say. The attribute is set by
+			 * StylePreferences.
+			 *
+			 * Dark only, both of them: the uniform default is a light purple picked for
+			 * the dark ground, and on white it falls well short of readable.
+			 */
 			@media (prefers-color-scheme: dark) {
 				color: color-mix(in oklab, var(--room-accent, var(--text-color)) 70%, #f8f8f2);
 
-				/* "Uniform room list color" preference: one color for every room,
-				   for people who find the per-room colors noisy. Ferra's peach —
-				   the same family the sidebar's hover tints and scrollbar derive
-				   from — so it reads as the theme rather than an extra hue. Set
-				   as an attribute by StylePreferences. */
+				/* (0,4,4) against the base rule's (0,3,3), which is what carries it onto
+				   the open and unread rows. The resting rule outweighs it at (0,5,4), so
+				   those rows get their own copy of this override up there. */
 				html[data-uniform-room-list-color] & {
-					/* Falls back to the value this was hardcoded to before the colour
-					   became a preference, so a profile that has never set it is
-					   unchanged. */
-					color: var(--room-list-color, #fecdb2);
+					color: var(--room-list-name-color);
 				}
 			}
 		}
@@ -652,29 +697,27 @@ div.room-entry {
 			overflow: hidden;
 			font-size: .9rem;
 			line-height: 1.4;
-			opacity: 0.6;
+			/* Held back by its own colour now rather than by dimming, so this only
+			   takes the last edge off. The old .6 was doing the whole job and left the
+			   line looking washed out under the name. */
+			opacity: .9;
 
-			/* In uniform-color mode the peach name sat in the same warm tonal
-			   band as the warm body text below it and didn't read as an accent.
-			   A neutral cool white here breaks the band: the preview recedes to
-			   "plain text" and the name's warmth becomes visible contrast. */
+			/* One neutral grey whatever the colour preference says. This used to be a
+			   cool white in uniform mode only, to pull the preview out of the same warm
+			   tonal band as the name above it — but the names are a tinted grey
+			   themselves now, plain body-copy grey separates the two lines in either
+			   mode, and there is no longer a reason for the preference to reach this
+			   line at all. */
 			@media (prefers-color-scheme: dark) {
-				html[data-uniform-room-list-color] & {
-					/* Pure white, lightly muted — at the default .6 dim even a
-					   cool white read as gray. */
-					color: #ffffff;
-					opacity: .9;
-				}
+				color: #b9b3ae;
 			}
 
+			/* The sender's own timeline colour, set inline by Entry.tsx, so the name in
+			   the preview is the name they have inside the room. Weight is all this rule
+			   adds — the colour is already doing the separating, and bolding it further
+			   would make the prefix outweigh the message it is previewing. */
 			> span.sender-name {
-				display: block;
-				max-width: 6rem;
-				overflow: hidden;
-			}
-
-			> span.preview-text {
-				display: block;
+				font-weight: 500;
 			}
 		}
 	}

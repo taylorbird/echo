@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, memo, use } from "react"
-import { getRoomAccentColor, getRoomAvatarThumbnailURL } from "@/api/media.ts"
+import { getRoomAccentColor, getRoomAvatarThumbnailURL, getSenderColor } from "@/api/media.ts"
 import type { RoomListEntry } from "@/api/statestore"
-import { type MemDBEvent, type MemberEventContent, RoomNameQuality } from "@/api/types"
+import { type MemDBEvent, type MemberEventContent, type RoomID, RoomNameQuality } from "@/api/types"
 import { getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
@@ -34,7 +34,11 @@ export interface RoomListEntryProps {
 	hideAvatar?: boolean
 }
 
-function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): [string, JSX.Element | null] {
+function getPreviewText(
+	roomID: RoomID,
+	evt?: MemDBEvent,
+	senderMemberEvt?: MemDBEvent | null,
+): [string, JSX.Element | null] {
 	if (!evt) {
 		return ["", null]
 	}
@@ -51,7 +55,15 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 		return [
 			`${displayname}: ${evt.content.body}`,
 			<>
-				<span style={{ unicodeBidi: "isolate" }}>
+				<span
+					className="sender-name"
+					// The room-aware sender colour, so the name in the preview is the same
+					// colour it has over that person's messages inside the room. Safe to
+					// read during render even though Entry is memo'd: the allocator is a
+					// module-level cache backed by localStorage rather than React state, so
+					// a room/user pair resolves to the same colour without a subscription.
+					style={{ unicodeBidi: "isolate", color: getSenderColor(roomID, evt.sender) }}
+				>
 					{displayname.length > 16 ? displayname.slice(0, 12) + "…" : displayname}
 				</span>: {previewText}
 			</>,
@@ -61,7 +73,7 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 }
 
 function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, KindIcon: typeof UserIcon) {
-	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, room.preview_sender)
+	const [previewText, croppedPreviewText] = getPreviewText(room.room_id, room.preview_event, room.preview_sender)
 
 	return <>
 		<div className="room-entry-left">
