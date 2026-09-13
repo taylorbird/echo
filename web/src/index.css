@@ -146,10 +146,7 @@
 	--room-list-padding: .125rem;
 
 	--timeline-avatar-size: 2.5rem;
-	/* Wide enough to hold the sender rail with air on both sides: the avatar's
-	   colour ring bleeds 4px into this gutter, the rail wants clear space from
-	   both the ring and the text edge. 1rem left the three touching. */
-	--timeline-avatar-gap: 1.5rem;
+	--timeline-avatar-gap: 1rem;
 	--timeline-avatar-total-size: calc(var(--timeline-avatar-size) + var(--timeline-avatar-gap));
 	--timeline-message-gap: 1.5rem;
 	--timeline-message-gap-same-sender: .35rem;

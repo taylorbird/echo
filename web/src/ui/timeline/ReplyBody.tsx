@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, MouseEvent, use } from "react"
-import { getAvatarThumbnailURL, getRoomAccentColor, getSenderColor } from "@/api/media.ts"
+import { getAvatarThumbnailURL, getSenderColor } from "@/api/media.ts"
 import {
 	applyPerMessageSender,
 	maybeRedactMemberEvent,
@@ -69,7 +69,7 @@ export const ReplyIDBody = ({ roomCtx, eventID, isThread, threadRoot, small }: R
 	if (!event) {
 		// This caches whether the event is requested or not, so it doesn't need to be wrapped in an effect.
 		use(ClientContext)!.requestEvent(roomCtx.store, eventID)
-		return <blockquote className={`reply-body sender-color-null ${small ? "small" : ""}`}>
+		return <blockquote className={`reply-body ${small ? "small" : ""}`}>
 			{small && <div className="reply-spine"/>}
 			Reply to unknown event
 			{!small && <br/>}
@@ -109,18 +109,13 @@ export const ReplyBody = ({
 	}
 	const perMessageSender = getPerMessageProfile(event)
 	const renderMemberEvtContent = applyPerMessageSender(memberEvtContent, perMessageSender)
-	// Same room-aware colour the timeline row uses, so a quote's spine and name
-	// match whatever the quoted person is actually wearing in this room —
+	// Same room-aware colour the timeline row uses, so the quoted person's name
+	// and avatar tile match whatever they are actually wearing in this room —
 	// including a custom colour, which the old sender-color-N class on the
 	// blockquote could never see.
 	const senderColor = getSenderColor(room.roomID, perMessageSender?.id ?? event.sender)
-	// A collapsed thread message takes the thread's own colour on its spine so
-	// the strand reads as one thing. Thread roots are event IDs, not senders, so
-	// there is nothing to allocate for them — they stay on the plain hash.
-	let spineColor = senderColor
 	if (timelineThreadMsg && threadRoot) {
 		classNames.push("timeline-thread-msg")
-		spineColor = getRoomAccentColor(threadRoot)
 	}
 	const onClick = (evt: MouseEvent<HTMLQuoteElement>) => {
 		if (isThread && threadRoot) {
@@ -135,7 +130,6 @@ export const ReplyBody = ({
 	return <blockquote
 		className={classNames.join(" ")}
 		onClick={onClick}
-		style={{ "--reply-border-color": spineColor } as React.CSSProperties}
 	>
 		{small && <div className="reply-spine"/>}
 		<div className="reply-sender">

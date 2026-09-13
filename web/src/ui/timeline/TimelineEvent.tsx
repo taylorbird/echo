@@ -656,8 +656,7 @@ const TimelineEvent = ({
 	const mainEvent = <div
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
-		// Set on the row rather than on the name, so the rail down the left of a
-		// consecutive run and the ring round the avatar can read it too.
+		// The sender name reads --sender-color from the row.
 		style={{ "--sender-color": getSenderColor(evt.room_id, senderID) } as React.CSSProperties}
 		onContextMenu={onContextMenu}
 		onClick={!disableMenu && viewType !== "edit-history" && isMobileDevice && !isSmallThreadMessage
@@ -698,11 +697,7 @@ const TimelineEvent = ({
 				onContextMenu={onSenderContextMenu}
 				title={`${perMessageSender ? perMessageSender.id : evt.sender} (right-click for color)`}
 			>
-				{/* The plate behind the name lives on this inner span so the outer
-				    one can keep clipping overlong names outside of it. */}
-				<span className="event-sender-text">
-					{getDisplayname(evt.sender, renderMemberEvtContent)}
-				</span>
+				{getDisplayname(evt.sender, renderMemberEvtContent)}
 			</span>
 			{perMessageSender && <div className="per-message-event-sender">
 				<span className="via">via</span>
@@ -716,9 +711,7 @@ const TimelineEvent = ({
 					// per-message sender the row is coloured for.
 					style={{ color: getSenderColor(evt.room_id, evt.sender) }}
 				>
-					<span className="event-sender-text">
-						{getDisplayname(evt.sender, memberEvtContent)}
-					</span>
+					{getDisplayname(evt.sender, memberEvtContent)}
 				</span>
 			</div>}
 			<span className="event-time" title={fullTime} onClick={onClickTimestamp}>{shortTime}</span>
