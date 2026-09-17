@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, memo, use } from "react"
-import { getRoomAccentColor, getRoomAvatarThumbnailURL, getSenderColor } from "@/api/media.ts"
+import { getRoomAvatarThumbnailURL, getSenderColor } from "@/api/media.ts"
 import type { RoomListEntry } from "@/api/statestore"
 import { type MemDBEvent, type MemberEventContent, type RoomID, RoomNameQuality } from "@/api/types"
 import { getDisplayname } from "@/util/validation.ts"
@@ -87,7 +87,6 @@ function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, KindI
 		<div className="room-entry-right">
 			<div
 				className="room-name"
-				style={{ "--room-accent": getRoomAccentColor(room.room_id) } as React.CSSProperties}
 			>
 				<span className="room-name-text">{room.name}</span>
 				<KindIcon className="room-kind-icon" />

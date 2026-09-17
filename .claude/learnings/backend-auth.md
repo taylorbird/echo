@@ -69,3 +69,13 @@ key export is the part that outlives the session.
 `desktop/main.go:81` sets `DisableAuth = true`, but that build has **no listening TCP port**: it is
 Wails, with the API router mounted as an internal service. Nothing on the machine can reach it. Our
 sidecar is a real HTTP server, so that precedent does not transfer.
+
+## Backend auth mechanics (verified 2026-09-01)
+
+- **No login rate limiting or lockout.** Grep of `pkg/gomuks` for `ratelimit`, `throttle`, `failed_login` returns nothing. Authentication is gated on bcrypt comparison only.
+- **Token format:** HMAC-SHA256 over compact JSON: `base64url_nopad(payload) + "." + base64url_nopad(HMAC-SHA256(token_key, payload_bytes))` where `payload = {"username":"echo","expiry":unix_seconds}` (no spaces, fields in struct order, any omitempty fields left out).
+- **Token expiry:** 7 days (`pkg/gomuks/server.go:203`), set at generation and validated with constant-time compare.
+- **Token_key is the master secret:** holder can mint sessions for any username and any expiry. Rotating `token_key` revokes all tokens (breaking all active sessions). No other way to revoke a single token without rotating the key.
+- **Config key `DisableAuthBecauseIWantMyAccountToBeHacked` disables auth entirely,** bypassing all credential checks. As the name says, security impact is severe.
+- **`web.origin_patterns` restricts WebSocket origins** (`pkg/gomuks/config.go:67`), default `localhost` only. CORS is not used; Tauri loads same-origin (http://localhost:29325).
+- **Token validation boundary: 500 bytes.** Requests with tokens >500 bytes are rejected (guard against malformed tokens bloating the db or log).

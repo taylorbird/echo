@@ -562,13 +562,6 @@ const MainScreen = () => {
 		<ModalWrapper ContextType={ModalContext} historyStateKey="modal">
 			<ModalWrapper ContextType={NestableModalContext} historyStateKey="nestable_modal">
 				<StylePreferences client={client} activeRoom={activeRealRoom}/>
-				{/*
-				  * Solid band behind the macOS window controls. Only visible inside the
-				  * Tauri window; the drag region makes it behave like a real title bar.
-				  */}
-				<div className="app-titlebar" data-tauri-drag-region>
-					<span className="app-titlebar-title">echo</span>
-				</div>
 				{mainContent}
 				{syncLoader}
 				<UpdateChip/>

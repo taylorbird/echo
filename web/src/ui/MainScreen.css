@@ -68,47 +68,23 @@ main.matrix-main {
 }
 
 /*
- * Hidden outside Tauri: a browser tab has no window controls to seat, and the
- * OS draws its own bar everywhere else. See the html[data-tauri] block in
- * index.css for the values this uses.
+ * The window controls are seated by the space rail rather than by a band laid
+ * across the whole window: they fall inside the left 66pt, which is the rail's
+ * own column, so it is the only thing that has to clear them. Everything else
+ * reaches the top edge, and each pane's top reads as part of that pane.
+ *
+ * The rail keeps the drag region for the strip it reserves — the search wrapper
+ * and the room header already carry their own, so the whole top of the window
+ * still moves it. See the html[data-tauri] block in index.css for the values.
  */
-div.app-titlebar {
-	display: none;
-}
-
 html[data-tauri] {
-	& div.app-titlebar {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: var(--titlebar-height);
-		background-color: var(--titlebar-background);
-		/* Below modals (z-index 100) so dialogs still cover the whole window. */
-		z-index: 4;
-
+	& div.space-bar {
 		/*
-		 * The native title is hidden (hiddenTitle in tauri.conf.json) because Overlay
-		 * seats it left, next to the traffic lights. pointer-events: none so clicks
-		 * fall through to the div: data-tauri-drag-region is the bare attribute,
-		 * which matches the element only, and the text must not eat the drag.
+		 * The strip is the clearance the lights need; the .5rem past it is
+		 * breathing room, so the first space tile reads as the start of the list
+		 * rather than as something stacked under the window controls.
 		 */
-		& span.app-titlebar-title {
-			pointer-events: none;
-			font-family: var(--display-font-stack);
-			font-size: .8125rem;
-			font-weight: 600;
-			letter-spacing: .04em;
-			color: rgba(254, 231, 218, .55);
-		}
-	}
-
-	/* The band occupies the top strip, so the app grid starts underneath it. */
-	& main.matrix-main {
-		top: var(--titlebar-height);
+		padding-top: calc(var(--window-top-margin) + var(--traffic-light-strip) + .5rem);
 	}
 }
 
@@ -164,7 +140,7 @@ html[data-tauri] div.update-ready-chip {
 	padding: .5rem .5rem .5rem .875rem;
 	border-radius: .5rem;
 	font-size: .875rem;
-	background-color: var(--titlebar-background);
+	background-color: var(--floating-panel-background);
 	/*
 	 * The mac panel edge, same construction as the modals: a light hairline ring inside
 	 * the radius, a dark seam just outside it, then a shadow for float.

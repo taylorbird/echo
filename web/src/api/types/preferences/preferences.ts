@@ -131,18 +131,6 @@ export const preferences = {
 		allowedContexts: globalDeviceSpecific,
 		defaultValue: false,
 	}),
-	uniform_room_list_color: new Preference<boolean>({
-		displayName: "Uniform room list color",
-		// The room list is one list. A per-room override would only ever have recolored the
-		// room you happened to have open.
-		description: "Give every room name in the sidebar the same tinted color, instead of giving each room its own.",
-		category: "appearance",
-		allowedContexts: anyGlobalContext,
-		// On by default: thirty differently-coloured names spends a lot of signal on
-		// something that carries no meaning, and it competes with the unread markers —
-		// the one thing in that list colour should be saying.
-		defaultValue: true,
-	}),
 	room_list_color: new Preference<string>({
 		displayName: "Room list color",
 		description: "The sidebar accent: the color of the room glyphs, and the tint room names are mixed from when uniform room list color is on.",

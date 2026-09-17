@@ -414,14 +414,12 @@ div.room-entry {
 	position: relative;
 	overflow: hidden;
 
-	/* The name colour used when the uniform-colour preference is on: a cool ink
-	   grey, deliberately not derived from the accent, so thirty names read as one
-	   quiet column of text and the accent is left to the kind glyphs, which are
-	   small enough to carry it undiluted. Both uniform overrides below read this,
-	   so a lavender tint is `color-mix(in oklab, var(--room-list-color, #bd93f9)
-	   40%, var(--text-color))` and the plain accent is `var(--room-list-color,
-	   #bd93f9)` — one line either way. */
-	--room-list-name-color: #c9c2cc;
+	/* One colour for every room name, open, unread and resting alike. Per-room
+	   hues are gone entirely (2026-09-17): a row's state is already carried by its
+	   wash, its glow bar and its badge, so a column of thirty tints was spending
+	   signal on the one thing the column does not have to say. The accent is left
+	   to the kind glyphs, which are small enough to carry it undiluted. */
+	--room-list-name-color: #ffffff;
 
 	/* Full-width hairline between rows, drawn as an inset shadow so it adds
 	   no layout height inside the fixed `contain: strict` box. Light line on
@@ -451,18 +449,6 @@ div.room-entry {
 		box-shadow:
 			inset 0 1px 0 rgba(255, 255, 255, .08),
 			inset 0 -1px 0 rgba(0, 0, 0, .35);
-	}
-
-	/* The open room's name goes to full white under the uniform preference. The
-	   ink names read as one column of text, and the room you are standing in is
-	   the one line in it that is lit; the wash and glow bar say the same thing in
-	   surface and colour, this says it in the type. (0,5,4), so it beats the
-	   shared uniform override at (0,4,4); resting rows never match .active so
-	   their (0,6,5) copy is not in play. Per-room colour mode keeps its accent. */
-	@media (prefers-color-scheme: dark) {
-		html[data-uniform-room-list-color] &.active > div.room-entry-right > div.room-name {
-			color: #ffffff;
-		}
 	}
 
 	/* The row after the active one would stack its hairline on the seam. */
@@ -562,34 +548,12 @@ div.room-entry {
 	 * already carry that emphasis on their own, so a room that is neither open
 	 * nor unread now simply looks like a room.
 	 *
-	 * What is left of the resting rule is the per-room colour case: with the
-	 * uniform preference off, a resting name is neutralised through `color`
-	 * rather than through --room-accent, because that custom property is set
-	 * inline per row by Entry.tsx and an inline declaration beats any
-	 * stylesheet rule trying to redefine it.
+	 * The resting rule itself is gone with the per-room colours (2026-09-17). It
+	 * existed only to neutralise a room's accent through `color`, since the accent
+	 * was set inline per row by Entry.tsx and an inline declaration beats any
+	 * stylesheet rule trying to redefine it. With one name colour for every row
+	 * there is nothing left for it to hold.
 	 */
-	&:not(.active):not(:has(> div.room-entry-unreads)) {
-		/*
-		 * With per-room colour (the uniform preference off): the room's accent pulled
-		 * most of the way toward neutral instead of replaced by it, so the hue is still
-		 * identifiably the room's while sitting well below an unread row.
-		 */
-		> div.room-entry-right > div.room-name {
-			color: color-mix(in oklab, var(--room-accent, var(--text-color)) 38%, #cbc7c4);
-
-			/* A copy of the uniform override in the .room-name block below, carried here
-			   purely for weight: from inside the resting rule the selector picks up both
-			   :not()s and lands at (0,6,5), which beats the mix directly above it — the
-			   shared one is only (0,4,4) and would lose on a resting row. What the
-			   preference does, and why, is documented there. */
-			@media (prefers-color-scheme: dark) {
-				html[data-uniform-room-list-color] & {
-					color: var(--room-list-name-color);
-				}
-			}
-		}
-	}
-
 
 	> div.room-entry-left {
 		height: 3.5rem;
@@ -618,15 +582,18 @@ div.room-entry {
 		> div.room-name {
 			font-family: var(--display-font-stack);
 			font-weight: 600;
-			font-size: 1.0625rem;
+			font-size: 1.125rem;
 			line-height: 1.35;
-			/* Set as a tracked-out cap line rather than as a bold headline. Caps have
-			   no descenders and near-uniform height, so the column of names reads as a
-			   list of labels; the letterspacing is what keeps them from clotting, and
-			   the size comes down a step because caps spend far more width per
-			   character than mixed case. */
-			text-transform: uppercase;
-			letter-spacing: .08em;
+			/*
+			 * Set as mixed case rather than a tracked-out cap line. Caps gave the
+			 * column a uniform height and no descenders, which is what made every
+			 * name read at one volume — so nothing in the list could be louder than
+			 * anything else when it needed to be. Word shapes do the scanning now,
+			 * Mixed case spends less width per character than caps, so the size went
+			 * up rather than down: 1.125rem carries the names at the weight the
+			 * column wants without the tracking that was doing it before.
+			 */
+			letter-spacing: 0;
 			display: flex;
 			align-items: center;
 			gap: .625rem;
@@ -650,44 +617,24 @@ div.room-entry {
 				flex-shrink: 0;
 				opacity: .65;
 
-				/* With the uniform preference on the names are the tinted grey above,
-				   which leaves the glyphs as the only place the chosen colour is shown
-				   at full strength — so this takes the accent directly instead of
-				   currentColor, and brighter than the inherited dim. A glyph this small
-				   can carry a saturated hue without shouting; a whole column of names
-				   could not. */
+				/* The names are one white column, which leaves the glyphs as the only
+				   place the chosen accent is shown at full strength — so this takes it
+				   directly instead of currentColor, and brighter than the inherited dim.
+				   A glyph this small can carry a saturated hue without shouting; a whole
+				   column of names could not. */
 				@media (prefers-color-scheme: dark) {
-					html[data-uniform-room-list-color] & {
-						color: var(--room-list-color, #bd93f9);
-						opacity: .9;
-					}
+					color: var(--room-list-color, #bd93f9);
+					opacity: .9;
 				}
 			}
 
 			/*
-			 * Hash-derived accent softened toward off-white — bright-but-soft candy, not
-			 * full saturation. This is the per-room colour of an open or unread row; the
-			 * resting rows above pull the same accent further toward neutral.
-			 *
-			 * With the uniform-colour preference on, every name in the list — open, unread
-			 * and resting alike — is painted --room-list-name-color instead. Nothing is
-			 * lost by flattening them: a row's state is already carried by its wash, its
-			 * glow bar and its badge, so thirty hues down the column were spending signal
-			 * on the one thing the column does not have to say. The attribute is set by
-			 * StylePreferences.
-			 *
-			 * Dark only, both of them: the uniform default is a light purple picked for
-			 * the dark ground, and on white it falls well short of readable.
+			 * Every name takes the one colour, whatever the row's state. Dark only:
+			 * --room-list-name-color is white, which needs the dark ground; light mode
+			 * keeps the inherited body colour.
 			 */
 			@media (prefers-color-scheme: dark) {
-				color: color-mix(in oklab, var(--room-accent, var(--text-color)) 70%, #f8f8f2);
-
-				/* (0,4,4) against the base rule's (0,3,3), which is what carries it onto
-				   the open and unread rows. The resting rule outweighs it at (0,5,4), so
-				   those rows get their own copy of this override up there. */
-				html[data-uniform-room-list-color] & {
-					color: var(--room-list-name-color);
-				}
+				color: var(--room-list-name-color);
 			}
 		}
 
@@ -759,14 +706,14 @@ button.room-list-section-header {
 		background-color: var(--room-list-entry-hover-color);
 	}
 
-	> svg.section-icon {
+	svg.section-icon {
 		width: 1.125rem;
 		height: 1.125rem;
 		flex-shrink: 0;
 		opacity: .75;
 	}
 
-	> span.section-name {
+	span.section-name {
 		flex: 1;
 		text-align: left;
 		overflow: hidden;
@@ -775,7 +722,7 @@ button.room-list-section-header {
 	}
 
 	/* Points down when open, left when collapsed — the arrow tracks the state. */
-	> svg.section-chevron {
+	svg.section-chevron {
 		width: 1.125rem;
 		height: 1.125rem;
 		flex-shrink: 0;
@@ -790,7 +737,7 @@ button.room-list-section-header {
 		}
 	}
 
-	&.collapsed > svg.section-chevron {
+	&.collapsed svg.section-chevron {
 		rotate: -90deg;
 	}
 }
@@ -954,10 +901,41 @@ div.room-entry > div.room-entry-unreads > div.unread-count {
 		box-shadow: 0 0 7px var(--unread-glow-notify-near), 0 0 15px var(--unread-glow-notify-far);
 	}
 
+	/*
+	 * A plain unread says whether, not how many. The room either has something in
+	 * it or it does not, and the number was only ever read on the tiers that are
+	 * actually asking for you — so the base badge collapses to a dot and the count
+	 * lives on in the title attribute. Every other tier keeps its number.
+	 *
+	 * The :not() chain is what makes this the base tier only, and it also lifts
+	 * the specificity above the sizing rules the badge sets for itself.
+	 */
+	&:not(.notified):not(.marked-unread):not(.highlighted):not(.space) {
+		width: .4375rem;
+		height: .4375rem;
+		min-width: 0;
+		padding: 0;
+		border-radius: 50%;
+		/* Hides the digits without removing them from the accessibility tree. */
+		font-size: 0;
+		color: transparent;
+	}
+
 	&.highlighted {
 		box-shadow: 0 0 7px var(--unread-glow-highlight-near), 0 0 16px var(--unread-glow-highlight-far);
 		color: var(--unread-counter-highlight-text);
 		position: relative;
+
+		/*
+		 * Says what kind of event it was, not just how loud. This is the one cue
+		 * that survives both reduced motion and colour blindness, which is why it
+		 * carries the tier rather than the red alone.
+		 */
+		&::before {
+			content: "@";
+			font-weight: 600;
+			margin-right: .0625rem;
+		}
 
 		/* The breathing ring rides on a pseudo-element rather than animating the
 		   counter's own box-shadow: only this layer's opacity changes, so the

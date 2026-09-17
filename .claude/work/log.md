@@ -2,6 +2,208 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-09-17 15:53
+
+**Session Summary**: Second checkpoint of the day (post-15:15 work). All changes remain UNCOMMITTED; zero tsc/eslint errors maintained. Three major changes executed: (1) **Per-room colours removed entirely** — user asked for white room names and to "eliminate the feature where you can have different room colors"; investigation showed `--room-accent` (hash-derived per-room colour from `getRoomAccentColor()`) coloured room names in four components. Removed `getRoomAccentColor()` from media.ts (dead code), removed inline `style={{ "--room-accent": ... }}` props from Entry.tsx, QuickSwitcher.tsx, SpaceView.tsx (2 sites), RoomViewHeader.tsx; replaced all `color-mix(in oklab, var(--room-accent) 70%, ...)` with `color: #ffffff` in RoomList.css, RoomViewHeader.css, QuickSwitcher.css, SpaceView.css (2 occurrences); removed the `uniform_room_list_color` preference (both states rendered identically with one name colour). Deliberately KEPT: `room_list_color` preference (single sidebar accent, kind glyphs only; now the only coloured element in the list). (2) **Recent added as fourth space-rail sub-filter** — the per-section sort feature built earlier (mode tag, cycle-on-click, localStorage) was deleted entirely. In its place, Recent became a sub-filter in the space rail (alongside All chats / Rooms / Direct messages). It narrows NOTHING (include() returns true for all rooms); it is purely a layout/ordering signal. `sections` useMemo short-circuits: when `activeSubFilter === "recent"` returns one unsectioned section of `roomList.toReversed()` with NO Unread section (deliberately: lifting badged rooms would push the just-left conversation back down). `activeSubFilter` moved earlier in component (above sections useMemo) to avoid TDZ error. (3) **Room name size bumped 1rem → 1.125rem** in RoomList.css after mixed-case switch (caps gave every name one volume; mixed case allows emphasis, and user wanted slightly bigger). (4) **Section headers reverted** — the multi-button div structure (section-toggle / section-mode / section-chevron-button) was ONLY needed for the sort tag to be independently clickable. With the sort feature deleted, the tag is gone, so headers reverted to a single `<button>` with simple hover/focus styles.
+
+**Decisions Made**:
+- Per-room colours removed entirely; room names white (dark mode only)
+- `room_list_color` (single glyph accent) deliberately retained as only remaining accent
+- Recent is a rail sub-filter (narrows nothing, no sections, newest-first, no Unread section)
+- Section headers single button again (sort tag gone, so complexity unneeded)
+- Room name size: 1.125rem (mid-session user request after mixed-case switch)
+
+**Actions Taken**:
+- `web/src/api/media.ts`: removed `getRoomAccentColor()` function
+- `web/src/ui/roomlist/Entry.tsx`: removed inline `style={{ "--room-accent": ... }}` prop and `getRoomAccentColor` import
+- `web/src/ui/QuickSwitcher.tsx`: removed inline `--room-accent` prop and import
+- `web/src/ui/roomview/SpaceView.tsx`: removed `--room-accent` props (2 sites) and import
+- `web/src/ui/roomview/RoomViewHeader.tsx`: removed `--room-accent` inline style and import
+- `web/src/ui/roomlist/RoomList.css`: replaced `color-mix(in oklab, var(--room-accent) 70%, ...)` with `color: #ffffff`; removed resting-row neutralising rule, `.active` override, conditional fork; room-name colour now one unconditional rule under dark mode; kind-icon rule unconditional; font-size 1rem → 1.125rem
+- `web/src/ui/roomview/RoomViewHeader.css`: replaced color-mix with `color: #ffffff`
+- `web/src/ui/QuickSwitcher.css`: same color replacement
+- `web/src/ui/roomview/SpaceView.css`: same replacement (2 occurrences)
+- `web/src/api/types/preferences/preferences.ts`: removed `uniform_room_list_color` preference
+- `web/src/ui/StylePreferences.tsx`: removed `data-uniform-room-list-color` attribute effect
+- `web/src/api/statestore/space.ts`: `SpaceSubFilterID` → `"rooms" | "dms" | "recent"`; `include()` returns true for "recent"
+- `web/src/ui/roomlist/RoomList.tsx`: `activeSubFilter` moved earlier (above sections useMemo); useMemo short-circuits to single unsectioned section when `activeSubFilter === "recent"`; no Unread section in recent view; section header reverted to single button
+- `web/src/ui/roomlist/RoomList.css`: section header reverted to `button.room-list-section-header` with hover/focus; deleted `.section-mode` block
+
+**Context/Thoughts**:
+- User's two asks ("white room names" + "eliminate per-room colours") were the same feature — one visual system.
+- Only `room_list_color` (kind glyphs) remains; user flagged purple as "sticking out" on 2026-09-04 (becomes decision point if unstated is preferred).
+- Recent view as rail sub-filter (not sort menu) sidesteps interaction disagreement: filter chip and view mode are now one.
+- Sort feature (localStorage + cycle-on-click + per-section tags) deleted entirely; user never saw it ship (built 15:15, rejected as undiscoverable, replaced by Recent rail approach).
+- Section headers: div-with-three-buttons existed only for sort tag; with tag gone, reverted to simple single button.
+- TDZ error caught: `activeSubFilter` must be declared above sections useMemo since the memo reads it.
+- Room name size bump (1rem → 1.125rem) modest; user's mixed-case names needed visual support.
+- All work uncommitted, ready for dev app verification before commit.
+
+## 2026-09-17 15:15
+
+**Session Summary**: UI/UX refinement session (2026-09-17) with `tauri dev` running live (HMR). All work UNCOMMITTED; zero tsc/eslint errors maintained. Completed five major changes: (1) **macOS title bar unified** — removed separate `div.app-titlebar` band, space rail reserves `--traffic-light-strip` 2rem + .5rem breathing room, all other panes run to top edge, reclaiming 108px, "echo" wordmark now menu bar/Dock only; (2) **space rail always-in-a-space fix** — opened room defaults to all-chats when `space === null` via nullish coalescing, lit tile and expanded band now agree; (3) **per-section room-list sort with localStorage** — new `readSectionSorts()` validates each section ("recent" or "name"), applied in sections useMemo, unread section excluded (live queue), STRUCTURAL CHANGE: `button.room-list-section-header` → `div` with nested `button` children (toggle, optional mode tag, chevron), hover `:has(:focus-visible)`, USER REJECTED cycle-on-click (undiscoverable), replacing with menu next; (4) **unread/mention colour ramp** — blue (hue + badge) for message/notified, red+@ for highlight, survives reduced motion + colour blindness (previous pulse-based was undetectable under `prefers-reduced-motion: reduce`), badge tier message collapses to .4375rem dot; (5) **Typography: Inter everywhere** — Space Grotesk entirely removed, one typeface, `--display-font-stack` token preserved (role survives), room names mixed case (not uppercase). Designs settled in 5 comparison artifacts; filter chips + view-switch design approved (building next). Published: Title Bar Tryouts, Where the DM Lands, One Chip Row, Quieting the List, Typeface and Tone. Cotypist (macOS text prediction) investigated — already documented in questions.md this session.
+
+**Decisions Made**:
+- Title bar: unified top region, no separate band, space rail reserves traffic-light room + .5rem breathing
+- Space rail: always in a space; default to all-chats when room is null
+- Room-list sort: per-section localStorage preference (recent/name), unread section unaffected
+- Section headers: `div` with nested `button` children (toggle, optional mode tag, chevron), hover `:has(:focus-visible)`
+- Unread ramp: blue + badge (message/notified) vs red+@ (highlight), hue + shape not motion
+- Typography: Inter only, Space Grotesk removed, room names mixed case
+- Next: resolve rail-sub-filter overlap question before building filter chips
+
+**Actions Taken**:
+- index.css: `--titlebar-height` removed, `--titlebar-background` removed, `--traffic-light-strip: 2rem` added, `--floating-panel-background` token created, `--display-font-stack` to Inter only
+- MainScreen.css: removed `div.app-titlebar` block, removed `main.matrix-main { top: ... }` offset, added space-bar padding-top with traffic-light-strip
+- MainScreen.tsx: removed `.app-titlebar` div and "echo" wordmark span
+- RoomList.tsx: `div.space-bar` gained `data-tauri-drag-region`; openIndex fixed to `partables.indexOf(space?.id ?? allChatsSpace.id)`; new localStorage `echo.room_list_sort` key; readSectionSorts() validation; applied in sections useMemo; unread section sort: null
+- RoomList.css: `button.room-list-section-header` → `div` with button children; hover `:has(:focus-visible)`; unread badge changes (dot, count, @); tokens updated (blue unread, red highlight)
+- index.html: Space Grotesk removed from Google Fonts request
+- RoomList.css room-name: removed `text-transform: uppercase`, adjusted letter-spacing and font-size
+
+**Context/Thoughts**:
+- Artifact pattern proved effective: five comparison pages with real CSS deltas let user pick from visual rendering; One Chip Row especially effective (fully vetted before implementation).
+- Title bar change cascaded: removing band triggered lit-tile/band-disagreement bug (always-in-a-space logic needed). Fixed both simultaneously.
+- Unread ramp reversal required epistemic reset: August red-only relied on pulse (invisible at decision time), machine's Reduce Motion ON made gap obvious. Correction: hue + shape allow accessibility preference to NOT disable distinction.
+- Sort menu beats cycle-on-click (three options visible vs cycling blind). Creates Grouped-view-only constraint (Recent has no sections). One Chip Row accommodates this.
+- Rail-sub-filter overlap (filter chips vs rail sub-filters): two controls must not disagree. Resolution needed before filter chips built.
+- Cotypist findings: 0 windows from AX API is NOT echo-specific (yaak Tauri app identical signature). Tauri/WRY-wide behaviour. Next: Accessibility Inspector to check textarea in AX tree.
+- Session ended all work uncommitted, zero tsc/eslint errors maintained.
+
+## 2026-09-14 11:26
+
+**Session Summary**: Timeline quieting session (2026-09-11 through 2026-09-14) responding to user feedback on 0.5.0 after one week in production. User verdict: the ring + rail + plate sender treatment is "too busy"; room-list redesign from 0.5.0 is kept. Built three comparison artifacts using real CSS mock-ups (same-UI-N-variants pattern): "Sender Treatment Tryouts" https://claude.ai/code/artifact/26fcf430-2af7-42f9-aac2-d8f5541c1121, "Ink Name Iterations" https://claude.ai/code/artifact/871721a1-958e-4189-a0d6-9b86a3255a8c, "Colour Name Iterations" https://claude.ai/code/artifact/47f0cda8-1d91-47a5-b886-426ddeb8d63d (user selected G1: larger names 1.0625rem without ring). Implemented commit d8fc2245 "timeline: drop sender rail, ring and plate; larger names; neutral quote spine" (removed rail/ring/plate, enlarged sender names, returned avatar gutter to 1rem, made reply-quote spine static neutral). **echo 0.5.1 released 2026-09-13** via `scripts/release.sh patch` (both notarizations Accepted, DMG stapled, feed verified serving 0.5.1 with notes "A quieter timeline"); main at f66b4f22. **Incident:** pnpm exec in web/ triggered full install, generated pnpm-lock.yaml, broke later commands, eslint errors appeared; fixed by deleting generated files and running npm ci. **Bug found:** custom properties declared on wrong ancestor in mock-ups (names went grey, rings vanished); fixed by declaring where variable is set. **Technique:** headless Chrome one-look render for artifact HTML (`--headless=new --virtual-time-budget=4000 file://`); use HTML entities for dashes (file:// has no charset). **New request:** room-list sort options (built artifact with 6 variants, Claude recommends E, user hasn't picked). All work uncommitted; ready for next session.
+
+**Decisions Made**:
+- Sender rail removed permanently: busy, doubled up with reply-quote spine.
+- Avatar ring and name plate removed: part of "busy" verdict.
+- Sender names: room-aware colour, full opacity, 1.0625rem/600 — user wants MORE prominence.
+- Reply-quote spine: static neutral, never per-sender colour.
+- Avatar gutter back to 1rem (was 1.5rem for ring accommodation).
+- Release 0.5.1 as patch (squashed timeline quieting into one commit).
+- In web/ use npm/./node_modules/.bin/ until pnpm migration decided (global rule conflicts with repo).
+
+**Actions Taken**:
+- TimelineEvent.tsx: removed avatar ring box-shadow, removed rail ::before pseudo, removed name plate, removed inner span.event-sender-text.
+- TimelineEvent.css: removed all rail rules, second suppression block.
+- ReplyBody.css: default `--reply-border-color: color-mix(in oklab, var(--secondary-text-color) 55%, transparent)`, deleted 11 `.sender-color-N` blockquote rules.
+- ReplyBody.tsx: removed inline colour calculation, removed sender-color-null class, dropped getRoomAccentColor import.
+- index.css: `--timeline-avatar-gap` 1.5rem → 1rem, glow bar 2rem → 1.5rem.
+- Release 0.5.1 shipped with commit d8fc2245 + release.sh patch (nohup detached, no port conflicts).
+- Built "Room List Sort Options" artifact https://claude.ai/code/artifact/c4f45c74-1d10-4f4c-8616-9c33e37e7cb4 (A–F variants, E recommended).
+- Fixed pnpm incident: deleted web/pnpm-lock.yaml and web/pnpm-workspace.yaml, ran npm ci in web/ (dev stopped).
+- Updated constraints.md with 2026-09-13 entries; marked prior timeline geometry constraint as SUPERSEDED.
+
+**Context/Thoughts**:
+- User's room-list redesign from 0.5.0 (Unread section, colour system, entry styling) is kept; only the timeline sender treatment (ring/rail/plate) was "too busy."
+- Knock-on: collapsed thread messages lost their thread-accent spine (shares the border property). Not yet asked for restoration; marked as open question.
+- Quote text inside reply blocks still uses the quoted sender's colour (name + small avatar); spine is now static neutral.
+- Room-list sort options (artifact with 6 variants) addresses user's buried-DM problem ("struggling to see DMs that maybe aren't unread, but that I'd like to revisit"). **User has NOT picked yet** — Claude recommends E (per-section sort + mode tag on header); C is smallest change; F is optional add-on.
+- Pnpm incident: implementer acted correctly per global rule, but this repo hasn't migrated from npm. Global rule now actively conflicts; pnpm migration decision is urgent-ish.
+- Release 0.5.1: dev stopped before release.sh (no port conflicts); wall time ~30 min; main at f66b4f22 (Release v0.5.1) on top of d8fc2245.
+- Headless Chrome (`--headless=new --virtual-time-budget=4000 file://`) exits on its own (not deprecated headless mode); renders artifact HTML fine for visual one-look check.
+- Verified facts for next session: reply-quote spine decoupling allows future per-section styling if desired; thread-message spine restoration would need a separate variable/rule.
+- Session ended with all work uncommitted (ready for next session: sort-option implementation, prod app verification, or other next actions).
+
+## 2026-09-04 18:00
+
+**Session Summary**: Design-and-implement session ending with **echo 0.5.0 released 2026-09-04**. Main work: reaction chip toggle (clicking a chip you reacted with redacts your reaction; no local echo of counts, only sync echo or 20s fallback), room-aware sender colour allocation (new sendercolor.ts module with greedy palette allocation per room, localStorage persisted, never reshuffled), Unread section (new preference-gated drawer above Rooms/DMs, collapsible, active room pinned), room-list colour system redesign (uniform override now works correctly with nested specificity fix, room-list names are ink under uniform mode), timeline sender treatment (ring + rail + plate: double avatar ring via box-shadow, 1.5px sender rail in --sender-color, name on faint plate background, all keyed to room-aware colours), timeline geometry (avatar gap widened 1rem → 1.5rem to fit ring + rail + text), glow bar height raised 1.5rem → 2rem. Release shipped 2026-09-04 via release.sh (launched detached with tauri dev stopped, no port conflicts), GitHub release with embedded notes, feed verified serving 0.5.0. Main now at 8502b9f3. Dev app stopped for release. _(Checkpoint written 2026-09-08)_
+
+**Decisions Made**:
+- Reaction toggle: click a chip you reacted with to redact (no un-react path existed before)
+- Room-aware sender colours: palette allocation per room, greedy heuristic (farthest hue from nearest taken), never reshuffled
+- Resting rows reversed: removed the V4 dim (initial design), now no dimming on resting rows; emphasis on wash + bars + badge only
+- Uniform room-list colour: ink names + white active name, fix applied by nesting override inside resting rule for specificity (0,6,5)
+- Timeline sender treatment: ring + rail + plate + room-aware colours (user confirmed "R1 + ring" from mock-ups)
+- Timeline avatar gap: 1.5rem to fit 4px ring bleed + 1.5px rail + text
+- Release 0.5.0 as minor bump with reaction toggle + colour system + Unread section
+
+**Actions Taken**:
+- `web/src/api/sendercolor.ts`: new module `createSenderColorAllocator` (injectable deps, greedy nearest-hue allocation, localStorage `echo.room_sender_colors`)
+- `web/src/api/media.ts`: `getSenderColor(roomID, userID)` wrapper routing to allocator, colour returned as `--sender-color` inline on `div.timeline-event`
+- `web/src/ui/roomlist/RoomList.tsx`: Unread section (isUnread helper, unreadPin ref, collapsible with id "unread"), Entry.tsx passes room_id to getPreviewText and colours sender-name span inline
+- `web/src/ui/roomlist/RoomList.css`: `--room-list-name-color` token (ink #c9c2cc), override nested inside resting rule for specificity (0,6,5), white override on `.active span.event-sender`
+- `web/src/ui/timeline/TimelineEvent.tsx`: double avatar ring (outer 2px --background-color, inner 2px --sender-color), 1.5px rail via `::before`, sender name on plate (background: currentColor 14% mix), `--sender-color` inline
+- `web/src/index.css`: `--timeline-avatar-gap` 1rem → 1.5rem, glow bar 1.5rem → 2rem
+- `web/src/ui/modal/ReactionPill.tsx`: click chip-you-reacted-with to toggle reaction off (optimistic dim, sync echo or 20s fallback)
+- Mock-up artifacts: five comparison pages (resting rows, type specs, recipe, palette, chat pane variants) hydrated from actual CSS values
+- Learnings: extended css-layering-and-stacking.md (nested & specificity, room-list uniform override history), extended dev-environment-gotchas.md (Vite IPv6, WKWebView localStorage, prod logs, media 502, nohup-detached, subagent cleanup)
+- scripts/release.sh: launched detached (`nohup … &`) with tauri dev stopped first (release runs 25–35 min, harness cap 10 min)
+- GitHub release: 0.5.0 published with embedded notes; updater feed verified serving version
+
+**Context/Thoughts**:
+- Reaction socket: no local echo of counts (backend aggregates to bare counts, discards senders). Chips dim optimistically while send/redact in flight, settle on sync echo or timeout. Backend never recomputes counts for pending local reaction (counts update only on sync echo); redactions trigger recount via processRedaction (sync.go).
+- Sender palette: ten dark colours, four warms within 48°, gaps: no true green/blue/magenta. Worst contrast is coral at 6.0:1 (5.0:1 @ .9 opacity), not grape as old comment claimed. Same-room palette avoids repeats in >10-sender case (least-used slot + hash tiebreak).
+- Room-list uniform fix: old 38% accent mix at (0,5,4) beat override at (0,4,4); CSS nesting copies override into resting rule at (0,6,5) so it now wins. Dark-only by design, matching original.
+- Timeline geometry: rail excluded on small/hidden/membership/small-thread/edit-history/pinned/notification/confirm-modal events. Plate works without clipping because `overflow: hidden` / `contain: strict` removed from timeline entries (prior paint-deferral bug fixed in 0.4.1).
+- Unread section: new `unread_section` preference (appearance, anyGlobalContext, default true), module-level `isUnread` predicate (same as mark-all-read gate), active room pinned via `unreadPin` ref so it doesn't vanish under cursor, collapsible with id "unread", works in sub-filtered views.
+- Production build: app and DMG both notarized and accepted. Dev build profile `dev.tbird.echo-dev` got fresh WebKit storage (lost custom user colours #ad9cfe, now {}; another profile still has #e06b75 and @zach #7aacf4). Cause unknown (user may have removed it or it was dev-only).
+- Artifacts pattern: proved successful for visual decisions. Five comparison pages let user pick from side-by-side rendering of real UI with exact CSS deltas per card. Generators are session-scoped tmp (die at end); recipe is durable.
+- Vite IPv6 gotcha: IPv4-only readiness probe (127.0.0.1:6173) fails even when server running on [::1]:6173. Affected any harness waiting for Vite readiness.
+- Subagent cleanup: two instances killed tauri dev (one via stray TaskStop, one via headless-Chrome cleanup). Process was launched as direct harness child. Fix: briefs now forbid launching browsers, starting bg tasks, calling TaskStop. nohup-detached processes survive.
+- Prod logs carry debug lines (grep "send/m.room.encrypted" finds sends; none found morning of 2026-09-02 during outage, confirming reactions never reached backend). Media 502 signature: "Failed to copy media to temporary file" (homeserver down, not app).
+- Open questions: (1) Purple glyph beside ink room names "sticks out" — user deferred; (2) home-view request unclear; (3) should failed timeline images retry; (4) member list/mentions still use per-user colours (room-agnostic); (5) uniform-off path still dims resting names (inconsistent with uniform-on); (6) light mode unaddressed; (7) hover-menu React button sends duplicates (400 → alert); (8) timeline timestamps fail AA contrast (2.8:1); (9) palette gaps (no true blue/green/magenta); (10) pnpm migration decision.
+
+## 2026-09-01 19:38
+
+**Session Summary**: Assessment-only session; no source code changed. Evaluated iOS/Android mobile strategies: matrix-rust-sdk inside the Tauri app (superseded: Element X brings the SDK, so no integration into the Tauri app is needed), Element X fork as owned scaffold (chosen: brings matrix-rust-sdk, session/notification/verification infra; app writes new screens to design-language spec), from-scratch SwiftUI (cleaner end state but non-working interim), FluffyChat (loses to Element X when Android dropped). Evaluated hosted gomuks backend + thin frontend (rejected: user prefers native feel, no server). Evaluated WASM backend (iOS suspension kills sync, notifications cannot carry decrypted content). Evaluated Linux/Windows desktop port (moderate plumbing: CGO sqlite3 cross-compile, per-triple binaries, macOS-specific chrome; no decision taken). Decision: iOS-only owned Element X fork, no upstream rebasing, rust-sdk via Swift package, design-language document as cross-platform contract (not shared code), Android out of scope, desktop stays as-is. Findings archived for reuse on ports if later chosen.
+
+**Decisions Made**:
+- iOS app = owned Element X fork (iOS-only, no Android, no upstream rebasing, rust-sdk via Swift package)
+- Consistency via design-language document (tokens, colors, look/feel), not shared code; mobile UI bespoke to mobile
+- Desktop + iOS = two codebases, one design language; phone is separate Matrix device with own keys/DB
+- Keep Element X's session/notification/verification/key-backup/rust-sdk plumbing as-is; write new room list + timeline screens against design doc; token-restyle remaining screens
+- Linux/Windows port assessed but not decided; findings preserved for future reuse
+
+**Actions Taken**:
+- Source survey only (Explore agent); architecture analysis and decision framework
+- Verified backend auth mechanics (no rate limiting, tokens HMAC-SHA256 7-day, token_key = master secret)
+- Documented alternatives with rationale (why each path rejected, reusable findings)
+- No file edits outside .claude/
+
+**Context/Thoughts**:
+- Element X is the only viable iOS scaffold once Android is out (FluffyChat would be picked if Android mattered; Cinny web-only)
+- Owned fork discipline: no upstream rebases, only matrix-rust-sdk updates via Swift package; app owns the UI divergence
+- Design-language document becomes source of truth for both codebases (enables consistency without code sharing)
+- Linux/Windows assessment findings (CGO needs per-triple runners or cross-toolchain, Assets.car macOS-only, latent Windows data-dir bug, window chrome CSS macOS-scoped, release.sh single-platform end-to-end) useful if those ports are revisited
+- Hosted backend security if ever revisited: backend has NO rate limiting, holds all E2EE keys, Tailscale recommended over public exposure
+
+## 2026-09-01 14:44
+
+**Session Summary**: Four releases shipped (0.4.0–0.4.3) over five days (2026-08-28 through 2026-09-01), all verified working end-to-end. **0.4.0 (minor):** settings page fully rebuilt — category rail with room/device toggle, full-width autofocused search, simple rows showing effective value + "applies to" line, per-setting chevron expands scope editors, deleted the old 5-column matrix. Palette tempered — all warm tints now derive from single `--warm-tint-rgb` token (`#f0e2d8` Tempered vs `#fecdb2` original Ferra), mauve surfaces (`#4a4553`) neutralized. Unread tiers: red glow bar (rail) + red badge + row wash, all three tiers collapsed to one red deliberately; mention-tier pulses gated on Ignore Reduce Motion preference. Release-notes feature (RELEASE_NOTES.md read by scripts/release.sh preflight → embedded in latest.json as `notes` → rendered in-app by typed strict parser (http(s)-only links, never HTML pass-through); update chip clickable → notes modal, notes stashed to localStorage at download, claimed once on first launch of matching version). Fixed: SSO session cookie Secure flag hardcoded `true` in pkg/gomuks/sso.go (first Go divergence from upstream; SSO failed on plain-HTTP origins with "no session cookie"). Dev builds seed backend auth cookie at path /_gomuks/auth (RFC 6265 path ordering beats stale HttpOnly cookies). **0.4.1 & 0.4.2 (patches):** reaction click fix (read emoji from DOM attr vs currentTarget.title which no longer exists); unread badge one size (removed size distinction). Membership events no longer drive unread counts (pkg/hicli/pushrules.go divergence) — user's old-Synapse `.m.rule.member_event` had notify action (37 events lit the whole list); fix: evaluatePushRules skips Notify/Highlight/Sound for m.room.member unless isInviteForMe (fails closed). **0.4.3 (patch):** the parted rail — clicking a partable tile (All chats / Outside spaces / real space) slides dark rail apart revealing lighter under-layer band with tile + engraved divider + three sub-filters (All chats / Rooms / DMs). Statestore: `AllChatsSpace` (id fi.mau.gomuks.all_chats, include() → true, registered in pseudoSpaces; boot default null — interchangeable with all-chats view); `SubFilteredSpace` wraps RoomListFilter, ANDs DM predicate, delegates id to parent (space lookup sees space, not sub-filter); `SpaceOrphansSpace.include` dropped DM exclusion. DMs sub-filter under All chats replaces old direct-chats view. Bell moved below spaces. Rail sized +25% (tiles 3.125rem, glyphs 1.75rem, sub-filter rows matching tiles). Glow pill follows ACTIVE VIEW: selected sub-filter carries it (x computed to align with rail pills). Animation: band height 0fr↔1fr, open .26s / close .52s (close = half open speed) on cubic-bezier(.32,.72,0,1) (house curve); contents cross-fade front-loaded; unmount via animationend + 750ms fallback; reduce-motion users skip closing state in JS + CSS animation:none gates. Closing band renders ONLY drawer (divider+sub-filters); departing space handed to dark segment at identical pixel position (fixed bug where space faded with drawer). Active room row: warm wash rgba(--warm-tint-rgb,.24) + lit edge + dark seam (compound selector `&.active, &:not(.hidden) ~ &.active` for specificity). Room-list colour preference: `room_list_color` string pref + colour swatch editor, `uniform_room_list_color` default flipped true. Mark-all-read button in room-list header (shown only unreads exist, ConfirmModal, receipt at each room). README tagline simplified.
+
+**Decisions Made**:
+- All unread tiers red deliberately (Ferra gradient rejected; restorable via tokens).
+- Close animation = half open speed (52ms close vs 26ms open) on house curve (accelerate-out close would slam).
+- Closing band excludes its departing tile (tile handed to dark segment at pixel position before fade starts).
+- AllChatsSpace null duality (null == all-chats view in history/active-checks; object keys drawer).
+- Glow pill follows active view exactly (one visible; space tile relinquishes it while parted).
+- Uniform room-list colour default enabled (was off; now opt-out instead of opt-in).
+- README tagline plain (stop selling the app to itself).
+- Release-notes parser: no HTML pass-through, typed nodes only, http(s)-links restricted.
+
+**Actions Taken**:
+- Settings rebuild: SettingsView.tsx full rewrite (category rail, search box, scope editors per-setting, no matrix), ColorPreferenceCell component, room_list_color / uniform_room_list_color prefs.
+- Palette: web/src/index.css `--warm-tint-rgb` variable (240 226 216 Tempered); surfaces derived via color-mix.
+- Unread treatment: rail glow bar, badge, row wash all keyed to single red tokens; mention pulse via preference gate.
+- Release-notes: scripts/release.sh reads RELEASE_NOTES.md preflight; web/src/util/releasenotes.ts typed parser (headings/bullets/bold/code/links); store claims once per version; modal shows on update.
+- SSO cookie: pkg/gomuks/sso.go Secure: false conditional (dev only via insecure_cookies flag, already in place).
+- Auth cookie seeding: lib.rs writes to /_gomuks/auth path at launch.
+- Membership events: pkg/hicli/pushrules.go evaluatePushRules gate on isInviteForMe.
+- Parted rail: AllChatsSpace / SubFilteredSpace / SpaceOrphansSpace (include logic); DM predicate AND applied; sub-filter rows same height as space tiles.
+- Rail animation: 0fr↔1fr grid-template-rows, min-height:0 on inner flex, cross-fade on contents, animationend + 750ms unmount fallback, JS state machine skips closing for reduce-motion.
+- Active-room styling: compound selector for hairline specificity, warm wash + edges.
+- Playwright-WebKit harness: token recipe (username+token_key → compact JSON → b64url HMAC-SHA256), railwatch2/allchats/activerow scripts, verified 18/18 transitions + 40 rooms + 18 DMs partition.
+- Bugs found by harness: closing band tile inside band (fixed by tile handoff), active-row edges beaten by sibling ~& specificity (compound selector fix).
+
+**Context/Thoughts**:
+- Read-receipt bug state: gate (scrolledToBottom && focused && newest event) in TimelineView ~75-97; prime suspect util/focus.ts seeds focused from document.hasFocus() at module load, never updates in WKWebView on native activation. Diagnostic plan: re-add [read-gate] console.debug logging the gate fields; expect focused:false / documentHasFocus:true. Needs real WKWebView (dev app + devtools) or Playwright harness refinement.
+- Stale membership rows: 37 unread_type=2 rows in DB still unread after 0.4.2 fix; user hasn't asked to clean them; offer stands when they want it (app must quit, cleanup runs, restart).
+- RELEASE_NOTES statelessness trap caught red: script CAN rerun with same notes; file ships verbatim; must rewrite BEFORE release.sh or previous release ships again. Guard comparing against release-notes/<prev>.md recommended.
+- bundle_dmg.sh stale-volume failure: when /Volumes/echo exists from prior DMG install, bundle fails to create volume with same name. Fix: `hdiutil detach /Volumes/echo && scripts/release.sh` (version-restore trap works).
+- Playwright harness location: /private/tmp/claude-501/-Users-tbird-gomuks/.../scratchpad (session-scoped tmp, dies at session end; recipe durable in learnings).
+- All four releases shipped successfully, all verified live, no rollbacks needed.
+
 ## 2026-08-27 16:52
 
 **Session Summary**: Completed the full release pipeline with eight releases published (0.2.0 through 0.3.7), all verified working in production. Fixed four latent bugs in release.sh that were diagnosed by actually running it to completion (wrong signing env var name, Cargo.lock not bumped as a fourth version file, DMG missing its own notarization round-trip, gh account drift during build). Fixed the backend auth fresh-install trap where a config-less machine would see a stdin prompt that fails with EOF in a sidecar. Isolated sidecar storage via GOMUKS_*_HOME environment variables and debug `-dev` profile so tauri dev never touches installed-app data. Fixed external-link opening in production (three root-cause misdiagnoses before finding the tauri-plugin-shell competing body listener in the bubble phase; fixed via capture-phase + stopPropagation). Discovered and documented the Tauri ACL remote-origin rule (http://localhost:29325 = remote, all app commands denied unless in capability). Migrated data from old gomuks directories to dev.tbird.echo with fallback-on-failure, renamed localStorage keys seabug→echo (acceptable loss because bundle ID change had already reset WebKit). Changed bundle ID from com.tbird.echo to dev.tbird.echo to match naming convention. Published README with logo, badges, install instructions, data locations, and AGPL credit. Regenerated icon set after fixing the icon mask (white margin was being baked by qlmanage). Fixed three icon-mask-related display issues. Enabled 30-minute auto-update checks (was only at launch). Verified all: signed+notarized DMG, fresh install on machine that never saw gomuks, auto-update download+signature verification, Restart button, no login prompt beyond Matrix account, encrypted message decryption and key backup in production, URL previews work, external links open system browser, light-mode titlebar. All 8 releases tested end-to-end by user. Clean working tree, main in sync with origin.

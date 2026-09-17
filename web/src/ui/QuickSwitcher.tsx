@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, use, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { getRoomAccentColor, getRoomAvatarThumbnailURL } from "@/api/media.ts"
+import { getRoomAvatarThumbnailURL } from "@/api/media.ts"
 import { RoomListEntry, StateStore } from "@/api/statestore"
 import toSearchableString from "@/util/searchablestring.ts"
 import { MainScreenContextFields } from "./MainScreenContext.ts"
@@ -165,7 +165,6 @@ const QuickSwitcher = ({ store, mainScreen }: {
 				/>
 				<div
 					className="entry-name"
-					style={{ "--room-accent": getRoomAccentColor(room.room_id) } as React.CSSProperties}
 				>{room.name}</div>
 				{room.dm_user_id && <span className="dm-tag">DM</span>}
 				<UnreadCount counts={room}/>

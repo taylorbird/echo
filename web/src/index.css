@@ -3,7 +3,10 @@
 	--font-stack: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 	/* Names and titles only — room names, usernames, section headers. Body copy,
 	   previews and the composer stay on --font-stack. */
-	--display-font-stack: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+	/* One face for the whole interface. The display stack stays as a token rather
+	   than being inlined away, so names, titles and usernames remain a named role
+	   the moment a second face is wanted again. */
+	--display-font-stack: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 	--monospace-font-stack: "Fira Code", monospace;
 
 	--window-top-margin: env(safe-area-inset-top, 0px);
@@ -243,32 +246,37 @@
 		--image-pack-editor-selected-color: #64646e;
 
 		/*
-		 * One colour for every unread tier, deliberately. gomuks distinguishes
-		 * three (a plain message, a notification-rule match, and being named), and
-		 * this collapses them: unread is unread, and the signal that matters is
-		 * that a room wants attention at all. The tiers still differ in one way —
-		 * only a highlight pulses — so being named is still distinguishable
-		 * without needing a colour vocabulary to read the list.
+		 * Two colours, because the tiers answer two different questions. Blue is
+		 * information — this room has something in it. Red is action — you were
+		 * named. Red stops being the whole list's ambient state and goes back to
+		 * meaning something.
 		 *
-		 * To bring the ramp back, give message and notification their own values
-		 * here again: nothing downstream is hardcoded to red.
+		 * This reverses the 2026-08-30 collapse to a single red. That decision
+		 * leaned on the highlight pulse to separate being named from ordinary
+		 * traffic, and the pulse is gated off by prefers-reduced-motion — so for
+		 * anyone running Reduce Motion the tiers were literally indistinguishable.
+		 * The separation now lives in hue and in badge shape, neither of which any
+		 * accessibility preference can switch off.
 		 */
-		--unread-counter-message-bg: #ff4d6d;
-		--unread-counter-notification-bg: #ff4d6d;
+		--unread-counter-message-bg: #2f6fbd;
+		--unread-counter-notification-bg: #3f86d8;
 		--unread-counter-highlight-bg: #ff4d6d;
 		--unread-counter-highlight-text: #fff2f4;
 		/* Halo around the counter, same two-layer falloff as the room/space
-		   glow bars so the app has one glow idiom rather than two. */
-		--unread-glow-notify-near: rgba(255, 77, 109, .9);
-		--unread-glow-notify-far: rgba(255, 77, 109, .45);
+		   glow bars so the app has one glow idiom rather than two. Every tier
+		   still glows; only the colour of the glow changes. */
+		--unread-glow-notify-near: rgba(90, 162, 240, .75);
+		--unread-glow-notify-far: rgba(90, 162, 240, .4);
 		--unread-glow-highlight-near: rgba(255, 77, 109, .9);
 		--unread-glow-highlight-far: rgba(255, 77, 109, .45);
-		/* Barely-there wash so a shouting room reads at a glance down the list. */
+		/* Barely-there wash so a shouting room reads at a glance down the list.
+		   Kept red and kept separate from the unread wash below: this one marks
+		   being named, and it wins on :has() specificity in RoomList.css. */
 		--room-list-entry-highlight-wash: rgba(255, 77, 109, .06);
-		--unread-glow-message-near: rgba(255, 77, 109, .9);
-		--unread-glow-message-far: rgba(255, 77, 109, .45);
+		--unread-glow-message-near: rgba(90, 162, 240, .75);
+		--unread-glow-message-far: rgba(90, 162, 240, .4);
 		/* Lifts the whole row, not just the badge. */
-		--room-list-entry-unread-wash: rgba(255, 77, 109, .06);
+		--room-list-entry-unread-wash: rgba(90, 162, 240, .06);
 		--space-unread-counter-message-bg: rgba(209, 209, 224, 0.8);
 		--space-unread-counter-notification-bg: #a0e7c8;
 		--space-unread-counter-highlight-bg: #ff9eb5;
@@ -456,21 +464,30 @@ a {
  */
 html[data-tauri] {
 	/*
-	 * A solid band across the top seats the macOS window controls in a section of
-	 * their own. Kept at the standard 28pt titlebar height so the native traffic
-	 * lights sit centred in it without needing trafficLightPosition overrides.
-	 * The band supplies the top offset, so panes no longer inset themselves.
+	 * The strip the macOS window controls need clear above them. Kept at the
+	 * standard 28pt titlebar height so the native lights sit where Overlay puts
+	 * them without a trafficLightPosition override.
+	 *
+	 * This is not a band across the window: the lights fall inside the left 66pt,
+	 * which is the space rail's own column, so the rail is the only thing that
+	 * reserves the strip (see MainScreen.css). The search field and the room
+	 * header run to the top edge instead, which is what makes each pane read as
+	 * one region rather than a strip laid across both — the way Mail and Messages
+	 * seat their controls.
 	 */
-	--titlebar-height: 2rem;
+	--traffic-light-strip: 2rem;
 	/*
-	 * macOS draws the window title itself, in a colour that follows the system
-	 * appearance: dark text in light mode, light text in dark mode. This band was a
-	 * single dark value for both, so in light mode the title rendered dark-on-dark
-	 * and was effectively invisible. The band follows the appearance instead — this
-	 * is the light value, and the dark one is in the dark block further down.
+	 * Panes stay flush to the window's top edge. Nothing insets them now that the
+	 * band is gone; only the rail pads itself, and it does so with the strip above.
 	 */
-	--titlebar-background: #eceaee;
 	--window-top-margin: 0px;
+	/*
+	 * Opaque ground for chrome that floats over the app rather than sitting in a
+	 * pane — currently the update chip. Follows the system appearance the way the
+	 * old title bar did: this is the light value, the dark one is in the dark
+	 * block further down.
+	 */
+	--floating-panel-background: #eceaee;
 
 	/*
 	 * Wide enough to contain the traffic lights, which run to roughly 66pt from
@@ -580,17 +597,17 @@ html[data-tauri] {
 		--timeline-hover-bg-color: #4e4e58;
 		--timeline-highlight-hover-bg-color: #5a5a66;
 		--timeline-jump-hover-bg-color: #5a5a66;
-		/* The warm near-black the band has always been; see --titlebar-background above. */
-		--titlebar-background: #202024;
+		/* The warm near-black the floating chrome has always been. */
+		--floating-panel-background: #202024;
 	}
 
 	/*
 	 * Reading surfaces stay opaque: text contrast must never depend on whatever
-	 * wallpaper happens to be behind the window. Each is a floating card, so the
-	 * internal titlebar inset is zeroed — the card's own top margin clears it.
+	 * wallpaper happens to be behind the window.
 	 */
-	/* Flush to the title bar on top, floating on the other three sides — a gap up
-	   there just reopens the seam the solid band was added to close. */
+	/* Flush to the window's top edge, floating on the other three sides. The zero
+	   top margin is what lets the pane own its own top strip now that no band
+	   sits above it — a gap up there would read as a seam. */
 	& div.room-view, & div.right-panel {
 		background-color: var(--background-color);
 		margin: 0 var(--pane-gap) var(--pane-gap) 0;
@@ -649,7 +666,7 @@ html[data-tauri] {
 	}
 
 	/* The raised panel casts rightward, and has to stack above the pane it casts
-	   onto. Below the titlebar's z-index 4 so it still slides under that band. */
+	   onto. Kept below the update chip's z-index 5 so floating chrome still wins. */
 	& div.room-list-wrapper {
 		position: relative;
 		z-index: 3;

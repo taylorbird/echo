@@ -228,7 +228,7 @@ export class SpaceOrphansSpace extends SpaceEdgeStore {
 	}
 }
 
-export type SpaceSubFilterID = "rooms" | "dms"
+export type SpaceSubFilterID = "rooms" | "dms" | "recent"
 
 /*
  * A space narrowed to one kind of chat, used by the rail's All/Rooms/DMs
@@ -246,6 +246,12 @@ export class SubFilteredSpace implements RoomListFilter {
 	include(room: RoomListEntry): boolean {
 		if (!this.parent.include(room)) {
 			return false
+		}
+		// "recent" narrows nothing — it is a sub-filter for the ordering it implies,
+		// not for the rooms it keeps. The room list drops its sections for it and
+		// shows one recency-ordered run of everything the parent already allowed.
+		if (this.sub === "recent") {
+			return true
 		}
 		return this.sub === "dms" ? Boolean(room.dm_user_id) : !room.dm_user_id
 	}

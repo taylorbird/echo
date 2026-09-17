@@ -50,3 +50,146 @@
 - **Gotcha:** If you change the default width constant (e.g., `const DEFAULT_WIDTH = 350` → `const DEFAULT_WIDTH = 400`), existing users will NOT see the new default. Their old value is already persisted in localStorage and will be read on mount, overriding the constant.
 - **Fix:** Bump the localStorage key name (e.g., `roomListWidth` → `roomListWidth2`). This creates a "fresh" entry that falls through to the new default constant. Old persisted values are left untouched (no data loss), just orphaned.
 - **Related pattern:** Any hook that reads localStorage on mount and writes to localStorage on state change can have this problem. The localStorage key is the only lever for invalidating old defaults.
+
+## Timeline Sender Colours: Room-Aware Allocation (2026-09-04)
+
+**Architecture:** New module `web/src/api/sendercolor.ts` exports `createSenderColorAllocator(userColorOverrides, customUserColors)` which returns `getSenderColor(roomID, userID) → string` colour value. Injected via media.ts as `getSenderColor` and called at timeline render time.
+
+**Allocation strategy:** On first appearance of a userID in a roomID, allocator picks the palette index farthest in hue from the nearest-taken hue (greedy incremental, not maximin). Allocation is persisted in localStorage `echo.room_sender_colors` as `{roomID: {userID: index}}` and never reshuffled.
+
+**Palette size:** ten dark colours in `index.css` (dark and light mode lists). Changing the count touches six coupling points: `media.ts` `FALLBACK_COLOR_COUNT`, `index.css` token lists, `TimelineEvent.css` `.sender-color-N` rules, `ReplyBody.css` `.sender-color-N` rules, dormant `themes/cool-graphite.css`.
+
+**Exhaustion:** when >10 senders appear (common in loaded history), newcomer takes the least-used slot; hash breaks ties. Consequence: same person can have different colours in different rooms (accepted tradeoff over complexity).
+
+**Side effect:** Member list and mention pills still use per-user `getUserColor` (no room context available), so they may disagree with timeline colours. Possible future refinement: thread room ID through those layers.
+
+**Colour transport:** the colour is carried as `--sender-color` custom property inline on `div.timeline-event`, so it's available to all children (sender name span, reply spine, etc.) without re-fetching.
+
+## Timeline Geometry and Styling: Ring + Rail + Plate (2026-09-04)
+
+**Avatar ring:** double-stroke effect via box-shadow on avatar:
+- Outer: `2px --background-color` (the app's background, creates a gap)
+- Inner: `2px --sender-color` (the room-aware colour)
+- Total bleed: 4px
+- On hover/focus: gap repaints with hover token, keeping ring visible
+
+**Sender rail:** new `div.timeline-event::before` pseudo-element:
+- Height: 1.5px, colour: `--sender-color`, width: 100% of avatar column
+- Positioned at `left: calc(--timeline-horizontal-padding + --timeline-avatar-size + 11px)` (absolute pixel offset to account for avatar size and padding)
+- `top: 2px` on first row, `top: -var(--timeline-message-gap-same-sender)` on same-sender rows (continuous rail)
+- `bottom: 0` except `&:not(:has(+ div.timeline-event.same-sender))::before { bottom: 4px }` (last row of a run)
+- Excluded on small/hidden/membership/small-thread/edit-history/pinned/notification/confirm-modal events
+
+**Sender name plate:** faint background on the name itself:
+- `span.event-sender > span.event-sender-text { background: color-mix(in oklab, currentColor 14%, transparent); padding: .1rem .4rem; border-radius: .3rem }`
+- Outer span keeps `overflow: hidden` and `text-overflow: ellipsis` with `padding: .25rem 0` so plate isn't clipped
+
+**Timeline avatar gap:** widened from 1rem to 1.5rem to accommodate ring bleed + rail + text without squash.
+
+## Unread Section in RoomList (2026-09-04)
+
+**New preference:** `unread_section` (appearance, anyGlobalContext, default true) gates a collapsible drawer above Rooms/DMs sections.
+
+**Predicate:** module-level `isUnread` function (same predicate as mark-all-read button) determines which rooms are unread.
+
+**Pin pattern:** `unreadPin` ref ensures the active room stays in the Unread section while it's actively displayed, so it doesn't vanish under the cursor when the user scrolls. Once the user navigates away, the room follows the predicate (moves out if no longer unread).
+
+**Collapse state:** persisted to localStorage `seabug.collapsed_room_list_sections` with safe fallback to expanded. Section ID is "unread" (part of the larger per-group collapse tracking).
+
+**Interaction:** works in sub-filtered views because roomList is already view-filtered by the time the Unread section runs.
+
+## Room List Name Colouring: Uniform Mode (2026-09-04)
+
+**Token:** `--room-list-name-color` applied to `div.room-entry > span.event-sender` (the room name).
+
+**Uniform mode ON:** ink colour `#c9c2cc` for all names, except open room gets pure white.
+
+**Uniform mode OFF:** per-room accent mix (38% accent over text colour, defined in resting-row rule).
+
+**Specificity fix:** the uniform override is nested INSIDE the resting rule at (0,6,5) specificity, beating the old (0,5,4) resting-rule mix. Dark-only by design.
+
+**Entry.tsx sender-name span:** `Entry.tsx` passes `room_id` to `getPreviewText` and colours the sender name span inline via `getSenderColor(room_id, evt.sender)` (room-aware colour, not per-user).
+
+## Reactions: No Local Echo, Redaction Recount (2026-09-04)
+
+**Architecture:** Backend aggregates `m.reaction` events to bare `Record<string, number>` counts and discards senders (`FillReactionCounts` in `pkg/hicli/database/event.go:225` throws away `GetReactionsResult.Events`). No sender information reaches the frontend.
+
+**No local echo:** reaction click does not update the local count immediately. Counts update only on sync echo (server echoes the send back in the room state). This gives reactions a "dead click" feel initially, but it's correct for consistency (same-device cross-session view stays consistent).
+
+**Chip toggle:** clicking a chip you already reacted with toggles your reaction off (redact). Chip dims optimistically during send/redact, settles on sync echo or 20s timeout.
+
+**Redaction recount path:** when a reaction message is redacted, the backend's `processRedaction` (sync.go) calls `getEventReactionsQuery` which excludes redacted events, so counts are recomputed. This is the opposite of the send path (no local recompute, just sync echo).
+
+**Tooltip hover (prior session):** reaction-hover-tooltip was added via `get_related_events` RPC (relation type `m.annotation`, same call `EventEditHistory` makes for `m.replace`), fetched lazily on first hover, cached by `countSignature` (concatenation of `key:count` pairs to detect changes).
+
+## Media Content: No Retry on Error (useMediaContent)
+
+**Gotcha (2026-09-04, from diagnostic):** `useMediaContent.tsx` sets an `errored` flag when img.onError fires and never retries until remount. During the 2026-09-02 network outage (backend 502 on media downloads, 57–180s hangs followed by 502), broken images persisted even after the outage was resolved, because the hook had already errored out.
+
+**Current behaviour:** no auto-retry on click or when back online.
+
+**Open question:** should we implement retry-on-click or retry-on-network-restore for better UX?
+
+## Display Font Stack: Single Point of Control (2026-09-17)
+
+**Architecture:** `--display-font-stack` token is referenced in 11 places across 8 files: `web/src/index.css` (definition + fallback), `RoomList.css` (room names), `RoomViewHeader.css` (room header title), `SpaceView.css` (dashboard section titles, member names, room names), `TimelineEvent.css` (sender names, reply senders), `ReplyBody.css` (quoted sender name), `QuickSwitcher.css` (search panel section headers), `MessageComposer.css` (placeholder text styling if applicable). Changing the token impacts all these sites uniformly with one edit.
+
+**Decision 2026-09-17:** Space Grotesk entirely removed; `--display-font-stack: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif` is the single typeface. The token is preserved (not inlined) so the "display" role concept survives — if a second display face is added in the future, all 11 uses update together.
+
+## Unread Tier System: Token + :has() Specificity (2026-09-17)
+
+**Architecture:** Unread tier distinction (message blue vs highlight red) is implemented via custom properties set by `:has()` selector rules, where specificity orders the cascade.
+
+**CSS pattern (RoomList.css):**
+```css
+div.room-entry {
+  --unread-bar-color: transparent;  /* default: no bar */
+}
+div.room-entry:has(> div.room-entry-unreads) {
+  --unread-bar-color: var(--message-blue);  /* default unread: blue */
+}
+div.room-entry:has(> div.room-entry-unreads:has(> .notified)) {
+  --unread-bar-color: var(--notified-blue);  /* notification tier: lighter blue */
+}
+div.room-entry:has(> div.room-entry-unreads:has(> .highlighted)) {
+  --unread-bar-color: var(--highlight-red);  /* mention tier: red */
+}
+```
+
+The `:has()` specificity (0,5,1) beats the element selector (0,0,1), so the most-specific `:has()` rule wins. To change the colour palette or tier definitions, update the token values or add/remove `:has()` rules — no changes to `UnreadCount.tsx` needed.
+
+**Rendering:** `UnreadCount.tsx` applies modifier classes `.marked-unread`, `.notified`, `.highlighted` to `div.room-entry-unreads` based on the room's unread state. It renders nothing at all (no badge span) if the room is read — the presence/absence of the unreads div itself is the signal.
+
+**Querying from CSS:** "is this room unread?" is asked via `:has(> div.room-entry-unreads)` on the entry itself.
+
+## Room-List Section Headers: Structural Constraint (2026-09-17 15:15) — SUPERSEDED 2026-09-17 15:53
+
+**Earlier pattern (2026-09-17 15:15):** `div.room-list-section-header` contains three control buttons: `button.section-toggle` (icon + section name, toggles collapse), optional `button.section-mode` (the sort tag / mode indicator), and `button.section-chevron-button` (repeats the toggle for pointer users, tabIndex={-1} aria-hidden).
+
+**Rationale (2026-09-17 15:15):** buttons cannot nest inside buttons. The sort tag must be independently operable without nesting it as a child of the toggle button. Therefore the section header is a div that acts as the interactive container (band/tone/hover styling), with three distinct button children.
+
+**Superseded:** This pattern was reverted 2026-09-17 15:53 when the per-section sort feature was deleted entirely (replaced by Recent as a rail sub-filter). Section headers are now a single `<button>` again, making the complexity unnecessary.
+
+## Rail Sub-Filters: Membership vs Ordering (2026-09-17 15:53)
+
+**Architecture:** `SubFilteredSpace` in `web/src/api/statestore/space.ts` wraps membership decisions. Its `include(room)` method decides whether a room passes the filter. Importantly, a sub-filter can legitimately **narrow nothing** — its purpose may be purely to signal an ordering/layout mode to the room list rather than to gate room membership.
+
+**Example: Recent view.** `SpaceSubFilterID` now includes `"recent"`. When `activeSubFilter === "recent"`, the space's `include()` returns true for all rooms (narrows nothing). The signal is purely for layout: the `sections` useMemo in RoomList.tsx detects `activeSubFilter === "recent"` and short-circuits to a single unsectioned section of `roomList.toReversed()`. The sub-filter carries ordering semantics, not membership semantics.
+
+**Consequence:** building a new list layout (e.g., a calendar view, a thread inbox, a starred-only view) does not require creating a new Space or a new filtering layer. If the layout is room-agnostic (all rooms, just reordered), create a sub-filter that narrows nothing; if the layout is room-selective (e.g., unread only), use the existing `SubFilteredSpace` include logic.
+
+## The `sections` useMemo: Single Source of Room-List Shape (2026-09-17 15:53)
+
+**Location:** `RoomList.tsx` contains a `sections` useMemo that computes and returns the entire shape of the room list: section headers, section contents, sort order, and collapsibility. This is the single place where the list's visual structure is decided.
+
+**Consequence:** building an alternate room-list layout (e.g., a flat recent-first view) is not a parallel component alongside `RoomList.tsx`. Instead, it is a short-circuit at the TOP of the `sections` useMemo. When `activeSubFilter === "recent"`, the memo returns `[{ header: null, rooms: roomList.toReversed() }]` (single unsectioned section) instead of the normal grouped structure.
+
+**Design pattern:** any boolean/select state that changes the room list's layout should be plumbed through the `sections` useMemo as a short-circuit, not as a separate render branch.
+
+## TDZ Error: Declaring Variables Before useMemo Reads (2026-09-17 15:53)
+
+**Gotcha:** If a `useMemo` reads a variable from the component body, that variable must be declared ABOVE the useMemo in the source code, or a TempZoneDeadError occurs at runtime (ReferenceError: can't access before initialization).
+
+**Example:** `RoomList.tsx` `sections` useMemo reads `activeSubFilter` to decide on the recent-view short-circuit. The variable `activeSubFilter` was initially declared BELOW the useMemo (with other rail-space lookups). Moving the `sections` useMemo or declaring `activeSubFilter` later caused a TDZ error. **Fix:** moved `activeSubFilter` declaration to the top of the component, above the `sections` useMemo.
+
+**Design implication:** consider the useMemo dependencies and variable declaration order up front; useMemo is not a "magic black box" that can safely read any in-scope variable without regard to declaration order.

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use } from "react"
-import { getRoomAccentColor, getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
+import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { getModalStyleFromButton } from "@/ui/menu/util.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
@@ -120,7 +120,6 @@ const RoomViewHeader = ({ room, activePanel }: RoomViewHeaderProps) => {
 			<div
 				className="room-name"
 				title={roomMeta.name ?? roomMeta.room_id}
-				style={{ "--room-accent": getRoomAccentColor(room.roomID) } as React.CSSProperties}
 			>
 				{roomMeta.name ?? roomMeta.room_id}
 			</div>

@@ -73,7 +73,7 @@ div.space-masthead {
 			overflow-wrap: anywhere;
 
 			@media (prefers-color-scheme: dark) {
-				color: color-mix(in oklab, var(--room-accent, var(--text-color)) 70%, #f8f8f2);
+				color: #ffffff;
 			}
 		}
 	}
@@ -331,7 +331,7 @@ div.space-children {
 
 				/* Same hash-derived candy accent the room list and header use. */
 				@media (prefers-color-scheme: dark) {
-					color: color-mix(in oklab, var(--room-accent, var(--text-color)) 70%, #f8f8f2);
+					color: #ffffff;
 				}
 			}
 

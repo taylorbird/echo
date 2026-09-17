@@ -133,12 +133,6 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 	useEffect(() => {
 		document.documentElement.toggleAttribute("data-ignore-reduce-motion", preferences.ignore_reduce_motion)
 	}, [preferences.ignore_reduce_motion])
-	// Same attribute technique: the per-room accents are inline style variables,
-	// so a CSS rule keyed on this attribute can override them all at once.
-	useEffect(() => {
-		document.documentElement.toggleAttribute(
-			"data-uniform-room-list-color", preferences.uniform_room_list_color)
-	}, [preferences.uniform_room_list_color])
 	// The colour itself is a custom property rather than part of the attribute rule, so
 	// changing it repaints without the stylesheet needing to know the value.
 	useEffect(() => {

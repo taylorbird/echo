@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { CSSProperties, use, useCallback, useEffect, useMemo, useState } from "react"
 import {
-	getAvatarThumbnailURL, getRoomAccentColor, getRoomAvatarThumbnailURL, getUserColor,
+	getAvatarThumbnailURL, getRoomAvatarThumbnailURL, getUserColor,
 } from "@/api/media.ts"
 import { RoomStateStore, useRoomState, useSpaceEdges } from "@/api/statestore"
 import { DBSpaceEdge, MemDBEvent, MemberEventContent, RoomID, SpaceHierarchyChild } from "@/api/types"
@@ -137,7 +137,6 @@ const SpaceChild = ({
 	return <div
 		className={`space-child ${room ? "known-room" : "unknown-room"} ${edge ? "existing-edge" : ""}`}
 		onClick={edge ? joinRoom : undefined}
-		style={{ "--room-accent": getRoomAccentColor(roomID) } as CSSProperties}
 	>
 		<img
 			src={getRoomAvatarThumbnailURL(room ?? summary ?? { room_id: roomID })}
@@ -406,7 +405,6 @@ const SpaceView = () => {
 					<h1
 						className="space-name"
 						title={meta.name ?? rootID}
-						style={{ "--room-accent": getRoomAccentColor(rootID) } as CSSProperties}
 					>
 						{meta.name ?? rootID}
 					</h1>

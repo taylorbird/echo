@@ -119,11 +119,6 @@ export const getUserColor = (userID: UserID) => {
 	return getFallbackColors()[getUserColorIndex(userID)]
 }
 
-// Rooms hash into the same palette as users, but never through the per-user custom color map.
-export const getRoomAccentColor = (roomID: string): string => {
-	return getFallbackColors()[getUserColorIndex(roomID)]
-}
-
 // The timeline colors senders per room rather than by hash, so that the people
 // talking in one room never land on the same or a neighbouring hue. See
 // sendercolor.ts for why, and for the order-dependence that buys it.

@@ -7,7 +7,7 @@
 - Visual verification of the running app is unavailable in this environment:
   - `screencapture` fails with "could not create image from display" — the terminal (ghostty) lacks macOS Screen Recording permission.
   - The chrome-devtools MCP cannot attach without Chrome already running with a debug port; a fresh profile only reaches a login screen.
-  - `osascript` System Events reports 0 windows for a transparent Tauri window — this is an Accessibility-API quirk of transparent windows, not evidence the app failed to render.
+  - `osascript` System Events reports 0 windows for the Tauri window — not evidence the app failed to render. **Corrected 2026-09-17:** this is NOT a quirk of transparent windows. `yaak-app-client`, an unrelated Tauri app, returns the identical signature (0 windows, `AXMenuBar` only), so it is Tauri/WRY-wide and unrelated to `transparent: true` or `macOSPrivateApi: true`. Ghostty returns 1 window from the same permitted terminal, so the method itself is sound. (Finder also returns 0, but only when it has no windows open — that coincidence makes the method look broken when it isn't.) Consequence beyond screenshots: AX-driven assistive tools have nothing to attach to — see the Cotypist entry in `.claude/work/questions.md`.
 - Deleting an icon/asset file before updating the import that references it causes a transient Vite "Failed to resolve import" error (and a stale error overlay). Update the import first, or force a full page reload afterward (e.g. by touching `index.html`) to clear it.
 - A Bash PreToolUse hook in this environment rejects some compound/looping shell commands — e.g. `for` loops using `lsof`, or chained commands like `screencapture ...; ls`. Use python3 one-liners or separate single-purpose Bash calls instead.
 - WebKit defers repaints of elements using `content-visibility: auto` + `contain: strict`. During rapid class changes (e.g., `.active` toggled on two different elements in quick succession), both paint-defers, leaving the old and new states both visually highlighted for ~100ms until a later event loop cycle triggers a repaint. This became visible during fast Alt+↑/↓ room navigation when room-list entries used `content-visibility: auto`. Solution: abandon virtualization for room lists and render entries unconditionally (room lists are small enough that DOM size is acceptable).
@@ -163,3 +163,171 @@ relationship and future `git merge upstream/main` still work correctly.
 
 After filtering, run `git gc` to reclaim the disk space (~110MB local storage in `.git/objects`).
 The local tag `pre-blob-strip` can then be deleted.
+
+## Playwright-WebKit Behavioral Verification Harness
+
+For rail/visual/animation work, live inspection against the dev server is required — CSS specificity bugs and animation-event races are invisible in static analysis.
+
+**Setup:**
+- Playwright + WebKit already installed in `/private/tmp/claude-501/.../scratchpad`
+- Scripts: `railwatch2.mjs`, `allchats.mjs`, `activerow.mjs` load `localhost:6173` dev app
+- Authenticated via minted `gomuks_auth` cookie
+
+**Cookie Recipe (durable, session-independent):**
+```
+Read config: ~/Library/Application Support/dev.tbird.echo/config.yaml
+Extract: username, token_key
+
+Payload: compact JSON {"username": "<username>", "expiry": <now + 3600>}
+Token: b64url(payload) + "." + b64url(HMAC-SHA256(token_key, payload))
+       — NO padding on either b64url segment
+
+Cookie: domain=localhost, path=/_gomuks/auth, value=<token>
+(matches pkg/gomuks/server.go signToken; pinned test vector in lib.rs)
+```
+
+**Harness Instance:**
+- Session-scoped tmp at `/private/tmp/claude-501/-Users-tbird-gomuks/5b417af2-8cc0-498f-bc0e-cbf16fcf78cd/scratchpad`
+- Dies at session end (expected; recipe is the durable part)
+- Verified: 18/18 Home rail transitions, 40 rooms + 18 DMs partition, room rendering, tile handoff during band animation
+
+**When to Use:**
+Before marking visual work done on rail animations, space transitions, or column-based layouts. "Code looks right" + "no obvious lint errors" is not enough; race conditions in animation events and CSS specificity bugs need live inspection.
+
+## bundle_dmg.sh Stale Volume Failure
+
+**Gotcha:** if a volume named "echo" is already mounted (leftover from a previous DMG install),
+`bundle_dmg.sh` fails with "Device busy" or similar when trying to create a volume with the
+same name.
+
+**Symptom:** `npx tauri build` succeeds (it creates the `.app`), but the DMG bundler step fails.
+
+**Fix:** eject the stale mount and rerun release.sh:
+```bash
+hdiutil detach /Volumes/echo
+scripts/release.sh <version|patch|minor>
+```
+
+The version-restore trap in release.sh handles abort cleanup correctly.
+
+## Manual git push: pin GH_TOKEN to taylorbird
+
+**Gotcha:** `gh` CLI defaults to the currently-active authenticated account. If you're logged in
+to multiple accounts (e.g., taylorbird and another org account), the active account can drift
+after a browser session becomes active, causing `git push` to fail with 403 (misreported as 404).
+
+**When to do this:** after release.sh runs, or whenever the active `gh` account is uncertain.
+
+**Command:**
+```bash
+GH_TOKEN="$(gh auth token --user taylorbird)" && git push
+```
+
+This pins both `git push` (via credential helper `gh auth git-credential`) and any subsequent
+`gh release create` to the correct account. release.sh exports `GH_TOKEN` upfront to avoid
+this issue entirely.
+
+## Vite dev server binds IPv6 only
+
+**Gotcha (2026-09-04):** Vite's configured port (6173) binds to `[::1]` (IPv6 loopback) by default, not `127.0.0.1` (IPv4). An IPv4-only readiness probe (e.g. TCP connect to 127.0.0.1:6173) reports the server down even when it's running.
+
+**Impact:** any harness/tooling that waits for Vite readiness before launching the Tauri app will timeout if it only tries IPv4.
+
+**Fix:** readiness probes must try `::1`, or allow both IPv4 and IPv6. Simplest: connect to `[::1]:6173` instead of `127.0.0.1:6173`.
+
+## WKWebView localStorage access via sqlite
+
+**Fact (2026-09-04):** WKWebView stores all localStorage/sessionStorage in a sandboxed sqlite database:
+- Dev build (`dev.tbird.echo-dev`): `~/Library/WebKit/dev.tbird.echo/*/WebsiteData/Default/*/*/LocalStorage/localstorage.sqlite3` (UTF-16LE values)
+- Prod build (`dev.tbird.echo`): `~/Library/WebKit/dev.tbird.echo/...` (same structure)
+
+**Use case:** diagnosing storage state without a devtools connection (devtools unavailable in prod or CI). Query the sqlite directly to inspect preference values, custom colours, collapsed sections, etc.
+
+**Example:** user's custom user colour #ad9cfe vanished in dev profile after a build; checking the dev sqlite showed `gomuks_custom_user_colors` became `{}`, but the prod profile retained its values. Cause unknown (possibly user-removed, possibly dev-only reset).
+
+## Production backend logs include debug output
+
+**Fact (2026-09-04):** prod builds don't suppress debug logging. Log file at `~/Library/Logs/dev.tbird.echo/gomuks.log` (rotated per start).
+
+**Search keys:**
+- `"send/m.room.encrypted"` finds all IPC message sends. During 2026-09-02 network outage, 47 sends found but zero reaction sends, confirming reactions never reached the backend.
+- `"Failed to copy media to temporary file"` indicates homeserver media service is down (not an app fault; the 502 that results is expected).
+
+## nohup-detached tauri dev survives harness cleanup
+
+**Pattern (2026-09-04):** `nohup npx tauri dev … &` detaches the process from the harness task list, so TaskStop signals or cleanup events don't kill it.
+
+**Consequence:** the process is no longer trackable as a background task. If cleanup is needed, kill it explicitly by port or process name:
+- By port: `lsof -ti :6173` or `lsof -ti :29325`
+- By process: `pkill -f target/debug/app` or `pkill -f gomuks-aarch64-apple-darwin`
+
+**Use case:** release.sh takes 25–35 minutes (two Apple notarization waits), but Claude Code's Bash tool caps background commands at 10 minutes. Launching detached ensures the script can run to completion uninterrupted.
+
+## Subagent cleanup killed tauri dev twice
+
+**Gotcha (2026-09-04):** Two subagents' cleanup routines (one via stray TaskStop, one via headless-Chrome cleanup) killed the running dev app. The process was launched as a direct child of the harness task, so cleanup signals propagated to it.
+
+**Fix:** subagent briefs for any work that might spawn side effects must explicitly forbid:
+- Launching browsers (headless or interactive)
+- Starting background tasks with nohup or similar
+- Calling TaskStop or other termination signals
+
+**Recovered pattern:** Briefs should document these forbidden actions explicitly so the subagent knows the constraints.
+
+## Headless Chrome One-Look Render for Artifact HTML (2026-09-13)
+
+**Use case:** visual verification of artifact HTML without a browser window. Headless Chrome renders the page to PNG for a quick "does it look right" check, useful when live dev browser is unavailable (CI, sandboxed environment, visual review after export).
+
+**Command:**
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new \
+  --disable-gpu \
+  --hide-scrollbars \
+  --window-size=1400,1500 \
+  --virtual-time-budget=4000 \
+  --screenshot=output.png \
+  file:///path/to/artifact.html
+```
+
+**Behavior:** `--headless=new` (Tauri's new headless mode) exits on its own after the screenshot is taken, unlike the deprecated `--headless` (which hangs indefinitely on file:// URLs). `--virtual-time-budget=4000` gives 4 seconds of virtual wall-clock time for animations/fonts to load. Render PNG is readable immediately (within ~1 second).
+
+**Gotcha:** file:// URLs have no charset declaration, so UTF-8 punctuation (em-dashes `—`, ellipses `…`) render as mojibake. Use HTML entities instead: `&#8212;` for em-dash, `&#8230;` for ellipsis.
+
+## `pnpm exec` in web/ triggers a full install (2026-09-12)
+
+**Gotcha:** this repo is an npm project (package-lock.json, no pnpm lockfile). Running
+`pnpm exec tsc` or `pnpm run lint` in `web/` does NOT just run the tool: pnpm first performs a
+full dependency install, rewriting `node_modules` into its symlinked layout, generating
+`pnpm-lock.yaml`, and writing a placeholder `pnpm-workspace.yaml` (`allowBuilds: … set this to
+true or false`) that then makes every later pnpm command fail with `ERR_PNPM_IGNORED_BUILDS`.
+The install resolves fresh versions within package.json ranges (package-lock is ignored), so
+plugin minors can drift — after one such install `eslint-plugin-react-hooks` 7.1.1 introduced
+two new lint errors in untouched files.
+
+**Until the pnpm-migration question is decided:** run tools as `./node_modules/.bin/tsc` and
+`./node_modules/.bin/eslint` (or `npm run …`). Never `pnpm …` in `web/`. If an accidental
+install has happened, delete the two generated files and run `npm ci` in `web/` with tauri dev
+STOPPED to restore the lockfile-exact tree.
+
+## lsof process name truncation and dev-vs-prod sidecar naming (2026-09-17)
+
+**Gotcha 1: lsof truncates the process name column**, limiting visibility to ~15 characters. A process grep searching for "WebKit" or "WebContent" will never match — the WebContent process shows as "com.apple" in lsof output because the full name is truncated.
+
+**Gotcha 2: sidecar process naming differs between dev and prod.** In dev (tauri dev), the sidecar spawned process is named `gomuks` (short name). In prod (npx tauri build output), the bundled binary is named `gomuks-aarch64-apple-darwin` (full triple). Readiness probes and cleanup scripts must account for this difference: `pgrep -f gomuks` matches both, but `pkill -f gomuks-aarch64-apple-darwin` only hits prod and `pkill -f 'target/debug/app'` only hits dev.
+
+**Verified in this session:** attempted to validate running version via AX API (`osascript` System Events) using process name as the identifier. Recognized the lsof truncation issue (reported as "WebKit" not in process list) and corrected the method to use the WebContent process's TCP connection to the dev port instead.
+
+## "0 windows from System Events" proves nothing (2026-09-17)
+
+**Gotcha (corrected from earlier hypothesis, 2026-09-17):** `osascript -e 'tell application "System Events" to tell process "app" to get count of windows'` returns 0 for the echo window. This is NOT evidence that the window failed to render or that the app has no windows. **Verification required:** test the same command against an app known to have a window.
+
+**Validated this session:**
+- echo process: 0 windows (Accessibility API reports only AXMenuBar)
+- yaak (unrelated Tauri app): 0 windows, identical signature
+- Ghostty (native terminal, AX-permitted): 1 window (so the query method is sound)
+- Finder: 0 windows when it has none open (the method is correct; 0 is a valid answer)
+
+**Inference:** Tauri/WRY-wide behaviour where the NSWindow is absent from the Accessibility API tree. NOT a consequence of `transparent: true` or `macOSPrivateApi: true` (yaak has both and exhibits the same signature). Related to Cotypist (assistive text prediction) having no text field to attach to because the window is invisible in the AX tree.
+
+**Corrected learning:** "0 windows from System Events" is not by itself evidence of anything. Always validate the query method against an app known to have a window before concluding the app under test has failed.

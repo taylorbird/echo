@@ -31,6 +31,8 @@ Each constraint is dated with its origin and rationale. One-liners live in curre
 - Do NOT build modal/settings surfaces on `--room-list-background-overlay` — forced `transparent` inside `html[data-tauri]` to show vibrancy; derive from `--background-color` via `color-mix` instead
 
 ### Mobile plans
+**SUPERSEDED 2026-09-01** — see "Mobile strategy (2026-09-01)" below.
+
 Tauri 2.0 supports iOS/Android. Plan to use **matrix-rust-sdk** for backend:
 - Runs natively in Tauri's Rust layer (not a sidecar)
 - Works on all platforms
@@ -85,8 +87,8 @@ As of 2026-08-21, the project compiles with zero TypeScript errors and zero esli
 ### Tauri ACL remote-origin discovery
 **capabilities/default.json must have a `remote.urls` entry for http://localhost:29325 or ALL prod IPC is silently denied.** When a window loads an http:// URL (even localhost), Tauri treats it as REMOTE origin. Capabilities need an explicit `remote.urls` block or every IPC call fails silently. Dev is exempt because devUrl is the app URL (local origin). Also: `core:window:allow-start-dragging` is NOT in core:default and must be granted explicitly. **Side effect fixed:** external link opening via opener plugin now works in prod. **Known gap:** fetch_og_tags app command still needs an app permission file + capability entry (URL-preview webview tier dead in prod, needs follow-up work).
 
-### Fonts: Inter base + Space Grotesk display
-**Base font: Inter 400-700 via Google Fonts.** **Display font: Space Grotesk 400-700 via --display-font-stack token,** applied to: sidebar room names (RoomList.css), room header title (RoomViewHeader.css), space dashboard masthead/section titles/member names/room names (SpaceView.css), timeline sender names (TimelineEvent.css `span.event-sender` — also covers reply senders via shared class). Zero references to Lato remain. Lato fully replaced 2026-08-24.
+### Fonts: Inter base + Space Grotesk display (2026-08-25) — AMENDED 2026-09-17
+**Original (2026-08-25):** Base font Inter 400-700; Display font Space Grotesk 400-700 via `--display-font-stack` token (names, titles, usernames). Lato fully replaced 2026-08-24. **AMENDED:** Space Grotesk entirely removed 2026-09-17. See "Typography: Inter everywhere (2026-09-17)" above.
 
 ### Timeline sender styling refresh
 Sender row gets `min-height: calc(var(--timeline-avatar-size) - .25rem)` so the name centers on the avatar and text starts below it. `--timeline-sender-name-content-gap` back to 0. Sender names dimmed via `opacity: .75` on span.event-sender (opacity chosen over color tokens so per-user overrides/cheats dim equally). All sender names now .875rem/600/.015em tracking ("label" treatment). `--timeline-avatar-gap` doubled .5rem → 1rem. Dark-mode `--sender-color-5` changed #ffd93d → #f0c674 (honey gold; pure yellow mustardy under 75% dim).
@@ -137,3 +139,204 @@ Sender row gets `min-height: calc(var(--timeline-avatar-size) - .25rem)` so the 
 
 ### Git history blob strip: git filter-branch to remove 110MB binary
 **Done 2026-08-27:** Rewrote commits `c1529c6c..HEAD` (4 unpushed commits only) to strip `web/src-tauri/binaries/gomuks-aarch64-apple-darwin` (55MB, committed twice). Verified `git diff` between pre-rewrite and rewritten tip was EMPTY (identical tree). Upstream commits at/below `c1529c6c` untouched, so fork relationship + future `git merge upstream/main` still work. Backup tag `pre-blob-strip` still exists (can be deleted + `git gc` run to reclaim disk). Push payload went 110MB → 7.6MB.
+
+## 2026-09-01 (Mobile strategy decision: iOS-only Element X fork)
+
+### Mobile strategy (2026-09-01)
+**Decision:** iOS app is an owned fork of Element X iOS (SwiftUI on matrix-rust-sdk), not a tracked fork and not Tauri-based.
+- iOS-only native app; Android explicitly out of scope
+- Fork once, stop rebasing on upstream Element X
+- Pull matrix-rust-sdk updates via Swift package dependency only
+- Keep Element X's hard parts as-is: session management, notification service extension (decrypted push content), verification flows, key backup, rust-sdk wiring
+- Write new room list and timeline screens against an echo design-language document (not editing Element's versions; avoids "restyled Element" trap)
+- Token-restyle remaining screens (settings, onboarding, verification) at Compound design-token layer only
+- Consistency across desktop and iOS is a shared design language (tokens, colors, look and feel), not shared code; mobile UI is bespoke to mobile (window resizing, glow markers need not port literally)
+- Desktop app stays: React/Tauri bundled with local Go sidecar backend (unchanged)
+- Phone is a separate Matrix device on the same account (two devices, own keys and DBs; read state syncs via Matrix receipts; needs cross-signing and key backup)
+- Design-language document becomes the source of truth for both codebases
+
+### Alternatives evaluated and rejected (for future reference)
+- **Linux/Windows desktop port:** moderate plumbing (CGO sqlite3 cross-compile, per-triple binary naming, Assets.car macOS-only, latent Windows data-dir bug in lib.rs, macOS-specific window chrome CSS, release.sh single-platform); no decision taken, findings in portability.md for reuse if ever picked up
+- **Hosted gomuks backend + thin mobile frontend:** viable (frontend already has non-Tauri mode, WebAuthLogin, origin_patterns CORS config, web push); rejected because user does not want to run a server; if revisited, backend has no rate limiting (verified), tokens are HMAC-SHA256 7-day (token_key = master secret), security notes: would hold all E2EE keys, Tailscale recommended over public
+- **gomuks WASM in Tauri iOS:** shares React frontend (wasmuks exists with build-wasm.sh), rejected for mobile because iOS suspension kills background sync, notifications cannot carry decrypted content (WASM backend cannot run in notification extension), on-phone performance unmeasured, native feel capped at web-app; worth remembering as zero-code phone test (build-wasm.sh + static host + mobile Safari)
+- **Own SwiftUI app on matrix-rust-sdk from scratch ("option 2"):** cleaner end state but months of plumbing (notification extension especially) before design can be judged; option 3 (owned Element X fork with fresh-written screens) converges to it without a non-working interim
+- **FluffyChat (Flutter, matrix-dart-sdk):** legitimate second scaffold; loses to Element X once Android is dropped
+
+## 2026-09-01 (0.4.0–0.4.3 releases: settings redesign, unread red, parted rail, release-notes-in-app, Go SSO/membership fixes)
+
+### Release ritual: RELEASE_NOTES.md statelessness
+**Rationale:** `RELEASE_NOTES.md` at the repo root is read by `scripts/release.sh` in preflight, embedded verbatim in `latest.json` as the `notes` field, and rendered in-app. Unlike version files that reset per release, release notes are stateless — the file ships exactly as-is. This caught us twice: (1) release.sh reran with the SAME notes in place, shipping old 0.4.2 notes with 0.4.3, (2) the script clobbered notes by concatenating when appending should be documented elsewhere. **Discipline:** rewrite `RELEASE_NOTES.md` BEFORE every `release.sh` run. Archive old notes to `release-notes/<version>.md` and commit with the version bump (release.sh does this). Consider a preflight guard comparing against `release-notes/<previous>.md` to catch the same-notes trap. **Gotcha:** stale DMG mount at `/Volumes/echo` kills `bundle_dmg.sh` (fails to create volume with same name). Eject first with `hdiutil detach /Volumes/echo`, then rerun release.sh.
+
+### Rail marker language: the glow pill = active view
+**Constraint:** exactly one glow pill (`&.active::before` pill indicator, glow-yellow `#f5d76e` with box-shadow glow, left-edge on space/DM tiles) visible at any time. The pill marks the ACTIVE VIEW — the selected space, the selected sub-filter band when parted, or the selected room. When a space tile parted (band height 0fr → 1fr animation, 26s open / 52s close), the tile's pill is handed to the selected sub-filter row inside the band; the space tile itself gives up the pill while the drawer is open. If no pill is visible, either no view is selected (early-boot before defaulting to Home) or the view is inside a closed drawer. This is the single visual truth for "which part of the rail is active right now."
+
+### Animations: CSS media-query gate + JS exit-state skip for reduce-motion users
+**Rationale:** CSS `prefers-reduced-motion: reduce` media query matches on this dev machine (enabled by default in macOS accessibility). Many animations were written with `animation: none` under that query, permanently disabling ALL animations when Reduce Motion is on — including ones added later that were never tested with it off. **Discipline:** (1) every animation rule gets two selectors: the motion rule AND an attribute-gated override `html:not([data-ignore-reduce-motion])` that makes the motion rule apply only when the override is absent (the override attribute is set by `StylePreferences.tsx` `useEffect` bound to the preference). (2) JS transition state machines (e.g., closing animations that use `animationend` event listener) must check the reduce-motion state AND the preference flag via `matchMedia` directly, then skip the exit-animation state entirely for reduce-motion users — `animationend` never fires under `animation:none`, so relying on it alone leaves transitions half-applied. **Examples:** band closing animation uses `0fr↔1fr` grid-template-rows with `min-height:0` on inner flex item (auto-minimum otherwise refuses collapse); both CSS rule and JS state machine gate the closing state.
+
+### Behavioral verification standard: Playwright-WebKit harness against live dev
+**Established:** Rail/visual/animation work requires verification beyond "code looks right" because CSS specificity bugs and animation-event races are invisible without live inspection. Two bugs were caught in 0.4.3 only through harness testing (closing-band animation excluding its tile, active-row edges silently beaten by hairline specificity). **Setup:** scratchpad/playwright + webkit installed, scripts (railwatch2.mjs, allchats.mjs, activerow.mjs) load localhost:6173 dev app authenticated via minted gomuks_auth cookie (recipe: read username + token_key from config.yaml; payload = compact JSON {"username":u,"expiry":now+3600}; token = b64url(payload)+"."+b64url(HMAC-SHA256(token_key, payload)) no-padding; set cookie at domain localhost path /_gomuks/auth). Sample DOM through rail transitions, verify assertions on tile state, drawer contents, room counts, animation timing. **Note:** harness is session-scoped tmp (dies at session end); the recipe is durable. **When:** use before marking visual work done; "verified by construction" is not enough.
+
+### Unread colour: all tiers deliberately red (2026-08-30) — SUPERSEDED 2026-09-17
+**Original decision:** Unread rooms used a single red treatment across all tiers (mention-tier pulses on preference enabled; all others static). Earlier design attempted a gradient (unread = amber, mention = red) but visual testing settled on red-only. **SUPERSEDED:** see 2026-09-17 "Unread tiers: blue vs red" below. The single-red decision relied on a PULSE to distinguish being named from ordinary traffic, but that pulse is gated by `prefers-reduced-motion` (OFF on this machine), making the tiers indistinguishable for Reduce Motion users. **New decision:** blue for message/notified, red+@ for mention; separation lives in hue + badge shape, not motion.
+
+### Manual git push must pin GH_TOKEN to taylorbird
+**Rationale:** `gh` CLI defaults to the currently-active authenticated account, which can drift if you're logged in to multiple accounts. Release.sh was hit by this mid-build (logged in as ADMIN, later session became active, `git push` + `gh release create` used READ account, 403 denied). **Discipline:** for any manual push after release work or when the active account is uncertain, first resolve the token explicitly: `GH_TOKEN="$(gh auth token --user taylorbird)" && git push`. Don't rely on "the active account is correct" — it drifts. Release.sh exports `GH_TOKEN` upfront to pin both `git push` and `gh release create`.
+
+## 2026-09-04 (Timeline sender treatment refresh, room-list colour system, Unread section, reaction toggle, 0.5.0 release)
+
+### Timeline colour system: room-aware sender allocation
+
+**Decision:** Sender colour in any room context comes from `getSenderColor(roomID, userID)` only (media.ts → sendercolor.ts), never `getUserColorIndex` or `getUserColor`. The colour is carried as `--sender-color` inline on `div.timeline-event`, so it travels to all children (sender name, reply spine, etc.) without coupling.
+
+**Storage and allocation:** new module `web/src/api/sendercolor.ts` exports `createSenderColorAllocator()` with injectable deps (userID overrides, custom colours); allocation runs on first appearance in a room, picks the palette index farthest in hue from the nearest taken hue (incremental/greedy, not maximin); persisted in localStorage `echo.room_sender_colors` as `{roomID: {userID: index}}`; never reshuffled.
+
+**Palette exhaustion:** when >10 senders appear (common in loaded history), newcomer takes the least-used slot. Palette size is COUPLED to six places: `media.ts` `FALLBACK_COLOR_COUNT`, `index.css` dark/light sender-color token lists, `TimelineEvent.css` `.sender-color-N` rules, `ReplyBody.css` `.sender-color-N` rules, dormant `themes/cool-graphite.css`. Changing the count requires touch-ups in all six places.
+
+**Side effect:** same person can have different colours in different rooms (accepted tradeoff; greedy allocation is simpler than maximin).
+
+**Consequence:** Member list and mention pills still use per-user `getUserColor` (no room available), so they may disagree with timeline colours. Possible future refinement: thread room context through those layers too.
+
+### Room-list name colours under uniform mode
+
+**Decision:** names use a single `--room-list-name-color` token (RoomList.css) applied to every row via `div.room-entry`. Under uniform mode, the colour is ink `#c9c2cc`; the open room's name is pure white (`span.event-sender` under `.active`).
+
+**Specificity gotcha fixed:** a specificity bug had defeated the uniform override since 0.4.1. Resting-row rule at (0,5,4) applied 38% accent mix to names, beating the uniform override at (0,4,4). Fixed by nesting a copy of the `--room-list-name-color` override INSIDE the resting rule at (0,6,5), so the override now wins. Uniform mode is dark-only.
+
+**Alternative:** the comment in RoomList.css lists lavender-grey mix and plain-accent options for one-line swaps if the user prefers a different look.
+
+### Resting room rows unbolded (emphasis on active row only)
+
+**Decision reversed 2026-09-04:** initial design (V4 from mock-up) dimmed resting rows via opacity .62 on text + grayscale on avatar. User feedback: "Remove the dim — every row should have the same weight." Resting rows now have no dimming; all visual emphasis comes from the open room's wash + glow bars + badge.
+
+### Timeline geometry: avatar gap widened for ring + rail + text
+
+**Decision:** `--timeline-avatar-gap` widened from 1rem to 1.5rem to accommodate: double-avatar ring (2px --background-color gap + 2px --sender-color ring, 4px total bleed), 1.5px sender rail at `left: calc(...padding + avatar-size + 11px)`, and text with no squash.
+
+**Rail rendering:** new `div.timeline-event::before` with height 1.5px in `--sender-color`, positioned `top: 2px` (first row) or `top: -var(--timeline-message-gap-same-sender)` (same-sender rows) so it's continuous, `bottom: 0` except `&:not(:has(+ div.timeline-event.same-sender))::before { bottom: 4px }` (last row of a run). Excluded on small/hidden/membership/small-thread/edit-history/pinned/notification/confirm-modal events.
+
+### Mock-up comparison artifacts: reproduction pattern
+
+**Established:** when choosing between visual variants, create a real-UI artifact with one card per variant (current first), showing exact CSS deltas per card so the user can pick. Successful pattern used five times this session:
+1. Room list resting rows (V0–V5)
+2. Room list type specimens (T0–T7)
+3. Combined editorial recipe C1–C5 + bar heights
+4. Sender palette sheet
+5. Chat pane seven ideas C0–C6 + Chat pane revisions R1–R3
+
+**Implementation:** generators live in session scratchpad as gen*.py scripts; die at session end. They hydrate from actual CSS token values and create side-by-side view where user can compare. User feedback from these artifacts converges faster than prose descriptions.
+
+### Release 0.5.0 shipped 2026-09-04 as a minor bump
+
+**Scope:** reaction chip toggle (own/redact path), room-aware sender colours (palette allocation per room), Unread section (new preference, collapsible drawer above Rooms/DMs), uniform room-list colour fix (specificity nested override), timeline sender treatment (ring + rail + plate), timeline geometry (avatar gap 1.5rem).
+
+**Release process:** GitHub release with embedded notes via feed verified serving version 0.5.0 and updater.json with notes. Both app and DMG notarized and accepted. dev `tauri dev` was stopped before release.sh (no port conflicts, no restart storms).
+
+### release.sh must be launched detached; tauri dev stopped first
+
+**Gotcha:** release.sh runs 25–35 minutes (two Apple notarization waits). Claude Code's Bash tool caps background commands at 10 minutes. A first release attempt was stopped at frontend build; abort trap restored all four version files cleanly, proving early exit is safe. Run it detached:
+
+```bash
+nohup scripts/release.sh minor > <scratch>/release-<version>.log 2>&1 &
+# then Monitor the log for '^==>' lines
+```
+
+**Critical:** stop `tauri dev` first. The script rewrites tauri.conf.json and Cargo.toml for the bump; the dev watcher triggers restarts on both files, causing restart storms and a dead sidecar. Kill by port: `lsof -ti :6173` and `lsof -ti :29325`, plus `pkill -f target/debug/app`.
+
+### Subagent restrictions for mock-up builders
+
+**Gotcha (2026-09-04):** Two subagents' cleanup (stray TaskStop, headless-Chrome cleanup) killed the running tauri dev process. The dev app was launched as a direct child of the harness, so cleanup signals also touched it.
+
+**Fix:** subagent briefs for artifact builds now explicitly forbid: launching browsers, starting background tasks, calling TaskStop. Builders launched with `nohup` remain detached and survive cleanup.
+
+## 2026-09-17 15:53 (Per-room colours removed, Recent as rail sub-filter, room name size)
+
+### Room names: one colour, white (2026-09-17 15:53)
+**Decision:** Room names are one colour (white, dark mode only) across all views: room list, room header, quick switcher, and space view. Per-room hash-derived accents are removed entirely (no `getRoomAccentColor()`, no `--room-accent` inline prop, no `uniform_room_list_color` preference). **Rationale:** a row's state is already carried by its wash, glow bar, and badge; a column of thirty per-room tints spent visual signal on the one property the column does NOT need to disambiguate (room names are the column's label; they need to be readable and uniform, not accent-coloured). Light mode (never touched): inherits body text colour (white would be invisible there).
+
+**Implementation:** `--room-list-name-color: #ffffff` in RoomList.css (dark mode only under `prefers-color-scheme: dark`); replaced all `color-mix(in oklab, var(--room-accent, ...) 70%, ...)` rules with `color: #ffffff` in RoomViewHeader.css, QuickSwitcher.css, SpaceView.css (2 occurrences). Removed `getRoomAccentColor()` from web/src/api/media.ts (dead once CSS stopped reading it). Removed inline `style={{ "--room-accent": getRoomAccentColor(...) }}` props and imports from Entry.tsx, QuickSwitcher.tsx, SpaceView.tsx (2 sites), RoomViewHeader.tsx. Removed `uniform_room_list_color` preference from preferences.ts and its `data-uniform-room-list-color` attribute from StylePreferences.tsx (with one name colour, both states rendered identically; preference was dead).
+
+### Room-list kind glyph accent deliberately retained (2026-09-17 15:53)
+**Decision:** `room_list_color` preference (a single chosen accent for kind glyphs, default #bd93f9) is deliberately kept. It is now the ONLY place the accent shows at full strength, since room names are white and per-room colours are gone. **Rationale:** one accent on the glyph is acceptable UI; thirty accents would be busier. **User note:** on 2026-09-04 the user flagged the purple glyph as "sticking out" against ink room names; this constraint becomes actionable if the user decides the glyph should be unstated (change to inherit ink).
+
+### Recent: space-rail sub-filter, never a sort (2026-09-17 15:53)
+**Decision:** Recent is a sub-filter in the space rail alongside All chats / Rooms / Direct messages (a fourth option). It narrows NOTHING (every room is included); it exists purely to signal an ordering/layout mode to the room list. When Recent is active, the room list short-circuits to a single unsectioned section of all rooms reversed (newest first). NO Unread section in Recent view (deliberately: lifting badged rooms to the top would push the just-left conversation back down, defeating the view's purpose). **Rationale:** the per-section sort built earlier (with localStorage + cycle-on-click) was rejected as undiscoverable; Recent view sidesteps the interaction — it is a distinct view mode, not a sort within the grouped view, so the chip and the sub-filter are now one concept.
+
+**Implementation:** `SpaceSubFilterID` now `"rooms" | "dms" | "recent"`. `SubFilteredSpace.include()` returns true for "recent"; it narrows nothing. `RoomList.tsx` `sections` useMemo short-circuits: when `activeSubFilter === "recent"` it returns a single unsectioned section containing `roomList.toReversed()`, with no Unread section. `activeSubFilter` moved earlier in component (above sections useMemo) — it's now read by the memo, so declaration must precede it (TDZ error otherwise).
+
+### Section headers structure: single button again (2026-09-17 15:53) — SUPERSEDES 2026-09-17 15:15
+**Reversal:** `button.room-list-section-header` is a single button again (not a `div` with nested button children). The multi-button div structure existed only to make the sort tag independently clickable; with the sort feature deleted (replaced by Recent sub-filter) and the tag gone, the complexity serves nothing. **Implementation:** CSS reverted to `button.room-list-section-header` with `&:hover, &:focus-visible`; `.section-mode` block deleted; no `:has(:focus-visible)` needed.
+
+**Superseded entry:** "Section headers structure: div with nested button children (2026-09-17 15:15)" — that structure was reverted this checkpoint.
+
+## 2026-09-17 15:15 (Unified title bar, room-list sort, unread colour ramp, Inter-only typography, section header structure)
+
+### Section headers structure: div with nested button children (2026-09-17 15:15) — SUPERSEDED 2026-09-17 15:53
+~~**Decision:** `button.room-list-section-header` became `div.room-list-section-header` containing three controls: `button.section-toggle` (icon + name), optional `button.section-mode` (the sort tag), `button.section-chevron-button` (tabIndex={-1}, aria-hidden="true", repeats toggle for pointer only). **Rationale:** a button cannot nest inside a button; the sort tag must be independently operable. **Interaction:** the div owns the band/tone/hover; hover uses `:has(:focus-visible)` since focus now lands on a child button.~~
+
+**Superseded:** Section headers reverted to a single button 2026-09-17 15:53 when the sort tag was removed.
+
+### No separate title bar band (2026-09-17 15:15)
+**Decision:** Removed the separate `div.app-titlebar` band that occupied its own space above the main grid. Rationale: the macOS traffic lights sit within the left 66pt of the space rail's own column (`--space-bar-width: 5.5rem`), so ONLY the rail needs to reserve vertical room. **Implementation:** `--traffic-light-strip: 2rem` (the square needed for lights + 1rem left margin) on the space rail only, plus .5rem deliberate breathing room between lights and first space tile. Every other pane (room list, room view, right panel) runs to the window's top edge. This reclaims ~108px compared to the separate-band approach. **Critical consequence:** removing the band reopens the seam the band originally closed (between the space rail and room list) ONLY if pane top margins stop being 0. Constraint: keep all pane `margin-top: 0`. The app wordmark "echo" now appears only in the menu bar and Dock, not in-window.
+
+### Section headers structure: div with nested button children (2026-09-17)
+**Decision:** `button.room-list-section-header` became `div.room-list-section-header` containing three controls: `button.section-toggle` (icon + name), optional `button.section-mode` (the sort tag), `button.section-chevron-button` (tabIndex={-1}, aria-hidden="true", repeats toggle for pointer only). **Rationale:** a button cannot nest inside a button; the sort tag must be independently operable. **Interaction:** the div owns the band/tone/hover; hover uses `:has(:focus-visible)` since focus now lands on a child button.
+
+### Unread tiers: blue vs red (2026-09-17)
+**Decision:** Reverses the 2026-08-30 "one red for every tier" decision. New ramp: message = blue (hue only), notified/marked-unread = blue with count badge, mention = red + @ badge. **Rationale:** the August red-only decision relied on a PULSE (media query `prefers-reduced-motion`) to distinguish being named, but `prefers-reduced-motion: reduce` is ON on this machine (macOS Accessibility default), making the tiers literally indistinguishable for Reduce Motion users. **New separation:** hue (blue vs red) + badge shape (dot vs count badge vs @ badge) — both survive reduced motion and colour blindness. **Implementation:** tokens `--unread-counter-message-bg` blue, `--unread-counter-notification-bg` blue, `--unread-counter-highlight-bg` red; `--unread-glow-*` blue for message/notified, red for highlight; `--room-list-entry-unread-wash` blue. Badge tier for plain message collapses to .4375rem dot (font-size 0 hides digits in DOM but keeps accessibility tree intact).
+
+### Typography: Inter everywhere (2026-09-17)
+**Decision:** Space Grotesk entirely removed. One typeface: Inter 400-700 via Google Fonts, applied to all text including names/titles/usernames. **Token preservation:** `--display-font-stack` remains defined (`'Inter', -apple-system, BlinkMacSystemFont, sans-serif`) so the names/titles/usernames role survives as a named concept (for future reuse), but there is no second face. **Removal scope:** `--display-font-stack` deleted from direct CSS rules; Space Grotesk removed from index.html Google Fonts request (Inter only); RoomList.css room-name `text-transform: uppercase` removed, `letter-spacing` .08em → 0, `font-size` 1.0625rem → 1rem. **Rationale:** caps gave every name one volume so nothing could be louder when needed; mixed case + uniform weight allows emphasis via colour or context.
+
+### Room-list names: mixed case, never uppercase (2026-09-17)
+**Decision:** All room-list entry names render in mixed case (as stored in the room state). The earlier `text-transform: uppercase` style gave every name one volume, preventing emphasis when needed. **Implementation:** removed `text-transform: uppercase` from `.room-name` in RoomList.css; all other styling preserved. **Consequence:** names now vary in visual weight naturally per their own capitalization, and room colour + unread state become the primary emphasis tools.
+
+### Space rail always-in-a-space pattern (2026-09-17)
+**Decision:** Being logged in means the user is always in a space. The All chats tile is visually lit when `space === null`, and the room-list band should also be expanded (showing All chats' rooms). **Fix:** changed `const openIndex = space ? partables.indexOf(space.id) : -1` to `const openIndex = partables.indexOf(space?.id ?? allChatsSpace.id)`. **Consequence:** the lit tile (`isActive` prop) and the expanded sub-view band now agree. Nested spaces with no rail tile still return -1 (the documented "nothing to part around" case), preserved.
+
+## 2026-09-13 (Timeline quieting: sender treatment refresh, reply-quote spine, tooling constraints, mock-up CSS bug)
+
+### Timeline sender treatment: colour name only, no rail/ring/plate (2026-09-13)
+
+**Decision:** After one week using 0.5.0 in production, user verdict: the timeline sender treatment (ring + rail + plate + room-aware palette) is "too busy". Three comparison artifacts (Sender Treatment Tryouts, Ink Name Iterations, Colour Name Iterations) iterated the design space. User selected option G1: sender names 1.0625rem (room-list name size), full opacity (not dimmed), 600 weight, room-aware colour, **without the ring**.
+
+**Implementation (commit d8fc2245):** Removed all ring/rail/plate styling from TimelineEvent.tsx and TimelineEvent.css (deleted `::before` rail rules, second suppression block for membership events, both avatar ring `box-shadow` rules). Removed name plate (deleted inner `span.event-sender-text` and plate background rule). Sender name size .875rem → 1.0625rem; padding removed. Avatar gutter `--timeline-avatar-gap` returned to 1rem (was 1.5rem to fit ring+rail). Index.css glow bar reset from 2rem to match.
+
+**SUPERSEDED 2026-09-13:** The 2026-09-04 constraints on timeline geometry (1.5rem avatar gap, ring, rail, plate) are now SUPERSEDED. The new constraint is: timeline sender names are colour-only (1.0625rem/600, full opacity), no rings, no rails, no plates; `--timeline-avatar-gap` is 1rem.
+
+### Reply-quote spine: static neutral colour, never per-sender (2026-09-13)
+
+**Decision:** Continuing from timeline quieting (above), the reply-quote spine was originally keyed to the quoted sender's colour (same palette as timeline senders). With the ring/rail/plate removal, the spine became the visual anchor for quoted messages. User feedback indicated the multiple-spine effect (rail + quote spine when a quoted message is sent) read as "busy"; unified the spine to a static neutral.
+
+**Implementation (commit d8fc2245):** ReplyBody.css default `--reply-border-color: color-mix(in oklab, var(--secondary-text-color) 55%, transparent)` (static neutral derived from secondary-text-color). Deleted eleven `.sender-color-N` blockquote rules. ReplyBody.tsx: removed inline `--reply-border-color`/`spineColor` calculation, removed `sender-color-null` class assignment, dropped `getRoomAccentColor` import. Quote name and small avatar still use the quoted sender's colour.
+
+**Knock-on effect:** Collapsed thread messages (`.timeline-thread-msg`) lost their thread-accent spine as a side-effect of sharing the border property. Not yet asked for restoration; marked as an open question if spine should return.
+
+### In web/ never run pnpm until migration decided (2026-09-13)
+
+**Incident:** The implementer agent (per user's global pnpm rule) ran `pnpm exec tsc` in web/. This repo is an npm project (package-lock.json). pnpm performed a full install, rewrote web/node_modules under the running Vite dev server, generated web/pnpm-lock.yaml and a placeholder web/pnpm-workspace.yaml that breaks all later pnpm commands with `ERR_PNPM_IGNORED_BUILDS`. Plugin versions resolved newer (eslint-plugin-react-hooks 7.1.1), introducing 2 eslint errors in untouched files.
+
+**Fix:** Deleted both generated files; ran `npm ci` in web/ with dev stopped. Tooling constraint: In web/, use `npm run …` or `./node_modules/.bin/…` until migration is decided. Restore with `npm ci` (dev stopped) if accident happens again. Documented in learnings/dev-environment-gotchas.md ("pnpm exec in web/ triggers a full install").
+
+### Mock-up custom-property declaration rule (2026-09-13)
+
+**Bug found:** In CSS mock-ups, knobs declared as `--x: var(--sender-color)` on a parent element where `--sender-color` is not set resolve to invalid at declaration time; children inherit the invalid value. Names went grey, rings vanished.
+
+**Fix:** Declare such knobs on the element that sets the inline variable (e.g., `.pane .ev`), with overrides via a more specific descendant selector (e.g., `.pane.v-x .ev`). The knob is now declared where the variable exists and override rules win via specificity.
+
+**Related:** When building artifact mockups with headless Chrome, file:// URLs have no charset, causing UTF-8 punctuation (em-dashes, etc.) to mojibake. Use `&#8212;` HTML entities in artifact HTML instead of literal UTF-8 characters.
+
+### Vite dev server binds IPv6 only
+
+**Gotcha:** Vite's configured port (6173) binds to [::1] (IPv6 loopback) by default, not 127.0.0.1. An IPv4-only readiness probe (e.g., connecting to 127.0.0.1:6173) reports the server down even though it's running.
+
+**Fix:** readiness probes must try ::1, or allow both IPv4 and IPv6. Affected: any harness/tooling that waits for Vite to start before launching the Tauri app.
+
+### Prod backend logs include debug lines; grep for sends
+
+**Fact:** ~/Library/Logs/dev.tbird.echo/gomuks.log carries debug output even in production builds. Search key: `"send/m.room.encrypted"` finds IPC message sends (47 sends found morning of 2026-09-02 during a network outage, zero reaction sends, confirming reactions never reached the backend).
+
+**Also:** media 502 signature is `"Failed to copy media to temporary file"` (indicates homeserver media service down, not app fault).
+
+### nohup-detached tauri dev survives harness cleanup
+
+**Pattern:** `nohup npx tauri dev … &` detaches the dev process from the harness task list, so TaskStop or cleanup events don't kill it. The process is no longer trackable as a background task, so it must be manually killed by port or process name if cleanup is needed: `lsof -ti :6173` or `pkill -f target/debug/app`.

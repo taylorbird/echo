@@ -42,6 +42,7 @@ import CloseIcon from "@/icons/close.svg?react"
 import MarkReadIcon from "@/icons/mark-read.svg?react"
 import BellIcon from "@/icons/modern/bell.svg?react"
 import ChevronDownIcon from "@/icons/modern/chevron-down.svg?react"
+import ClockIcon from "@/icons/modern/clock.svg?react"
 import GamepadIcon from "@/icons/modern/gamepad-2.svg?react"
 import HashIcon from "@/icons/modern/hash.svg?react"
 import LayoutGridIcon from "@/icons/modern/layout-grid.svg?react"
@@ -55,7 +56,6 @@ import "./RoomList.css"
 // collapsed sections, which is why it was left alone for months — but changing the bundle
 // identifier in 0.3.0 gave the webview a fresh store, so there was nothing left to preserve.
 const collapsedSectionsKey = "echo.collapsed_room_list_sections"
-
 function readCollapsedSections(): Set<string> {
 	try {
 		const raw = localStorage.getItem(collapsedSectionsKey)
@@ -75,6 +75,10 @@ const spaceSubFilters = [
 	{ id: "all", name: "All chats", icon: LayoutGridIcon },
 	{ id: "rooms", name: "Rooms", icon: HashIcon },
 	{ id: "dms", name: "Direct messages", icon: UserIcon },
+	// Recent narrows nothing; it is here because it answers the same question the
+	// others do — "show me this slice of the space" — and belongs with them rather
+	// than as a sort hidden on a section header.
+	{ id: "recent", name: "Recent", icon: ClockIcon },
 ] as const
 
 /*
@@ -287,6 +291,10 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	// With the Unread section on, a badged room is taken out of its usual group
 	// entirely rather than shown twice — the section is where it lives until it is
 	// read. With the section off the two groups are the whole list, as before.
+	//
+	// Declared here rather than beside the rail's other space lookups below: the
+	// sections depend on it, and a const read before its initialiser is a TDZ error.
+	const activeSubFilter: SpaceSubFilterID | "all" = space instanceof SubFilteredSpace ? space.sub : "all"
 	const sections = useMemo(() => {
 		if (unreadPin.current.forRoom !== activeRoomID) {
 			unreadPin.current = {
@@ -296,6 +304,16 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 			}
 		}
 		const pinnedRoom = unreadPin.current.pinned ? activeRoomID : null
+		/*
+		 * The Recent sub-filter is one unsectioned run of everything, newest first.
+		 * No Unread section either: lifting badged rooms to the top is exactly what
+		 * would push the conversation you just left back down the list, which is the
+		 * whole thing this view exists to prevent. Unread still leads every other
+		 * view, and each row keeps its kind glyph, so a mixed list still reads.
+		 */
+		if (activeSubFilter === "recent") {
+			return [{ id: "recent", name: "Recent", icon: ClockIcon, entries: roomList.toReversed() }]
+		}
 		const unread: RoomListEntry[] = []
 		const rooms: RoomListEntry[] = []
 		const directMessages: RoomListEntry[] = []
@@ -316,7 +334,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 			{ id: "rooms", name: "Rooms", icon: UsersIcon, entries: rooms },
 			{ id: "dms", name: "Direct messages", icon: UserIcon, entries: directMessages },
 		]
-	}, [roomList, activeRoomID, unreadSection])
+	}, [roomList, activeRoomID, unreadSection, activeSubFilter])
 	const [collapsedSections, setCollapsedSections] = useState(readCollapsedSections)
 	const toggleSection = useCallback((evt: React.MouseEvent<HTMLButtonElement>) => {
 		const sectionID = evt.currentTarget.getAttribute("data-section-id")
@@ -347,7 +365,6 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const allChatsSpace = client.store.allChatsSpace
 	const orphansSpace = client.store.spaceOrphans
 	const unreadsSpace = client.store.unreadsSpace
-	const activeSubFilter: SpaceSubFilterID | "all" = space instanceof SubFilteredSpace ? space.sub : "all"
 	/*
 	 * The entries that can part the rail, by filter id. All chats and Outside
 	 * spaces lead them because both are spaces in the sense that matters here —
@@ -357,11 +374,16 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	 * Ids rather than components because this list is also what the open index
 	 * is looked up in, and a nested space can be the active filter without
 	 * having a rail tile at all — indexOf returning -1 is exactly the "nothing
-	 * to part around" answer. Boot sits there too: no filter means no id to
-	 * find, so the rail starts unparted with the All chats tile merely lit.
+	 * to part around" answer.
+	 *
+	 * No filter means All chats, not "no space": that is what the All chats tile
+	 * already claims by lighting up on `space === null` further down, and a lit
+	 * tile over a shut band is the state that reads as being nowhere. Being
+	 * logged in always puts you in a space, so the band is only ever closed for a
+	 * nested space that has no tile to part around.
 	 */
 	const partables = [allChatsSpace.id, orphansSpace.id, ...spaces]
-	const openIndex = space ? partables.indexOf(space.id) : -1
+	const openIndex = partables.indexOf(space?.id ?? allChatsSpace.id)
 	const openID = openIndex < 0 ? null : partables[openIndex]
 	/*
 	 * Closing is the awkward half: the filter stops being active the instant it
@@ -575,7 +597,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				{query !== "" ? <CloseIcon/> : <SearchIcon/>}
 			</button>
 		</div>
-		<div className="space-bar">
+		<div className="space-bar" data-tauri-drag-region>
 			{/* Opening a partable entry parts the rail: the dark strip splits and a
 			    lighter layer slides open between the pieces, holding the entry and
 			    its sub-filters. Closing slides it back shut, and switching straight

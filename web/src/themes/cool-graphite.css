@@ -109,7 +109,7 @@ html[data-theme="graphite"] {
  * the tonal step never depends on the wallpaper behind the vibrancy layer.
  */
 html[data-theme="graphite"][data-tauri] {
-	--titlebar-background: #232326;
+	--floating-panel-background: #232326;
 	--room-list-background: rgba(29, 29, 32, .78);
 	--space-list-background-overlay: rgba(17, 17, 19, .85);
 
