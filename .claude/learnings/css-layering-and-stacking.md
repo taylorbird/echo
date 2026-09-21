@@ -58,3 +58,13 @@ Inside a compound selector (`:not():not(:has())`), the specificity of rules defi
 **Fix:** declare the knob on the element that **sets** the referenced variable, not an ancestor. Override via specificity if needed: `.pane .ev { --x: var(--sender-color) }` (where `.ev` has `style={{ --sender-color: ... }}`), then `.pane.v-x .ev { --x: someOtherValue }` (more specific descendant selector wins).
 
 **Side note:** related gotcha in mock-up HTML: file:// URLs have no charset, so UTF-8 punctuation (em-dashes, ellipses) mojibake. Use HTML entities (`&#8212;`, `&#8230;`) in artifact HTML instead of literal UTF-8.
+
+## Scoped Custom Properties and Their Fallbacks (2026-09-20)
+
+**Pattern:** A custom property defined at `:root` (e.g., `--inverted-text-color: var(--background-color)`) resolves at declaration time. If another element re-scopes the referenced property (e.g., `div.pre-main.signed-out { --background-color: ... }`), the root-level property still references the old `:root` value — it does NOT automatically follow the scoped override.
+
+**Example:** `div.pre-main.signed-out` re-scopes `--background-color` to a new colour, intending button text to also re-scope via `--inverted-text-color`. But `--inverted-text-color` at `:root` is still `var(--background-color)` = the original root value, so buttons inside the signed-out div read the wrong colour.
+
+**Fix:** Any surface that re-scopes a property used in a fallback chain must **restate both properties together**. Declare them as a pair: `div.pre-main.signed-out { --background-color: ...; --inverted-text-color: ...; }`.
+
+**Class of bug:** Same as the white-on-cream button in 2026-08-25 — a colour-scope mismatch that is invisible until edge-case DOM structure makes it visible. Prevent by restating cascading custom properties whenever a surface overrides a base value.

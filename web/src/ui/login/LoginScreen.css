@@ -1,71 +1,36 @@
-main.matrix-login {
-	max-width: 42rem;
-	width: 100%;
-	padding: 3rem 6rem;
-	box-sizing: border-box;
-
-	box-shadow: 0 0 1rem var(--modal-box-shadow-color);
-	margin: calc(2rem + var(--window-top-margin)) auto;
-
-	@media (width < 800px) {
-		max-width: 38rem;
-		padding: 2rem 4rem;
-		width: calc(100% - 4rem);
-	}
-
-	@media (width < 500px) {
-		padding: 1rem;
-		box-shadow: none;
-		margin: 0 !important;
-		width: 100%;
-	}
-
-	h1 {
-		margin: 0 0 2rem;
-	}
-	h1, h2, h3 {
-		text-align: center;
-	}
-
-	div.buttons {
+/*
+ * The Matrix sign-in form.
+ *
+ * Nearly all of its appearance now comes from SignedOut.css, which styles the shared
+ * .signin-column and its fields for every pre-app screen. What used to live here — a
+ * 42rem card with 6rem of padding and a box-shadow standing in for an edge — is gone
+ * with the card itself: the form sits on the bare surface now.
+ *
+ * Only the pieces unique to this screen remain.
+ */
+div.pre-main.signed-out {
+	/* Baseline-aligns the resolved-homeserver cue with its label. */
+	.signin-label-row {
 		display: flex;
-		gap: .5rem;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
 	}
 
-	button, input {
-		margin-top: .5rem;
-		padding: 1rem;
-		font-size: 1rem;
+	/* Confirms the homeserver was found. Never colour alone — it is also the word. */
+	.signin-resolved {
+		margin-bottom: .35rem;
+		font-size: .8rem;
+		font-weight: 600;
+		letter-spacing: .04em;
+		color: #4dd6a8;
+	}
+
+	/* Separates the Beeper block from the standard form when that path is offered. */
+	main.matrix-login > hr {
 		width: 100%;
-		display: block;
-		border-radius: .25rem;
-		box-sizing: border-box;
-	}
-
-	input {
-		border: 1px solid var(--primary-color);
-
-		&:hover {
-			outline: 1px solid var(--primary-color);
-		}
-
-		&:focus {
-			outline: 3px solid var(--primary-color);
-		}
-	}
-
-	form {
-		margin: 2rem 0;
-	}
-
-	button {
-		font-weight: bold;
-	}
-
-	div.error {
-		border: 2px solid var(--error-color);
-		border-radius: .25rem;
-		padding: 1rem;
-		margin-top: .5rem;
+		margin: 0;
+		border: none;
+		border-top: 1px solid var(--hairline-color);
 	}
 }

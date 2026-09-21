@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo } from "react"
 import { ScaleLoader } from "react-spinners"
 import { BACKEND_WS_URL } from "./api/backend.ts"
 import Client from "./api/client.ts"
@@ -29,6 +29,7 @@ import { LoginScreen, VerificationScreen } from "./ui/login"
 import { LightboxWrapper } from "./ui/modal"
 import { useEventAsState } from "./util/eventdispatcher.ts"
 import { startUpdateChecks } from "./util/updater.ts"
+import "./ui/login/SignedOut.css"
 
 function makeRPCClient(): RPCClient {
 	if (window.gomuksDesktop) {
@@ -40,11 +41,22 @@ function makeRPCClient(): RPCClient {
 	return new WSClient(`${BACKEND_WS_URL}_gomuks/websocket`, lb ?? false)
 }
 
+/*
+ * The shell every screen shown before the app itself renders into: one quiet surface on the
+ * chat ground, the wordmark alone in the traffic-light strip, and the content optically
+ * centred. There is no app shell behind it — before signing in there are no rooms, and a
+ * skeleton of data that does not exist reads as broken rather than as a preview.
+ */
+const SignedOut = ({ children }: { children: React.ReactNode }) =>
+	<div className="pre-main signed-out">
+		<div className="app-wordmark">echo</div>
+		{children}
+	</div>
+
 function App() {
 	const client = useMemo(() => new Client(makeRPCClient()), [])
 	const connState = useEventAsState(client.rpc.connect)
 	const clientState = useEventAsState(client.state)
-	const [authError, setAuthError] = useState<string | undefined>()
 	useEffect(() => {
 		window.client = client
 		return client.start()
@@ -72,16 +84,12 @@ function App() {
 
 	// Handle web auth login
 	if (needsWebAuth) {
-		return <div className="pre-main">
+		return <SignedOut>
 			<WebAuthLogin
-				onSubmit={(username, password) => {
-					setAuthError(undefined)
-					client.retryAuthWithCredentials(username, password)
-				}}
-				onCancel={() => setAuthError("Authentication cancelled")}
-				error={connState?.error === "Invalid credentials" ? "Invalid credentials" : authError}
+				onSubmit={(username, password) => client.retryAuthWithCredentials(username, password)}
+				error={connState?.error === "Invalid credentials" ? "Invalid credentials" : undefined}
 			/>
-		</div>
+		</SignedOut>
 	}
 
 	const errorOverlay = connState?.error ? <div
@@ -103,17 +111,22 @@ function App() {
 	} else if ((!connState?.connected && !afterConnectError) || !clientState || !clientState.is_initialized) {
 		const msg = connState?.connected ?
 			clientState
-				? "Waiting for backend to finish initializing"
-				: "Waiting for client state..."
-			: "Connecting to backend..."
-		return <div className="pre-main waiting-to-connect">
-			<ScaleLoader width="2rem" height="2rem" color="var(--primary-color)"/>
-			{msg}
-		</div>
+				? "The local server is finishing its setup."
+				: "Loading your session."
+			: "Waiting for the local server to come up."
+		return <SignedOut>
+			<main className="signin-column">
+				<div className="signin-head">
+					<h1 className="signin-title">Starting echo</h1>
+					<p className="signin-body">{msg}</p>
+				</div>
+				<div className="signin-rule" />
+			</main>
+		</SignedOut>
 	} else if (!clientState.is_logged_in) {
-		return <div className="pre-main"><LoginScreen client={client} clientState={clientState}/></div>
+		return <SignedOut><LoginScreen client={client} clientState={clientState}/></SignedOut>
 	} else if (!clientState.is_verified) {
-		return <div className="pre-main"><VerificationScreen client={client} clientState={clientState}/></div>
+		return <SignedOut><VerificationScreen client={client} clientState={clientState}/></SignedOut>
 	} else {
 		return <ClientContext value={client}>
 			<LightboxWrapper>

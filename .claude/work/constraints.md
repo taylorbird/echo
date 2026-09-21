@@ -340,3 +340,37 @@ nohup scripts/release.sh minor > <scratch>/release-<version>.log 2>&1 &
 ### nohup-detached tauri dev survives harness cleanup
 
 **Pattern:** `nohup npx tauri dev … &` detaches the dev process from the harness task list, so TaskStop or cleanup events don't kill it. The process is no longer trackable as a background task, so it must be manually killed by port or process name if cleanup is needed: `lsof -ti :6173` or `pkill -f target/debug/app`.
+
+## 2026-09-20 (Batch 1 fixes, unread retune, loading redesign)
+
+### Backend session token is 24h mint-once
+**Verified:** `mint_backend_token` in `web/src-tauri/src/lib.rs:193-200` mints once at launch with `expiry = now + 24h`; the auth cookie has `max-age=86400`. The app had been up 25 hours during this session and fell back to a credentials form. The backend password is random and discarded at first run (`lib.rs:118`); the username is `echo` not `admin` (`lib.rs:97`) — so the credentials form is structurally unanswerable. A comment at `lib.rs:219` predicts exactly this scenario. **Impact:** any app left running longer than a day lands on an unanswered credentials form. **Remedy today:** relaunch. **Future:** re-minting on auth failure is a decision deferred pending user input.
+
+### `--inverted-text-color` must be restated where `--background-color` re-scoped
+**Pattern:** `--inverted-text-color` is defined at `:root` as `var(--background-color)`. Any surface that re-scopes `--background-color` (e.g., `div.pre-main.signed-out { --background-color: ... }`) must also restate `--inverted-text-color`, or buttons/text that rely on it will reference the old root value. This bit the signed-out surface and is the same class of bug as the white-on-cream button (2026-08-25). Solution: declare both together whenever a surface re-scopes background.
+
+### Never use `npm run tauri dev` — no such script
+**Gotcha:** This repository has no `tauri` script in `web/package.json` (scripts are dev/build/lint/preview/test). The correct invocation is `npm exec tauri dev` or `./node_modules/.bin/tauri dev`. Using the wrong one costs downtime during development while the error is diagnosed. Documented as a quick-reference constraint to prevent the mistake being made twice.
+
+### New signal colours go through an alias, not a direct reference
+**Pattern:** `--progress-color` now aliases `--unread-counter-message-bg` (the new blue) so the progress rule and sign-in focus ring can be severed from the badge palette in one edit. Any future retune of unread blues will update both progress/focus automatically. Direct references to unread badge tokens in visual effects should be avoided; alias instead.
+
+### Unread blue is the candy family: neon pastels with inverted text
+**Decision:** New unread message tier uses `--unread-counter-message-bg: #5cbbff` (message) and `--unread-counter-notification-bg: #85d6ff` (notified), matching the family `#ff4d6d` (red), `#a0e7c8` (mint), `#ff9eb5` (pink). Because counter digits are drawn near-white for every tier, near-white ink is unreadable on `#85d6ff`. Added `--unread-counter-blue-text: #10233a` and applied it to `.notified, .marked-unread` in RoomList.css. Red keeps near-white ink. Side benefit: dark-ink-on-blue vs light-ink-on-red is a second non-hue distinction for accessibility.
+
+### Base-tier unread dot carries no glow — fill brightness only
+**Decision:** `box-shadow: none` on the base-tier unread dot removes the halo. Brightness comes from the fill colour alone. Bars and counted badges keep their halos. Rationale: glow was visual noise on the smallest element; removal reduces visual clutter.
+
+### Pre-app screens share one surface with no app shell
+**Architecture:** All pre-authentication screens (`div.pre-main.signed-out`) render on one surface: no sidebar, no room header, no right panel — nothing that requires a room to exist. Includes: backend-auth WebAuthLogin rewrite, LoginScreen, VerificationScreen, sidecar connect wait (SyncBox). They share `.signin-column` styles from `web/src/ui/login/SignedOut.css`. Rationale: before sign-in there are no rooms, and a skeleton of data that does not exist reads as broken.
+
+## 2026-09-18 (UI release paused; external tester feedback; push-review findings)
+
+### RELEASE_NOTES.md must be rewritten before release.sh run
+**Discipline:** `RELEASE_NOTES.md` at the repo root ships verbatim into `latest.json` (updater feed), GitHub release body, and `release-notes/<version>.md` archive. It is STATELESS — not per-release; it is the file itself that ships to users. The current file holds unshipped notes for the release cut from f9795a08 (commit message: "chrome: unified title bar, Inter throughout, blue/red unread ramp, Recent sub-filter"). Before running `release.sh`, verify the file is correct for the release being cut; if stale notes remain, rewrite it. If the notes are correct but you rerun release.sh without rebuilding the app, THE SAME NOTES SHIP TWICE (happened on 0.4.2/0.4.3 boundary). **Guard:** compare RELEASE_NOTES.md against `release-notes/<previous-version>.md` before release.sh to catch rewrites that were forgotten.
+
+### Prefer `[...arr].reverse()` over `Array.prototype.toReversed()`
+**Rationale:** `RoomList.tsx` (2026-09-17 commit) added `roomList.toReversed()` for the Recent view. `Array.prototype.toReversed()` requires WebKit from macOS 13.3+; `tauri.conf.json` declares NO `minimumSystemVersion`, so a user on macOS 13.2 gets a silent TypeError that breaks the room list when Recent is active. **Standard:** use `[...roomList].reverse()` (equivalent, no floor) in this codebase; tsc with `lib: ESNext` cannot catch the gap, so lint discipline is required.
+
+### Space membership comes from m.space.child edges; DMs structurally never children
+**Fact:** `SpaceEdgeStore.include()` checks `this.#flattenedRooms.has(room.room_id)` where `#flattenedRooms` is built from `m.space.child` edges (the space membership source). DMs are essentially never added as `m.space.child` events (users don't join DMs to spaces). **Consequence:** any per-space filter over DMs is permanently empty (except `DirectChatSpace`, which ignores parent membership and uses `Boolean(room.dm_user_id)` only). Inside a real space, "Direct messages" and "Rooms" sub-filters may be dead weight — they are populated only in Home and the orphans pseudo-space. This was identified during the 2026-09-17 tester session as a structural design problem (options A–D recorded in questions.md).

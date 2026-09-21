@@ -133,7 +133,7 @@ export const preferences = {
 	}),
 	room_list_color: new Preference<string>({
 		displayName: "Room list color",
-		description: "The sidebar accent: the color of the room glyphs, and the tint room names are mixed from when uniform room list color is on.",
+		description: "The sidebar accent: the color of the room kind glyphs in the room list.",
 		category: "appearance",
 		allowedContexts: anyGlobalContext,
 		// A rich purple rather than the surface tint: with every name sharing one

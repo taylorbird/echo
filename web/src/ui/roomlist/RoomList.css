@@ -675,8 +675,106 @@ div.room-entry {
  * icon rather than being small uppercase labels, so a group reads as a real
  * container you can act on instead of a caption floating above the rows.
  */
+/*
+ * First-sync placeholders. Geometry is lifted from div.room-entry above — the same 4rem
+ * row, the same padding, the same 3.5rem avatar lane — so a placeholder and the real row
+ * that replaces it occupy identical space and nothing shifts as the list fills.
+ */
+div.room-list.skeleton {
+	/* Nothing here is scrollable content; a scrollbar for fake rows would be a lie. */
+	overflow-y: hidden;
+}
+
+div.room-entry-skeleton {
+	display: flex;
+	gap: .25rem;
+	height: 4rem;
+	align-items: center;
+	padding: .5rem .5rem .5rem calc(1rem + 10px);
+	box-sizing: border-box;
+	overflow: hidden;
+
+	> div.sk-avatar {
+		width: 3.5rem;
+		height: 3.5rem;
+		flex: none;
+
+		> i {
+			display: block;
+			width: 3rem;
+			height: 3rem;
+			margin: .25rem;
+			border-radius: 50%;
+			background: rgba(var(--warm-tint-rgb), .09);
+		}
+	}
+
+	> div.sk-lines {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		gap: .125rem;
+		overflow: hidden;
+
+		/* Line boxes matching the real name and preview rows. */
+		> div.sk-name {
+			height: 1.51875rem;
+			display: flex;
+			align-items: center;
+		}
+
+		> div.sk-preview {
+			height: 1.26rem;
+			display: flex;
+			align-items: center;
+		}
+
+		> div.sk-name::before, > div.sk-preview::before {
+			content: "";
+			display: block;
+			animation: sk-shimmer 1.8s ease-in-out infinite;
+		}
+
+		> div.sk-name::before {
+			height: .75rem;
+			border-radius: .375rem;
+			width: var(--sk-w1, 58%);
+			background: rgba(var(--warm-tint-rgb), .11);
+		}
+
+		> div.sk-preview::before {
+			height: .625rem;
+			border-radius: .3125rem;
+			width: var(--sk-w2, 82%);
+			background: rgba(var(--warm-tint-rgb), .07);
+		}
+	}
+}
+
+@keyframes sk-shimmer {
+	0%, 100% { opacity: .5 }
+	50% { opacity: .95 }
+}
+
+/* The placeholder geometry plus the box's copy already say "loading"; the pulse is the
+   decoration, so it is what goes. Gated on the attribute as well as the query so the
+   "Ignore reduce motion" preference still wins. */
+@media (prefers-reduced-motion: reduce) {
+	html:not([data-ignore-reduce-motion]) div.room-entry-skeleton div.sk-name::before,
+	html:not([data-ignore-reduce-motion]) div.room-entry-skeleton div.sk-preview::before {
+		animation: none;
+		opacity: .7;
+	}
+}
+
 div.room-list-section {
 	padding-bottom: .5rem;
+
+	/* Recent drops its header, which is also what stood between the search row and
+	   the first room. Nothing else would, so the section keeps that gap itself. */
+	&.headerless {
+		padding-top: .5rem;
+	}
 }
 
 button.room-list-section-header {
@@ -899,6 +997,9 @@ div.room-entry > div.room-entry-unreads > div.unread-count {
 
 	&.notified, &.marked-unread {
 		box-shadow: 0 0 7px var(--unread-glow-notify-near), 0 0 15px var(--unread-glow-notify-far);
+		/* The blue is now light enough that the shared near-white ink above would
+		   leave the count unreadable at badge size. */
+		color: var(--unread-counter-blue-text);
 	}
 
 	/*
@@ -916,6 +1017,11 @@ div.room-entry > div.room-entry-unreads > div.unread-count {
 		min-width: 0;
 		padding: 0;
 		border-radius: 50%;
+		/* No halo on the dot. A 7px circle lit by a 16px bloom reads as a smudge
+		   rather than a mark, and the brightness it was borrowing from the glow
+		   now comes from the fill itself. The bar and the counted tiers keep
+		   theirs — they are big enough to sit inside one. */
+		box-shadow: none;
 		/* Hides the digits without removing them from the accessibility tree. */
 		font-size: 0;
 		color: transparent;

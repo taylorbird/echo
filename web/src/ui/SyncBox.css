@@ -1,0 +1,110 @@
+/*
+ * The sync box sits in the chat pane's grid cell rather than inside div.room-view.
+ *
+ * Deliberate: div.room-view carries `contain: strict` and a recess box-shadow on some
+ * paths, and making it a positioning context risks changing how those and the right
+ * panel's stacking resolve. The grid already names this cell, so the layer can claim it
+ * without touching the pane at all.
+ */
+div.sync-box-layer {
+	grid-area: roomview;
+	z-index: 5;
+	display: grid;
+	place-items: center;
+	padding: 1.5rem;
+	/* No scrim and no backdrop-filter. The skeleton room list behind is the point of
+	   this treatment, and blurring it out would defeat the whole choice. */
+	pointer-events: none;
+
+	> * {
+		pointer-events: auto;
+	}
+}
+
+div.sync-box {
+	width: 30rem;
+	max-width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 1.05rem;
+	/* No background, no border, no radius, no shadow. Not an oversight — this is the
+	   variant: the column sits on the bare pane and the window is its frame. */
+}
+
+div.sync-box > .sync-box-title {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	font-size: 1.5rem;
+	font-weight: 600;
+	letter-spacing: -.022em;
+	line-height: 1.2;
+	color: var(--text-color);
+	text-wrap: balance;
+}
+
+div.sync-box.errored > .sync-box-title {
+	color: var(--error-text-color);
+}
+
+/* Shape cue, so trouble is never carried by the red alone. */
+div.sync-box .sync-box-glyph {
+	width: 0;
+	height: 0;
+	flex: none;
+	border-left: .55rem solid transparent;
+	border-right: .55rem solid transparent;
+	border-bottom: .94rem solid var(--unread-counter-highlight-bg);
+}
+
+div.sync-box > .sync-box-body {
+	margin: 0;
+	font-size: .95rem;
+	line-height: 1.5;
+	color: var(--secondary-text-color);
+	max-width: 44ch;
+}
+
+/*
+ * The single drawn object. It is not a progress bar: SyncStatus carries no fraction, so
+ * there is nothing to fill toward and a crawling indeterminate bar beside a precise count
+ * would claim a measurement nobody is taking. It stays a hairline while syncing, and goes
+ * solid red when sync has stopped — length as the shape cue, red as the second channel.
+ */
+div.sync-box > .sync-box-rule {
+	height: 2px;
+	border-radius: 1px;
+	background: var(--hairline-color);
+}
+
+div.sync-box.errored > .sync-box-rule {
+	background: var(--unread-counter-highlight-bg);
+}
+
+div.sync-box > .sync-box-foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	min-height: 2rem;
+	font-size: var(--small-font-size);
+	color: var(--tertiary-text-color);
+	font-variant-numeric: tabular-nums;
+}
+
+div.sync-box button.sync-box-action {
+	font-family: inherit;
+	font-size: var(--small-font-size);
+	font-weight: 600;
+	padding: .4rem .9rem;
+	border: 0;
+	border-radius: .375rem;
+	cursor: var(--clickable-cursor);
+	background: var(--danger-button-bg);
+	color: var(--error-text-color);
+	box-shadow: inset 0 0 0 1px var(--danger-button-ring);
+
+	&:hover, &:focus {
+		background: color-mix(in srgb, var(--unread-counter-highlight-bg) 24%, transparent);
+	}
+}

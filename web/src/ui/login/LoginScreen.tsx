@@ -122,46 +122,73 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 	const supportsSSO = loginFlows?.includes("m.login.sso") ?? false
 	const supportsPassword = loginFlows?.includes("m.login.password")
 	const beeperDomain = homeserverURL.match(beeperServerRegex)?.[1]
-	return <main className="matrix-login">
-		<h1>gomuks web</h1>
-		<form onSubmit={login}>
-			<input
-				type="text"
-				id="mxlogin-username"
-				placeholder="User ID (@user:example.com)"
-				value={username}
-				onChange={evt => setUsername(evt.target.value)}
-			/>
-			<input
-				type="text"
-				id="mxlogin-homeserver-url"
-				placeholder="Homeserver URL (will autofill)"
-				value={homeserverURL}
-				onChange={onChangeHomeserverURL}
-			/>
-			{supportsPassword && <input
-				type="password"
-				id="mxlogin-password"
-				placeholder="Password"
-				value={password}
-				onChange={evt => setPassword(evt.target.value)}
-			/>}
-			<div className="buttons">
+	// Attached under the password field when there is one, so the message sits with the
+	// input it is about. With SSO-only servers there is no such field, so it falls to the
+	// end of the form instead of having nowhere to go.
+	const errorBlock = error
+		? <div className="signin-field-error">
+			<span className="signin-glyph" />
+			{error}
+		</div>
+		: null
+	return <main className="matrix-login signin-column">
+		<div className="signin-head">
+			<h1 className="signin-title">Sign in to Matrix</h1>
+			<p className="signin-body">
+				echo works with any Matrix account. Your homeserver fills in from your user ID.
+			</p>
+		</div>
+		<form className="signin-fields" onSubmit={login}>
+			<div>
+				<label className="signin-label" htmlFor="mxlogin-username">Matrix ID</label>
+				<input
+					type="text"
+					id="mxlogin-username"
+					placeholder="@you:example.com"
+					value={username}
+					onChange={evt => setUsername(evt.target.value)}
+					autoFocus
+				/>
+			</div>
+			<div>
+				<div className="signin-label-row">
+					<label className="signin-label" htmlFor="mxlogin-homeserver-url">Homeserver</label>
+					{loginFlows && <span className="signin-resolved">found</span>}
+				</div>
+				<input
+					type="text"
+					id="mxlogin-homeserver-url"
+					placeholder="Fills in from your Matrix ID"
+					value={homeserverURL}
+					onChange={onChangeHomeserverURL}
+				/>
+			</div>
+			{supportsPassword && <div>
+				<label className="signin-label" htmlFor="mxlogin-password">Password</label>
+				<input
+					type="password"
+					id="mxlogin-password"
+					placeholder="Your Matrix password"
+					value={password}
+					onChange={evt => setPassword(evt.target.value)}
+					aria-invalid={error ? "true" : undefined}
+				/>
+				{errorBlock}
+			</div>}
+			<div className="signin-buttons">
+				{supportsPassword && <button
+					className="signin-primary"
+					type="submit"
+					disabled={loading}
+				>Continue</button>}
 				{supportsSSO && <button
-					className="mx-login-button primary-color-button"
+					className={supportsPassword ? "signin-ghost" : "signin-primary"}
 					type={supportsPassword ? "button" : "submit"}
 					disabled={loading}
 					onClick={supportsPassword ? loginSSO : undefined}
-				>Login with SSO</button>}
-				{supportsPassword && <button
-					className="mx-login-button primary-color-button"
-					type="submit"
-					disabled={loading}
-				>Login{supportsSSO || beeperDomain ? " with password" : ""}</button>}
+				>Use single sign-on</button>}
 			</div>
-			{error && <div className="error">
-				{error}
-			</div>}
+			{!supportsPassword && errorBlock}
 		</form>
 
 		{beeperDomain && <>

@@ -79,3 +79,13 @@ sidecar is a real HTTP server, so that precedent does not transfer.
 - **Config key `DisableAuthBecauseIWantMyAccountToBeHacked` disables auth entirely,** bypassing all credential checks. As the name says, security impact is severe.
 - **`web.origin_patterns` restricts WebSocket origins** (`pkg/gomuks/config.go:67`), default `localhost` only. CORS is not used; Tauri loads same-origin (http://localhost:29325).
 - **Token validation boundary: 500 bytes.** Requests with tokens >500 bytes are rejected (guard against malformed tokens bloating the db or log).
+
+## Backend session token: 24h mint-once (2026-09-20)
+
+**Verified:** `mint_backend_token` in `web/src-tauri/src/lib.rs:193-200` mints the session token once at launch with expiry set to 24 hours. The auth cookie has `max-age=86400`. If the app runs longer than 24 hours, the token expires and subsequent auth requests fail, landing the user on a credentials form.
+
+**The credentials form is unanswered:** The backend password is random and discarded immediately after first run (`lib.rs:118`); the username is hardcoded as `echo` not `admin` (`lib.rs:97`). The password was never recorded anywhere, so the form cannot be filled. A comment at `lib.rs:219` predicts exactly this scenario.
+
+**Remedy:** Relaunch the app. The token is minted fresh on startup.
+
+**Future decision:** Whether to re-mint the token on auth failure (refreshing the 24h window each time the app is active) or keep the current "restart is the only option" answer. This is deferred pending user input.

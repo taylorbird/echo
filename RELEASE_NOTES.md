@@ -42,6 +42,21 @@
   It shows everything — rooms and direct messages together — most recent first, so the
   conversation you were last in is at the top whether or not it is unread.
 
+## Signing in, and waiting for the first sync
+
+- The screens you see before the app opens — signing in, and the wait for the first sync — have
+  been rebuilt. They are now one plain surface rather than an empty app shell with a box
+  floating in it.
+- **First sync says what it is doing.** It explains that every room on the account is being
+  downloaded, that this can take several minutes on a busy account, and that it only happens
+  once. It counts the rooms as they arrive, so the wait has a number attached to it even
+  though the server cannot report a percentage.
+- **The room list shows the shape of what is coming** while that runs, instead of sitting
+  empty.
+- **When sync fails, it says so in words** — whether echo can reach the network but not your
+  homeserver and is retrying, or whether it has given up entirely — and the second case offers
+  to restart the app.
+
 ## Per-room colours have been removed
 
 - Room names no longer take a colour derived from the room. They are the same white in the
@@ -53,9 +68,13 @@
 
 ## Fixes
 
+- **Your own avatar now loads in the sidebar.** The profile tile at the bottom of the space
+  rail could only ever draw a generated letter tile — it never asked for the picture. It does
+  now.
 - Being signed in now always means being in a space. There was a state where a space could look
   selected in the rail while its sub-filters sat collapsed, which left the room list looking
   like it belonged to nothing.
+- The **Room list color** setting described itself in terms of a setting that no longer exists.
 
 ## Known issue
 

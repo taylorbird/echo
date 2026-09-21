@@ -1,0 +1,222 @@
+/*
+ * The signed-out column.
+ *
+ * Everything here is scoped to div.pre-main.signed-out, which owns the surface and
+ * re-scopes the chat palette onto it (see index.css). Three components render into
+ * this column — the Matrix login, the backend-session screen, and the verification
+ * screen — so the field, button and heading geometry lives here once rather than
+ * three times.
+ *
+ * There is deliberately no container: no card, no fill, no edge, no shadow. The form
+ * sits directly on the ground and the window is the frame.
+ */
+div.pre-main.signed-out {
+	.signin-column {
+		width: 26rem;
+		max-width: 100%;
+		box-sizing: border-box;
+		padding: 0;
+		margin: 0;
+		background: none;
+		border-radius: 0;
+		box-shadow: none;
+		display: flex;
+		flex-direction: column;
+		gap: 1.4rem;
+		/* A geometrically centred column reads as sitting low, because the eye
+		   weights the top of a text block. */
+		translate: 0 -1.5rem;
+
+		@media (width < 34rem) {
+			width: 100%;
+			translate: 0;
+		}
+	}
+
+	/* Shape cue for trouble, so nothing depends on the red alone. */
+	.signin-glyph {
+		width: 0;
+		height: 0;
+		flex: none;
+		border-left: .55rem solid transparent;
+		border-right: .55rem solid transparent;
+		border-bottom: .94rem solid var(--unread-counter-highlight-bg);
+	}
+
+	.signin-head {
+		display: flex;
+		flex-direction: column;
+	}
+
+	h1.signin-title {
+		display: flex;
+		align-items: center;
+		gap: .6rem;
+		margin: 0;
+		font-size: 1.45rem;
+		font-weight: 600;
+		letter-spacing: -.018em;
+		line-height: 1.22;
+		text-align: left;
+		color: var(--text-color);
+	}
+
+	.errored h1.signin-title {
+		color: var(--error-text-color);
+	}
+
+	p.signin-body {
+		margin: .45rem 0 0;
+		font-size: .95rem;
+		line-height: 1.5;
+		color: var(--secondary-text-color);
+		max-width: 42ch;
+	}
+
+	/* The connect screen's one drawn object. No fill: there is nothing to be a
+	   fraction of, and a crawling bar would claim progress nobody is measuring. */
+	.signin-rule {
+		height: 2px;
+		border-radius: 1px;
+		background: var(--hairline-color);
+	}
+
+	.signin-fields {
+		display: flex;
+		flex-direction: column;
+		gap: .9rem;
+	}
+
+	label.signin-label {
+		display: block;
+		margin-bottom: .35rem;
+		font-size: .8rem;
+		font-weight: 600;
+		letter-spacing: .06em;
+		text-transform: uppercase;
+		color: var(--tertiary-text-color);
+	}
+
+	input {
+		box-sizing: border-box;
+		width: 100%;
+		margin-top: 0;
+		padding: .85rem 1rem;
+		font-family: inherit;
+		font-size: 1rem;
+		border: 0;
+		border-radius: .375rem;
+		background: var(--field-fill);
+		box-shadow: inset 0 0 0 1px var(--field-ring);
+		color: var(--text-color);
+
+		&::placeholder {
+			color: var(--tertiary-text-color);
+		}
+
+		&:hover {
+			outline: none;
+		}
+
+		&:focus {
+			outline: none;
+			box-shadow:
+				inset 0 0 0 1px var(--progress-color),
+				0 0 0 .2rem color-mix(in srgb, var(--progress-color) 15%, transparent);
+		}
+
+		&[aria-invalid="true"] {
+			box-shadow:
+				inset 0 0 0 1px var(--unread-counter-highlight-bg),
+				0 0 0 .2rem color-mix(in srgb, var(--unread-counter-highlight-bg) 12%, transparent);
+		}
+	}
+
+	.signin-field-error {
+		display: flex;
+		align-items: center;
+		gap: .5rem;
+		margin-top: .45rem;
+		font-size: var(--small-font-size);
+		color: var(--error-text-color);
+	}
+
+	.signin-buttons {
+		display: flex;
+		gap: .6rem;
+		flex-wrap: wrap;
+	}
+
+	.signin-buttons > button {
+		flex: 1;
+		min-width: 8rem;
+		font-family: inherit;
+		font-size: 1rem;
+		font-weight: 600;
+		padding: .8rem 1.25rem;
+		border: 0;
+		border-radius: .375rem;
+		cursor: var(--clickable-cursor);
+	}
+
+	button.signin-primary {
+		background: var(--primary-color);
+		/* --inverted-text-color is restated on the signed-out surface, so this is the
+		   chat ground rather than the sidebar grey. Never `white`: that is the bug
+		   this screen replaces. */
+		color: var(--inverted-text-color);
+
+		&:hover, &:focus {
+			background: var(--primary-color-dark);
+		}
+
+		&:disabled {
+			opacity: .45;
+			cursor: default;
+		}
+	}
+
+	button.signin-ghost {
+		background: none;
+		color: var(--text-color);
+		box-shadow: inset 0 0 0 1px var(--button-hover-color);
+
+		&:hover, &:focus {
+			background: var(--light-hover-color);
+		}
+	}
+
+	/* Sized to its label rather than stretched: it is the only action in its row,
+	   and a full-width danger button reads as the screen's purpose. */
+	button.signin-danger {
+		flex: 0 1 auto;
+		min-width: 0;
+		background: var(--danger-button-bg);
+		color: var(--error-text-color);
+		box-shadow: inset 0 0 0 1px var(--danger-button-ring);
+
+		&:hover, &:focus {
+			background: color-mix(in srgb, var(--unread-counter-highlight-bg) 24%, transparent);
+		}
+	}
+
+	.signin-disclose {
+		font-size: var(--small-font-size);
+		line-height: 1.5;
+		color: var(--tertiary-text-color);
+	}
+
+	button.signin-link {
+		display: inline;
+		padding: 0;
+		border: 0;
+		background: none;
+		font: inherit;
+		cursor: var(--clickable-cursor);
+		/* The chat scope leaves --link-text-color a warm peach, which fights the cool
+		   ground on this screen. A cool blue-grey keeps the link legible as a link
+		   without pulling the eye off the primary action. */
+		color: #9fb6d6;
+		box-shadow: 0 1px 0 color-mix(in srgb, #9fb6d6 35%, transparent);
+	}
+}

@@ -258,25 +258,73 @@
 		 * The separation now lives in hue and in badge shape, neither of which any
 		 * accessibility preference can switch off.
 		 */
-		--unread-counter-message-bg: #2f6fbd;
-		--unread-counter-notification-bg: #3f86d8;
+		/*
+		 * Candy blue rather than royal. The old #2f6fbd/#3f86d8 pair sat in a
+		 * different family from every other signal colour in the app — the red
+		 * (#ff4d6d), the mint (#a0e7c8) and the pink (#ff9eb5) are all high-chroma
+		 * and light, and a muted mid-blue beside them read as the one unconsidered
+		 * hue. These two sit in that same band: same chroma, same lightness range,
+		 * so the blue now looks chosen rather than defaulted.
+		 */
+		--unread-counter-message-bg: #5cbbff;
+		--unread-counter-notification-bg: #85d6ff;
+		/*
+		 * Blue this light cannot carry the near-white counter ink the red does, so
+		 * the digits flip to the dark ground instead. That also gives the two
+		 * families a second, non-hue difference: light ink on red, dark ink on blue.
+		 */
+		--unread-counter-blue-text: #10233a;
+
+		/*
+		 * The chat pane's ground, promoted out of the div.room-view scope because a
+		 * second surface now needs it: the signed-out screen, which is not inside
+		 * room-view and would otherwise resolve to the sidebar palette.
+		 */
+		--chat-surface: #16181f;
+		/*
+		 * A third text weight, below --secondary-text-color (#98a0b0). Captions that
+		 * sit under body copy — field labels, the sync foot line, disclosure text —
+		 * were taking secondary and reading as a second body voice rather than as a
+		 * label.
+		 */
+		--tertiary-text-color: #6d7686;
+		/*
+		 * Error text, as distinct from the error FILL. --error-color (#e06b75) is the
+		 * fill, and the badge red #ff4d6d only reaches about 4.3:1 as text on the chat
+		 * ground. This clears 7:1.
+		 */
+		--error-text-color: #ff8fa3;
+		/* Soft input geometry. --light-hover-color and --hairline-color are the nearest
+		   existing weights, but both already mean something else. */
+		--field-fill: rgba(230, 234, 242, .05);
+		--field-ring: rgba(230, 234, 242, .13);
+		--danger-button-bg: rgba(255, 77, 109, .16);
+		--danger-button-ring: rgba(255, 77, 109, .42);
+		/*
+		 * One line of indirection away from the unread badge palette. The progress rule
+		 * and the sign-in focus ring want the information blue, but they are not badges:
+		 * pointing them straight at --unread-counter-message-bg means the next badge
+		 * retune silently moves both. Aliased so the coupling is deliberate and can be
+		 * broken with one edit.
+		 */
+		--progress-color: var(--unread-counter-message-bg);
 		--unread-counter-highlight-bg: #ff4d6d;
 		--unread-counter-highlight-text: #fff2f4;
 		/* Halo around the counter, same two-layer falloff as the room/space
 		   glow bars so the app has one glow idiom rather than two. Every tier
 		   still glows; only the colour of the glow changes. */
-		--unread-glow-notify-near: rgba(90, 162, 240, .75);
-		--unread-glow-notify-far: rgba(90, 162, 240, .4);
+		--unread-glow-notify-near: rgba(92, 187, 255, .75);
+		--unread-glow-notify-far: rgba(92, 187, 255, .4);
 		--unread-glow-highlight-near: rgba(255, 77, 109, .9);
 		--unread-glow-highlight-far: rgba(255, 77, 109, .45);
 		/* Barely-there wash so a shouting room reads at a glance down the list.
 		   Kept red and kept separate from the unread wash below: this one marks
 		   being named, and it wins on :has() specificity in RoomList.css. */
 		--room-list-entry-highlight-wash: rgba(255, 77, 109, .06);
-		--unread-glow-message-near: rgba(90, 162, 240, .75);
-		--unread-glow-message-far: rgba(90, 162, 240, .4);
+		--unread-glow-message-near: rgba(92, 187, 255, .75);
+		--unread-glow-message-far: rgba(92, 187, 255, .4);
 		/* Lifts the whole row, not just the badge. */
-		--room-list-entry-unread-wash: rgba(90, 162, 240, .06);
+		--room-list-entry-unread-wash: rgba(92, 187, 255, .06);
 		--space-unread-counter-message-bg: rgba(209, 209, 224, 0.8);
 		--space-unread-counter-notification-bg: #a0e7c8;
 		--space-unread-counter-highlight-bg: #ff9eb5;
@@ -436,6 +484,60 @@ div.pre-main {
 	&.waiting-to-connect {
 		padding-top: 2rem;
 		text-align: center;
+	}
+
+	/*
+	 * Every screen shown before the app itself: signing in, verifying, and the
+	 * connect/initialise wait. One quiet surface, the chat pane's ground, with the
+	 * content optically centred and the wordmark alone in the corner.
+	 */
+	&.signed-out {
+		display: grid;
+		place-items: center;
+		padding: 2rem;
+		text-align: initial;
+		background-color: var(--chat-surface);
+
+		/*
+		 * The chat pane's dark palette, replicated. This element is NOT inside
+		 * div.room-view, so without these every token resolves to the sidebar family
+		 * and the screen renders warm on a cool ground.
+		 */
+		@media (prefers-color-scheme: dark) {
+			--background-color: var(--chat-surface);
+			--text-color: #e6eaf2;
+			--secondary-text-color: #98a0b0;
+			--hairline-color: rgba(230, 234, 242, .09);
+			--border-color: #2f3543;
+			--button-hover-color: rgba(230, 234, 242, .18);
+			--light-hover-color: rgba(230, 234, 242, .08);
+			/*
+			 * Has to be restated. --inverted-text-color is `var(--background-color)`
+			 * resolved at :root, so re-scoping --background-color above does not carry
+			 * into it — without this the primary button renders sidebar-grey on cream.
+			 * This is the bug the old backend-login stylesheet had, where a hardcoded
+			 * `color: white` sat on a near-white button and made the label invisible.
+			 */
+			--inverted-text-color: var(--chat-surface);
+		}
+
+		/* Seated in the traffic-light strip rather than above the content, so the
+		   column below is free to sit at optical centre. */
+		> div.app-wordmark {
+			position: absolute;
+			top: 0;
+			left: calc(var(--space-bar-width) + .5rem);
+			height: calc(var(--window-top-margin) + var(--traffic-light-strip));
+			display: flex;
+			align-items: center;
+			font-size: .95rem;
+			font-weight: 600;
+			letter-spacing: .14em;
+			text-transform: uppercase;
+			color: var(--secondary-text-color);
+			user-select: none;
+			-webkit-app-region: drag;
+		}
 	}
 }
 

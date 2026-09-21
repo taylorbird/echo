@@ -26,6 +26,17 @@
   The PNG is written promptly (within the first second), and the background job + explicit kill avoids waiting for the hung process to exit naturally.
 - **Note:** This hang does not appear in interactive Chrome or in other Headless tools (e.g., Puppeteer with `browser.close()` works fine); it's specific to the command-line headless mode with file:// URLs.
 
+## Never use `npm run tauri dev` (2026-09-20)
+
+**Gotcha:** This repository has no `tauri` script in `web/package.json`. The scripts are: dev, build, lint, preview, test. Attempting `npm run tauri dev` silently does nothing or runs an unrelated script.
+
+**Correct invocations:**
+- `npm exec tauri dev` (uses installed @tauri-apps/cli)
+- `./node_modules/.bin/tauri dev` (direct path)
+- `cd web && npx tauri dev` (from the web directory)
+
+Not catching this mistake costs minutes of dev downtime while debugging why the app won't launch.
+
 ## Build Commands
 Requires Rust. **No longer requires libolm or any CGO flags** — the sidecar builds with
 `-tags goolm`, which selects mautrix-go's pure-Go olm implementation (available since

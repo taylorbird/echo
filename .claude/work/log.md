@@ -2,6 +2,71 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-09-21 08:33
+
+**Session Summary**: Session consisted of bringing the local dev app back online after finding all processes down overnight (tauri dev, app window, sidecar all exited at some point). No code was written and no decisions were made. Dev app was relaunched with tauri dev, fresh 24h backend token minted at ~08:29 PDT (expires ~08:29 on 2026-09-22). All uncommitted work from prior session remains intact: 14 modified files, 1 deletion (WebAuthLogin.css), 3 new untracked files (SyncBox.tsx/css, SignedOut.css), HEAD still f9795a08.
+
+**Decisions Made**:
+- None
+
+**Actions Taken**:
+- Relaunched dev app with `/Users/tbird/gomuks/web/node_modules/.bin/tauri dev` (correct invocation, logged to session scratchpad)
+- Verified healthy: Vite on 6173, backend on 29325, all three processes running, fresh 24h token minted
+
+**Context/Thoughts**:
+- All uncommitted work ready for next session (commit, retest, version decision, release)
+- Backend token expires 2026-09-22 ~08:29 PDT
+
+## 2026-09-20 23:21
+
+**Session Summary**: Three parallel work streams over 2026-09-18 evening into 2026-09-20. Stream 1: Batch 1 pre-release fixes (rail avatar, preference description, toReversed() floor, Recent header removal) — all verified still-relevant in source before being made, tsc+eslint clean, uncommitted. Stream 2: unread-colour retune (blue neon family #5cbbff/#85d6ff, inverted dark text for counted badges, glow removed from base-tier dot) — user's visual direction, uncommitted. Stream 3: full redesign of loading and signed-out screens via design artifacts (four published variants) then implementation — Plain picked for signed-out, Skeleton+Hairline for loading; six files new/modified/deleted; SyncBox with three states, SignedOut wrapper, WebAuthLogin rewritten as backend-session screen, LoginScreen restyled Plain, skeleton placeholders, restartApp() helper added, all uncommitted, tsc+eslint clean. Four new durable constraints recorded. Seven learnings items identified for extension into existing topic files.
+
+**Decisions Made**:
+- Batch 1 fixes verified and ready: avatar, preference description, toReversed(), Recent header removal
+- Unread blue retune matches neon family; inverted dark ink on lighter blue; base dot no glow
+- Design picks: Plain for signed-out, Skeleton+Hairline for loading (user selections overrode design agent's recommendations)
+- Pre-app screens: one surface with no app shell, shared .signin-column styles, SyncBox inline in grid
+- Progress colour aliases unread-blue to decouple from badge retune
+- Next action: commit all three streams, retest signed-out/loading screens visually, version decision + release
+
+**Actions Taken**:
+- Batch 1: fixed rail avatar (RoomList.tsx), preference description (preferences.ts), toReversed()→reverse() (RoomList.tsx), Recent header removed (forced isCollapsed false, section headerless, added padding-top)
+- Unread retune: blue tokens in index.css, --unread-counter-blue-text in RoomList.css, box-shadow:none on dot, --progress-color alias
+- Redesign: NEW SyncBox.tsx/.css, NEW SignedOut.css, REWROTE WebAuthLogin.tsx (backend-session flow), REWROTE LoginScreen.tsx (Plain), DELETED WebAuthLogin.css, modified App.tsx (wrapper), MainScreen.tsx (grid), RoomList.tsx (skeleton), updater.ts (restartApp helper)
+
+**Context/Thoughts**:
+- All changes uncommitted, ready for verification; tsc and eslint clean across all files.
+- Batch 1 fixes: small, verified, ready to ship; avatar fetch pattern already exists in UserInfo.tsx.
+- Design process: four published artifacts narrowed to two picks; user's direction (Plain + Skeleton+Hairline) overrode design agent's recommendations, a healthy sign.
+- SyncBox grid placement via grid-area:roomview avoids positioning-context/contain:strict risks.
+- Backend session expires after 24h; app running longer than a day hits unanswered credentials form (relaunch is only remedy now).
+- Learnings to extend: backend-auth.md (24h token), css-layering.md (--inverted-text-color scoping), dev-gotchas.md (npm run tauri dev trap), gomuks-frontend-structure.md (no SyncStatus fraction), tauri-acl.md (restartApp mechanism).
+- Release is still blocked on version decision (patch vs minor) and user retest of new screens.
+
+## 2026-09-18 09:53
+
+**Session Summary**: Third checkpoint spanning 2026-09-17 evening into 2026-09-18. All 2026-09-17 UI work was committed (commit f9795a08 "chrome: unified title bar, Inter throughout, blue/red unread ramp, Recent sub-filter" — 32 files) and pushed to origin/main; working tree is CLEAN. `RELEASE_NOTES.md` was fully rewritten for the release (title bar removed, one typeface Inter, unread vs mention split, Recent sub-filter, per-room colours removed, space-selected-but-collapsed fix, known read-receipts issue); it is committed and ready verbatim for release feed. `scripts/release.sh` has NOT been run. No version bump occurred; both version files still say 0.5.1. Release is PAUSED awaiting two user decisions: (1) **Version:** patch (0.5.2) or minor (0.6.0) — Claude's read is "minor" (removes a preference, adds a feature) but user's 0.5.1 convention (full visual overhaul as patch) takes precedence. (2) **Push-review findings:** three code issues found by user's /push-review command after git push: (a) stale `room_list_color` preference description at preferences.ts ~136 references the deleted `uniform_room_list_color` preference and renders in Settings (one-line fix), (b) `roomList.toReversed()` in RoomList.tsx uses Array.prototype.toReversed (macOS 13.3+ only, no minimumSystemVersion declared, TypeError if floor crossed), equivalent `[...roomList].reverse()` exists (low practical risk if user is 13.3+, but should fix), (c) Recent section header renders collapsible "Recent" title (redundant with rail label, empties view when collapsed) — UX issue. External tester ("wreck" on Matrix, using 0.5.1 or earlier) submitted feedback with three categories: **VERIFIED REAL BUGS**: rail profile avatar `getAvatarThumbnailURL(client.userID)` passes no UserProfile content so it can only ever show letter tile (structurally impossible to load), fix: fetch profile once and pass as content (small change); **STRUCTURAL DESIGN PROBLEM**: DM sub-filter is permanently empty inside real spaces (DMs are never `m.space.child` edges, only Home/orphans see DMs), making 2–3 of 4 sub-filters dead weight — options A–D presented (A: hide empty sub-filters; B: redefine DMs as "DMs with people in this space"; C: hide sub-filters except Home/orphans; D: empty-state copy), Claude recommended A now + B later. **LIKELY ALREADY FIXED**: lightbox image tools were cut off by removed title-bar band (fixed in f9795a08). **CONTAMINATED**: CSS alignment complaint disputed by tester himself (custom CSS from another gomuks install). **NEEDS REPRODUCTION**: spaces-only-after-reload (most concerning, smells like sync race), URL-preview scroll anchor, multi-line composer expansion, discoverability (home vs triangle tiles). **KNOWN UPSTREAM**: slow first sync (no sliding sync v2), SSO passkey/WebAuthn (upstream OAuth MSC), cross-signing UX. Blue/red unread ramp has never been visually seen by anyone (no unread rooms in screenshot). Two design questions raised by Claude: (1) lavender section header (#bd93f9 tinted) now the only purple left with white room names; should be neutralized? (2) sender names in previews are per-user coloured (different system from removed per-room accent), now the most colourful thing in room list; quiet them?
+
+**Decisions Made**:
+- UI work 2026-09-17 is shipped as commit f9795a08 to origin/main
+- Release is PAUSED on version decision (patch vs minor) and three push-review findings
+- External tester feedback received and triaged into: verified bugs (avatar), structural issue (DM spaces), likely fixed (lightbox), contaminated (CSS), needs repro (three unknowns)
+
+**Actions Taken**:
+- Updated `.claude/work/current.md`: Last Checkpoint to 2026-09-18 09:53, Current Focus rewrote to state release paused on version and push-review, Next Actions (Desktop) prioritized as: cut release, fix preference description, fix avatar, decide space filter, reproduce unknowns, decide header/colours, read receipts, Cotypist
+- Updated `.claude/work/constraints.md`: added 2026-09-18 entries: RELEASE_NOTES.md rewrite discipline, toReversed() floor constraint, space membership fact
+- Updated `.claude/work/questions.md`: added new "Tester feedback" section and two design questions
+
+**Context/Thoughts**:
+- Release is genuinely blocked: if cut without addressing avatar bug, tester's second feedback will show it broken; version bumping is user's call (0.5.1 set precedent for large visual overhaul as patch).
+- Avatar bug is small (add one RPC fetch) but user-visible in rail profile; worth fixing before shipping.
+- toReversed() floor is low practical risk (user likely 13.3+) but should be fixed for breadth (global CLAUDE rule: this codebase constraint now recorded).
+- Space DM problem is structural: the sub-filter exists but is permanently empty. User hasn't seen the issue yet (was on 0.5.1, no Recent feature). Option A (hide empty filters) is minimal; Claude recommends it now, B (smarter DM definition) for next session.
+- Tester's three unknowns (spaces-reload, scroll, composer) are lower priority but the reload race sounds real and is worth reproducing.
+- Blue/red ramp has never been seen. Release notes claim it works, but visual verification would be good (needs room with unread messages to test).
+- Two design questions (header colour, preview colours) are opened by Claude for user decision, not blockers.
+- Session is checkpoint-only, no code changes made.
+
 ## 2026-09-17 15:53
 
 **Session Summary**: Second checkpoint of the day (post-15:15 work). All changes remain UNCOMMITTED; zero tsc/eslint errors maintained. Three major changes executed: (1) **Per-room colours removed entirely** — user asked for white room names and to "eliminate the feature where you can have different room colors"; investigation showed `--room-accent` (hash-derived per-room colour from `getRoomAccentColor()`) coloured room names in four components. Removed `getRoomAccentColor()` from media.ts (dead code), removed inline `style={{ "--room-accent": ... }}` props from Entry.tsx, QuickSwitcher.tsx, SpaceView.tsx (2 sites), RoomViewHeader.tsx; replaced all `color-mix(in oklab, var(--room-accent) 70%, ...)` with `color: #ffffff` in RoomList.css, RoomViewHeader.css, QuickSwitcher.css, SpaceView.css (2 occurrences); removed the `uniform_room_list_color` preference (both states rendered identically with one name colour). Deliberately KEPT: `room_list_color` preference (single sidebar accent, kind glyphs only; now the only coloured element in the list). (2) **Recent added as fourth space-rail sub-filter** — the per-section sort feature built earlier (mode tag, cycle-on-click, localStorage) was deleted entirely. In its place, Recent became a sub-filter in the space rail (alongside All chats / Rooms / Direct messages). It narrows NOTHING (include() returns true for all rooms); it is purely a layout/ordering signal. `sections` useMemo short-circuits: when `activeSubFilter === "recent"` returns one unsectioned section of `roomList.toReversed()` with NO Unread section (deliberately: lifting badged rooms would push the just-left conversation back down). `activeSubFilter` moved earlier in component (above sections useMemo) to avoid TDZ error. (3) **Room name size bumped 1rem → 1.125rem** in RoomList.css after mixed-case switch (caps gave every name one volume; mixed case allows emphasis, and user wanted slightly bigger). (4) **Section headers reverted** — the multi-button div structure (section-toggle / section-mode / section-chevron-button) was ONLY needed for the sort tag to be independently clickable. With the sort feature deleted, the tag is gone, so headers reverted to a single `<button>` with simple hover/focus styles.

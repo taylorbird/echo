@@ -114,3 +114,13 @@ A window is considered remote if its origin is not `tauri://localhost`, `tauri:/
 - This origin is remote, so all commands are ACL-checked.
 - `remote.urls` entry and command declarations are not optional; they're the difference between working and silently-failing-forever.
 - Any new feature that uses a `#[tauri::command]` must update both build.rs and capabilities/default.json.
+
+## restart_for_update is Generic Relaunch (2026-09-20)
+
+**Naming caveat:** `restart_for_update` is declared as a Tauri command in build.rs and capabilities/default.json, but despite its name, it is a **generic app relaunch**, not update-specific.
+
+**How it works:** in `web/src-tauri/src/lib.rs`, the Rust handler kills the sidecar process (prevents orphaned old sidecar on the old port after update), then calls `app.restart()` — Tauri's standard relaunch mechanism.
+
+**The PROD gate trap:** earlier, `web/src/util/updater.ts` had a `restartToApply()` function that was gated on `PROD` (i.e., `isTauri && import.meta.env.PROD`). In dev, this silently no-opped. When the signed-out redesign needed a generic "Restart echo" button, a new `restartApp()` helper was added, gated only on `isTauri` (no PROD check), so it works in both dev and prod.
+
+**Usage:** Import `restartApp()` from `web/src/util/updater.ts` for any app relaunch context (update, reset, etc.).

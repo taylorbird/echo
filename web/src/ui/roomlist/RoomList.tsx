@@ -25,7 +25,7 @@ import {
 	SubFilteredSpace,
 	usePreference,
 } from "@/api/statestore"
-import type { RoomID } from "@/api/types"
+import type { RoomID, UserProfile } from "@/api/types"
 import { getCheats, isCheatActive } from "@/util/cheats.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { prefersReducedMotion } from "@/util/reducedmotion.ts"
@@ -106,7 +106,37 @@ interface RailTransition {
 interface RoomListProps {
 	activeRoomID: RoomID | null
 	space: RoomListFilter | null
+	firstSync: boolean
 }
+
+/*
+ * Placeholder rows shown while the first sync is still running.
+ *
+ * Geometry is copied from div.room-entry rather than approximated, so a row does not shift
+ * when the real thing replaces it. Real rooms render above these as they arrive and push the
+ * placeholders down and out, instead of the whole block swapping at once.
+ *
+ * The widths are a fixed cycle, not random: a random set re-rolls on every render, which
+ * makes the list twitch on each incoming room.
+ */
+const SKELETON_ROWS = 12
+const skeletonWidths: [number, number][] = [
+	[58, 86], [44, 72], [66, 54], [51, 80], [39, 63], [62, 88],
+	[47, 70], [55, 84], [42, 66], [69, 58], [49, 77], [60, 82],
+]
+
+const RoomListSkeleton = ({ count }: { count: number }) => <>
+	{Array.from({ length: count }, (_, i) => {
+		const [w1, w2] = skeletonWidths[i % skeletonWidths.length]
+		return <div className="room-entry-skeleton" key={`skeleton-${i}`} aria-hidden="true">
+			<div className="sk-avatar"><i /></div>
+			<div className="sk-lines" style={{ ["--sk-w1" as string]: `${w1}%`, ["--sk-w2" as string]: `${w2}%` }}>
+				<div className="sk-name" />
+				<div className="sk-preview" />
+			</div>
+		</div>
+	})}
+</>
 
 /*
  * What "unread" means everywhere in this file: the rooms that would show a badge.
@@ -155,7 +185,7 @@ const useMarkAllRead = (unreadRooms: RoomListEntry[]) => {
 	}, [client, unreadRooms])
 }
 
-const RoomList = ({ activeRoomID, space }: RoomListProps) => {
+const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 	const client = use(ClientContext)!
 	const openModal = use(ModalContext)
 	const mainScreen = use(MainScreenContext)
@@ -167,6 +197,19 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const markAllRead = useMarkAllRead(unreadRooms)
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
+	/*
+	 * Your own profile, fetched once, purely so the rail avatar has an avatar_url to
+	 * render. getAvatarThumbnailURL takes the profile as its second argument and falls
+	 * back to a generated letter tile without one, so passing only the user ID — which
+	 * is what this did — could never show a real picture. Same fetch UserInfo does.
+	 */
+	const [ownProfile, setOwnProfile] = useState<UserProfile | null>(null)
+	useEffect(() => {
+		client.rpc.getProfile(client.userID).then(
+			setOwnProfile,
+			err => console.error("Failed to fetch own profile for the rail avatar:", err),
+		)
+	}, [client])
 
 	const setQuery = (evt: React.ChangeEvent<HTMLInputElement>) => {
 		client.store.currentRoomListQuery = toSearchableString(evt.target.value)
@@ -312,7 +355,14 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		 * view, and each row keeps its kind glyph, so a mixed list still reads.
 		 */
 		if (activeSubFilter === "recent") {
-			return [{ id: "recent", name: "Recent", icon: ClockIcon, entries: roomList.toReversed() }]
+			// toReversed() is macOS 13.3+ only and no minimumSystemVersion is declared,
+			// so the spread copy stays: same result, no floor.
+			// Headerless because the rail's lit sub-filter already says "Recent", and a
+			// collapse control on the only section would just empty the list.
+			return [{
+				id: "recent", name: "Recent", icon: ClockIcon,
+				entries: [...roomList].reverse(), headerless: true,
+			}]
 		}
 		const unread: RoomListEntry[] = []
 		const rooms: RoomListEntry[] = []
@@ -330,9 +380,9 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		// Always listed, even empty: the renderer already drops a section with nothing
 		// visible under it, which is also what hides this one when the preference is off.
 		return [
-			{ id: "unread", name: "Unread", icon: BellIcon, entries: unread },
-			{ id: "rooms", name: "Rooms", icon: UsersIcon, entries: rooms },
-			{ id: "dms", name: "Direct messages", icon: UserIcon, entries: directMessages },
+			{ id: "unread", name: "Unread", icon: BellIcon, entries: unread, headerless: false },
+			{ id: "rooms", name: "Rooms", icon: UsersIcon, entries: rooms, headerless: false },
+			{ id: "dms", name: "Direct messages", icon: UserIcon, entries: directMessages, headerless: false },
 		]
 	}, [roomList, activeRoomID, unreadSection, activeSubFilter])
 	const [collapsedSections, setCollapsedSections] = useState(readCollapsedSections)
@@ -620,7 +670,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 					disabled={!activeRoomID}
 					onClick={() => mainScreen.setRightPanel({ type: "user", userID: client.userID })}
 				>
-					<img className="avatar" src={getAvatarThumbnailURL(client.userID)} alt=""/>
+					<img className="avatar" src={getAvatarThumbnailURL(client.userID, ownProfile)} alt=""/>
 				</button>
 				<button
 					className="rail-settings"
@@ -637,8 +687,8 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				</button>
 			</div>
 		</div>
-		<div className="room-list">
-			{initComplete ? null
+		<div className={`room-list ${firstSync ? "skeleton" : ""}`}>
+			{initComplete || firstSync ? null
 				: <BarLoader cssOverride={{ backgroundColor: "unset" }} width="100%" color="var(--primary-color)" />}
 			{sections.map(section => {
 				// A header with nothing under it is noise, so drop the whole group
@@ -649,9 +699,12 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				if (!hasVisibleEntries) {
 					return null
 				}
-				const isCollapsed = collapsedSections.has(section.id)
-				return <div key={section.id} className="room-list-section">
-					<button
+				const isCollapsed = !section.headerless && collapsedSections.has(section.id)
+				return <div
+					key={section.id}
+					className={`room-list-section ${section.headerless ? "headerless" : ""}`}
+				>
+					{section.headerless ? null : <button
 						type="button"
 						className={`room-list-section-header ${isCollapsed ? "collapsed" : ""}`}
 						data-section-id={section.id}
@@ -661,7 +714,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 						<section.icon className="section-icon" />
 						<span className="section-name">{section.name}</span>
 						<ChevronDownIcon className="section-chevron" />
-					</button>
+					</button>}
 					{isCollapsed ? null : section.entries.map(room =>
 						<Entry
 							key={room.room_id}
@@ -673,6 +726,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 					)}
 				</div>
 			})}
+			{firstSync && <RoomListSkeleton count={Math.max(0, SKELETON_ROWS - roomList.length)} />}
 		</div>
 	</div>
 }

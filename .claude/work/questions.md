@@ -2,6 +2,47 @@
 
 <!-- Things uncertain, need revisiting, or blocked on -->
 
+## New this session (2026-09-20)
+
+- **Where does the sync box go when a room is selected?** A mid-session sync failure currently centres a 30rem column over the conversation being read, with no edge separating it from timeline text. The design agent suggested pinning it to the top of the timeline when a room is active; that is a new composition and needs the user's eye.
+- **The verification screen renders on the new signed-out surface but its internals were not restyled.** It will be the one screen in the sequence still wearing old styling. Defer pending user feedback.
+- **Sign-in → MainScreen is a hard scene change** with no shared element, inherent to dropping the app shell. No transition specced. Defer.
+- **Should the backend token be re-minted on auth failure**, or should the expired screen remain the answer? Currently the screen is the answer. Deferred pending user input.
+- **The four published artifacts still render the old `#3f86d8` information blue** and are one generation behind the code. A re-render was deliberately deferred until the new blue is judged in the running app. (Published: A, B, The sync box, Signing in to echo.)
+
+## Tester feedback 2026-09-18 (from "wreck", on 0.5.1 or earlier)
+
+**Verified real bugs in our code:**
+- **Rail profile avatar can never load.** `web/src/ui/roomlist/RoomList.tsx` line ~623 calls `getAvatarThumbnailURL(client.userID)` with no `content` parameter. The function signature is `getAvatarThumbnailURL(userID, content?: UserProfile | null, ...)`, so `avatar_url` is never available and silently falls through to the generated letter tile every time (not intermittent — structurally impossible to work). Fix: fetch the profile once via `client.rpc.getProfile(client.userID)` (pattern already used at `web/src/ui/rightpanel/UserInfo.tsx` ~51) and pass as `content`. Small change.
+
+**Verified structural design problem:**
+- **DM sub-filter permanently empty inside real spaces.** Tester: "people is always empty everywhere except home and triangle; i have to explicitly add DMs to a space, which is not possible if i don't control the space." Root cause verified in source: space membership comes from `m.space.child` edges (`SpaceEdgeStore.include()` → `#flattenedRooms.has(room.room_id)`). DMs are essentially never added as space children. Therefore inside any real space, the "Direct messages" sub-filter is structurally empty AND "Rooms" is identical to "All chats" — two of three sub-filters do nothing. Adding Recent on 2026-09-17 made this worse: four sub-filters where two are dead weight. Options Claude presented:
+  - **A. Hide sub-filters that would be empty** in this space. Small. Rail contents vary per space. Claude recommends this now.
+  - **B. Redefine the DM sub-filter as "DMs with people who are members of a room in this space"** — what the tester expected. Largest effort, needs per-space member data and a cache, but makes the control worth having. Claude recommends later.
+  - **C. Show sub-filters only on Home/orphans**; real spaces just list their rooms. Small, but loses Recent inside spaces where it does work.
+  - **D. Empty-state copy** ("No direct messages in this space — DMs live in Home"). Trivial but leaves a dead control. Claude not recommending alone.
+
+**Likely already fixed by unreleased work — retest before spending:**
+- "Clicking an image cuts off the image tools under the window title bar in the top right corner." He was on a build where `div.app-titlebar` was a fixed band at `z-index: 4`. That band was deleted in f9795a08. Lightbox controls sit at `top: calc(.5rem + var(--window-top-margin)); right: .5rem` in `web/src/ui/modal/Lightbox.css`.
+
+**Contaminated feedback — discount until re-tested:**
+- "CSS seems a bit off of alignment." Tester discovered the cause himself: he had account-wide custom CSS from another gomuks install applied globally; after moving it, "some things look slightly different." Any visual complaint from before that message is suspect. Ask for a fresh screenshot on a clean profile.
+
+**Upstream gomuks limitations, not our bugs:**
+- Slow first sync (no sliding sync v2). Tester's own suggested fix: add wording like "this may take a while if you have a lot of conversations" to the "Waiting for first sync" screen.
+- SSO passkey / hardware keys never prompted — WebAuthn inside the embedded webview. Connects to the existing open question about the SSO consent screen showing a raw localhost redirect URL; both likely need native OIDC (MSC2965/2966), which is upstream-sized. Marked as open question 2026-08-28.
+- No "verify this session from another device where you're already logged in" — cross-signing verification UX gap; he was forced to use his recovery key. His note: "normies will likely be confused."
+
+**Needs reproduction before costing:**
+- Spaces did not appear until he reloaded the app ("ohhhhh i had to reload and now i see all my spaces"). Possible first-sync race. **This is the most concerning unknown of the set** — it smells like a real bug and is worth investigating first.
+- Opening a room with links: URL preview placeholders load and the scroll position does not hold, forcing a scroll back down. Scroll-anchoring; possible fixes are reserving preview height or `overflow-anchor`.
+- Multi-line text does not expand the composer properly. There IS auto-grow logic (`rows={textRows.current}` in MessageComposer.tsx), so this is a regression candidate.
+- Discoverability: he could not tell the difference between the "home" tile and the "triangle" (orphans) tile in the rail, and guessed "rooms that aren't part of a space" unaided. Tooltips or labels would settle it.
+
+**Design questions raised by Claude on seeing the screenshot (2026-09-18):**
+- The "Rooms" section header is lavender (`color-mix(in oklab, #bd93f9 45%, var(--text-color))`), a holdover from when room names were also coloured. With every name now white, that header and the kind glyphs are the only purple left, and the header reads louder than the room names it labels. Options: neutralise the header (inherit ink), keep accent. Undecided.
+- Sender names in room-list preview lines are still per-user coloured via `getSenderColor` (a different system from the removed per-room `--room-accent`, so untouched by design). They are now the most colourful thing in the room list. Undecided whether to quiet them.
+
 ## New this session (2026-09-17)
 
 - Should the room-kind glyph keep the `room_list_color` accent now that room names are white and the glyph is the only coloured element in the list? The user flagged that purple as "sticking out" on 2026-09-04; now that it is the sole accent, the question resurfaces.
@@ -60,6 +101,15 @@ Room stays unread after reading; clearing from another client works (user confir
 Root cause fixed in 0.4.2 (membership events no longer drive unread counts), but the 37 existing membership events that were flagged with unread_type=2 remain in the database. User can manually zero them when desired (requires app quit, one-off cleanup query, restart). Cleanup offer documented but not yet offered — awaits explicit user go-ahead.
 
 ## Resolved
+
+- **Rail profile avatar bug** — RESOLVED (2026-09-20): `getAvatarThumbnailURL(client.userID)` was called with no profile content, so `avatar_url` was never available and it could only ever draw a generated letter tile. Fixed by fetching profile once via `client.rpc.getProfile(client.userID)` and passing as the second argument.
+- **Stale `room_list_color` preference description** — RESOLVED (2026-09-20): preferences.ts ~136 referenced the deleted `uniform_room_list_color` preference. Updated to: "The sidebar accent: the color of the room kind glyphs in the room list."
+- **`toReversed()` macOS floor** — RESOLVED (2026-09-20): `roomList.toReversed()` was replaced with `[...roomList].reverse()`, removing the macOS 13.3+ floor.
+- **Redundant Recent section header** — RESOLVED (2026-09-20): The Recent section's collapsible header was removed. Sections now carry a `headerless` boolean; Recent sets true. `isCollapsed` is forced false for headerless sections.
+- **Is "Restart echo" actionable from the frontend?** — RESOLVED (2026-09-20): YES. `restart_for_update` is fully wired (registered in invoke_handler, declared in build.rs AppManifest, granted in capabilities/default.json). A new `restartApp()` helper exposes it without the PROD gate.
+- **Can the backend report first-sync progress as a fraction?** — RESOLVED (2026-09-20): NO. `SyncStatus` has no progress-fraction field, only `{type, error?, error_count, last_sync?}`. Any sync-progress UI must be indeterminate or count-only unless the Go side is extended.
+- **WebAuthLogin invisible Login button / `matrix-login` missing background** — RESOLVED (2026-09-20): Both fixed by the redesign. WebAuthLogin.css set `background: var(--primary-color); color: white` where primary is near-white, ~1.1:1 contrast. MainScreen matrix-login had no background-color. New WebAuthLogin rewrite eliminated both issues by using the signed-out surface styling.
+
 - Which room-list sort option (A–F, or combination)? — RESOLVED (2026-09-17): option E (per-section sort + mode tag) was implemented, then DELETED the same day. The user rejected cycle-on-click as undiscoverable, and the follow-up "Grouped/Recent switch + filter chips" design (the One Chip Row artifact) was never built either. What actually shipped: Recent is a fourth sub-filter in the space rail — it narrows nothing, drops all sections, shows everything newest-first, and has no Unread section. There is no sort control anywhere in the room list, and no filter chips.
 - Should the Rooms/DMs grouping keep Rooms above Direct messages, and is per-group recency ordering (vs the old single global recency list) the desired behaviour? — RESOLVED (2026-09-17): superseded by the Grouped/Recent view switch decision. When in Grouped view, rooms and DMs are separate collapsible sections (order TBD by user preference); when in Recent view, all rooms are one flat list sorted by recency, category-agnostic.
 - When to start matrix-rust-sdk integration for mobile support? — RESOLVED (2026-09-01): mobile will be an owned fork of Element X iOS, which brings matrix-rust-sdk with it; no rust-sdk integration into the Tauri app is planned.

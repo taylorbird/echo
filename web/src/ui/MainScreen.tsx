@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import equal from "fast-deep-equal"
-import { JSX, RefObject, use, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react"
-import { SyncLoader } from "react-spinners"
+import { RefObject, use, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react"
 import Client from "@/api/client.ts"
 import { RoomListFilter, RoomStateStore } from "@/api/statestore"
 import type { EventID, RoomID } from "@/api/types"
@@ -29,6 +28,7 @@ import { ensureString, ensureStringArray, parseMatrixURI } from "@/util/validati
 import ClientContext from "./ClientContext.ts"
 import MainScreenContext, { MainScreenContextFields, SetActiveRoomExtra } from "./MainScreenContext.ts"
 import StylePreferences from "./StylePreferences.tsx"
+import SyncBox from "./SyncBox.tsx"
 import Keybindings from "./keybindings.ts"
 import { ModalContext, ModalWrapper, NestableModalContext, modals } from "./modal"
 import RightPanel, { RightPanelProps } from "./rightpanel/RightPanel.tsx"
@@ -507,25 +507,17 @@ const MainScreen = () => {
 	if (rightPanel) {
 		classNames.push("right-panel-open")
 	}
-	let syncLoader: JSX.Element | null = null
-	if (syncStatus.type === "waiting") {
-		syncLoader = <div className="sync-status waiting">
-			<SyncLoader color="var(--primary-color)"/>
-			Waiting for first sync...
-		</div>
-	} else if (
-		syncStatus.type === "erroring"
-		&& (syncStatus.error_count > 2 || (syncStatus.last_sync ?? 0) + SYNC_ERROR_HIDE_DELAY < Date.now())
-	) {
-		syncLoader = <div className="sync-status errored" title={syncStatus.error}>
-			<SyncLoader color="var(--error-color)"/>
-			Sync is failing
-		</div>
-	} else if (syncStatus.type === "permanently-failed") {
-		syncLoader = <div className="sync-status errored" title={syncStatus.error}>
-			Sync failed permanently
-		</div>
-	}
+	/*
+	 * Same gating as the badge this replaces: a brief blip while syncing is not worth a
+	 * whole column of explanation, so erroring has to persist before it is shown.
+	 */
+	const showSyncBox = syncStatus.type === "waiting"
+		|| syncStatus.type === "permanently-failed"
+		|| (
+			syncStatus.type === "erroring"
+			&& (syncStatus.error_count > 2 || (syncStatus.last_sync ?? 0) + SYNC_ERROR_HIDE_DELAY < Date.now())
+		)
+	const syncLoader = showSyncBox ? <SyncBox syncStatus={syncStatus}/> : null
 	const activeRealRoom = activeRoom instanceof RoomStateStore ? activeRoom : null
 	const renderedRoom = activeRoom ?? prevActiveRoom
 	useEffect(() => {
@@ -536,7 +528,11 @@ const MainScreen = () => {
 		}
 	}, [activeRoom, prevActiveRoom])
 	const mainContent = <main className={classNames.join(" ")} style={extraStyle}>
-		<RoomList activeRoomID={activeRoom?.roomID ?? null} space={space}/>
+		<RoomList
+			activeRoomID={activeRoom?.roomID ?? null}
+			space={space}
+			firstSync={syncStatus.type === "waiting"}
+		/>
 		{resizeHandle1}
 		{renderedRoom
 			? renderedRoom instanceof RoomStateStore
@@ -552,6 +548,7 @@ const MainScreen = () => {
 				{resizeHandle2}
 				{rightPanel && <RightPanel {...rightPanel}/>}
 			</>}
+		{syncLoader}
 		{context.pendingShare ? <div className="choose-share-target">
 			Select room to share:
 			<br/>
@@ -563,7 +560,6 @@ const MainScreen = () => {
 			<ModalWrapper ContextType={NestableModalContext} historyStateKey="nestable_modal">
 				<StylePreferences client={client} activeRoom={activeRealRoom}/>
 				{mainContent}
-				{syncLoader}
 				<UpdateChip/>
 				<ReleaseNotesOnLaunch/>
 			</ModalWrapper>

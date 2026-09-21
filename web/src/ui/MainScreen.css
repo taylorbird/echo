@@ -88,29 +88,10 @@ html[data-tauri] {
 	}
 }
 
-div.sync-status {
-	position: fixed;
-	top: 1rem;
-	left: 50%;
-	transform: translate(-50%, 0);
-	padding: 1.5rem;
-	background-color: var(--background-color);
-	border: 1px solid var(--border-color);
-	border-radius: .5rem;
-	display: flex;
-	gap: 1rem;
-
-	&.errored {
-		border: 2px solid var(--error-color);
-		color: var(--error-color);
-		font-weight: bold;
-	}
-}
-
 /*
  * Only the packaged app can update itself, so the chip only ever renders inside Tauri
  * (see web/src/util/updater.ts) — hence styling it under html[data-tauri] like the rest
- * of the mac chrome. Bottom-trailing keeps it clear of the sync status chip up top.
+ * of the mac chrome. Bottom-trailing keeps it out of the way of the room view.
  */
 html[data-tauri] div.update-ready-chip {
 	/* The label doubles as the way into the release notes, so it is a button — but it has to keep

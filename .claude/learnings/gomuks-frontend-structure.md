@@ -48,6 +48,14 @@
 ## useResizeHandle localStorage Write Timing
 - `useResizeHandle` hook (web/src/ui/util/ResizeHandle.tsx) persists the width to localStorage in a `useEffect` whenever the width changes. Critically, React's strict mode in development calls effects twice, and the hook runs on MOUNT to read the persisted value and set it as the initial state.
 - **Gotcha:** If you change the default width constant (e.g., `const DEFAULT_WIDTH = 350` → `const DEFAULT_WIDTH = 400`), existing users will NOT see the new default. Their old value is already persisted in localStorage and will be read on mount, overriding the constant.
+
+## SyncStatus Has No Progress Fraction (2026-09-20)
+
+**Verified:** `web/src/api/types/hievents.ts:130` — `SyncStatus` carries `{type, error?, error_count, last_sync?}`. There is no `progress` fraction, no `completed_room_count`, no expected total. The sync type is `initial | incremental | stopped`, and that is the only progress signal available.
+
+**Consequence:** Any frontend sync-progress UI showing a percentage must be either indeterminate (a hairline rule that does not claim measurement) or count-only (showing "5 rooms synced so far" without a completion bar). A crawling indeterminate bar beside a precise count reads as claiming a measurement nobody takes.
+
+**To change:** The Go backend would need to emit a `RoomsSyncedSoFar` counter or similar in the SyncStatus message, then track it through the Go-to-frontend IPC. This is a backend/sidecar change, not a frontend tweak.
 - **Fix:** Bump the localStorage key name (e.g., `roomListWidth` → `roomListWidth2`). This creates a "fresh" entry that falls through to the new default constant. Old persisted values are left untouched (no data loss), just orphaned.
 - **Related pattern:** Any hook that reads localStorage on mount and writes to localStorage on state change can have this problem. The localStorage key is the only lever for invalidating old defaults.
 
@@ -193,3 +201,21 @@ The `:has()` specificity (0,5,1) beats the element selector (0,0,1), so the most
 **Example:** `RoomList.tsx` `sections` useMemo reads `activeSubFilter` to decide on the recent-view short-circuit. The variable `activeSubFilter` was initially declared BELOW the useMemo (with other rail-space lookups). Moving the `sections` useMemo or declaring `activeSubFilter` later caused a TDZ error. **Fix:** moved `activeSubFilter` declaration to the top of the component, above the `sections` useMemo.
 
 **Design implication:** consider the useMemo dependencies and variable declaration order up front; useMemo is not a "magic black box" that can safely read any in-scope variable without regard to declaration order.
+
+## Avatar Thumbnail URL Fallback: Silent Degrades to Letter Tile (2026-09-18)
+
+**Gotcha:** `getAvatarThumbnailURL(userID, content?: UserProfile | null, ...)` silently degrades to a generated letter avatar when the `content` parameter is omitted. There is no error, so a caller that forgets to pass the profile argument sees "the avatar just never loads" (looks like a network failure or server misconfiguration, but it's actually a missing client-side data fetch).
+
+**Example:** `RoomList.tsx` line ~623 renders `<img className="avatar" src={getAvatarThumbnailURL(client.userID)} />` with no content parameter. The function returns a letter-avatar data URL (e.g., `data:image/svg+xml,...`), which renders as a colourful initial. The user's actual avatar (fetched from the homeserver) is never displayed.
+
+**Fix pattern:** obtain the profile via `client.rpc.getProfile(userID)` (the pattern already used at `web/src/ui/rightpanel/UserInfo.tsx` ~51) and pass it as the second argument: `getAvatarThumbnailURL(userID, profile)`. The function can then extract `profile.avatar_url` and fetch the thumbnail.
+
+## Space Membership: m.space.child Edges, DMs Never Children (2026-09-18)
+
+**Architecture:** Space membership is determined by `m.space.child` edges — events stored under the space's state tree. `SpaceEdgeStore.include(room)` returns `this.#flattenedRooms.has(room.room_id)`, where `#flattenedRooms` is populated from these edges.
+
+**DM exception:** Direct messages (rooms with `dm_user_id` set) are essentially never added as `m.space.child` events. Users do not join DMs to spaces. Therefore any per-space filter that includes DMs will be structurally empty (except `DirectChatSpace`, which uses `Boolean(room.dm_user_id)` and ignores parent membership entirely).
+
+**Consequence:** In a real space, the "Direct messages" sub-filter is permanently empty. The "Rooms" sub-filter shows the same rooms as "All chats" (since all child rooms are rooms, no DMs). These sub-filters are dead weight inside spaces and only work on Home and the orphans pseudo-space (`AllChatsSpace`, which has no membership gate).
+
+**Related fact:** The "Rooms" sub-filter uses `SubFilteredSpace.include()` which ANDs the parent space's membership (`#flattenedRooms`) with a per-group room predicate. It returns true only for rooms that are both (1) children of the space via `m.space.child` and (2) not DMs. Inside a space, both constraints are the same (all children are non-DMs), so the filter provides no additional filtering over "All chats."

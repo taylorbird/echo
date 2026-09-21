@@ -111,6 +111,33 @@ export function startUpdateChecks(): () => void {
 
 // The staged bundle only takes effect after a relaunch. The Rust side kills the gomuks sidecar
 // before restarting — otherwise the old backend keeps port 29325 and serves the old frontend.
+/*
+ * Relaunches the app for a reason that has nothing to do with updates.
+ *
+ * Deliberately NOT restartToApply: that one is gated on `updatesSupported`, which is
+ * `isTauri && import.meta.env.PROD`, because an unpackaged build has no bundle to swap.
+ * A plain relaunch has no such requirement, and the state that needs it most — the backend
+ * session pass running out after 24 hours — happens in dev constantly. Reusing the update
+ * helper would make the button silently do nothing in exactly the build where it is needed.
+ *
+ * The underlying command is still restart_for_update (lib.rs): it kills the sidecar and calls
+ * app.restart(), which is the whole job. Renaming it is a Rust change plus two ACL entries
+ * (build.rs AppManifest and capabilities/default.json), so the name stays and this comment
+ * explains why it is being called from here.
+ */
+export function restartApp() {
+	if (!isTauri) {
+		window.location.reload()
+		return
+	}
+	invoke("restart_for_update").catch(err => {
+		console.error("Failed to restart:", err)
+		window.alert(
+			"echo couldn't relaunch itself.\n\nQuit echo and open it again.\n\n" + `(${err})`,
+		)
+	})
+}
+
 export function restartToApply() {
 	if (!updatesSupported) {
 		return
