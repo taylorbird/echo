@@ -125,7 +125,7 @@ const skeletonWidths: [number, number][] = [
 	[47, 70], [55, 84], [42, 66], [69, 58], [49, 77], [60, 82],
 ]
 
-const RoomListSkeleton = ({ count }: { count: number }) => <>
+export const RoomListSkeleton = ({ count }: { count: number }) => <>
 	{Array.from({ length: count }, (_, i) => {
 		const [w1, w2] = skeletonWidths[i % skeletonWidths.length]
 		return <div className="room-entry-skeleton" key={`skeleton-${i}`} aria-hidden="true">

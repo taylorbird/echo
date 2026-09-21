@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { useEffect, useMemo } from "react"
-import { ScaleLoader } from "react-spinners"
 import { BACKEND_WS_URL } from "./api/backend.ts"
 import Client from "./api/client.ts"
 import RPCClient from "./api/rpc.ts"
@@ -23,6 +22,7 @@ import WailsClient from "./api/wailsclient.ts"
 import WasmClient from "./api/wasmclient.ts"
 import WSClient from "./api/wsclient.ts"
 import ClientContext from "./ui/ClientContext.ts"
+import DisconnectedScreen from "./ui/DisconnectedScreen.tsx"
 import MainScreen from "./ui/MainScreen.tsx"
 import WebAuthLogin from "./ui/WebAuthLogin.tsx"
 import { LoginScreen, VerificationScreen } from "./ui/login"
@@ -92,22 +92,16 @@ function App() {
 		</SignedOut>
 	}
 
-	const errorOverlay = connState?.error ? <div
-		className={`connection-error-wrapper ${afterConnectError ? "post-connect" : ""}`}
-		tabIndex={-1}
-	>
-		<div className="connection-error-inner">
-			<div>{connState.error} &#x1F63F;</div>
-			{connState.reconnecting && <div>
-				<ScaleLoader width="2rem" height="2rem" color="var(--primary-color)"/>
-				Reconnecting to backend...
-				{connState.nextAttempt ? <div><small>(next attempt at {connState.nextAttempt})</small></div> : null}
-			</div>}
-		</div>
-	</div> : null
+	const errorOverlay = connState?.error ? <DisconnectedScreen
+		error={connState.error}
+		reconnecting={connState.reconnecting}
+		nextAttempt={connState.nextAttempt}
+	/> : null
 
+	// The screen draws its own skeleton of the app and covers the window, so it needs no
+	// pre-main surface under it the way the sign-in screens do.
 	if (connState?.error && !afterConnectError) {
-		return <div className="pre-main">{errorOverlay}</div>
+		return errorOverlay
 	} else if ((!connState?.connected && !afterConnectError) || !clientState || !clientState.is_initialized) {
 		const msg = connState?.connected ?
 			clientState
