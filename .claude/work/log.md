@@ -2,6 +2,42 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-09-21 17:22
+
+**Session Summary**: One long session spanning 08:40–17:22 PDT. Released 0.6.0 (minor: f9795a08 "chrome: unified title bar, Inter throughout, blue/red unread ramp, Recent sub-filter" containing batch-1 fixes, unread retune, and login redesign from 2026-09-20) and 0.6.1 (patch: disconnected screen, loading-state sweep, release notes rewrite). Both shipped: app and DMG notarized/Accepted, feed verified serving both versions. Penguin logomark is echo original (not upstream gomuks). DisconnectedScreen renders full-window opaque skeleton under filter:blur(3px) with centred box and penguin lockup; different from first-sync SyncBox (which stays bare). Loading unified to one @keyframes sk-sweep animation app-wide with HairlineWait for unknown-shape states; react-spinners removed entirely. 20 UI sites converted from spinners. Durable constraints recorded for all new patterns (skeleton animation, loading idioms, disconnected screen, reduce-motion gates, token scoping). Favicon mismatch (still gomuks.png) deferred to next session.
+
+**Decisions Made**:
+- 0.6.0 released as minor (user convention: feature addition + setting removal = minor)
+- Skeleton animation unified: one @keyframes sk-sweep; all placeholders use .sk class; no per-file shimmer ever re-added
+- Two loading idioms only: skeleton (shape known) or HairlineWait (shape unknown); react-spinners completely removed
+- DisconnectedScreen opaque full-window skeleton (frozen UI), never blur (blurred would imply broken); centred box with quick-switcher styling; penguin lockup below
+- Penguin is echo's own logo (web/src-tauri/icons/echo.icon/, 256px downscale web/src/icons/echo-penguin.png); upstream gomuks files are leftovers
+- release.sh gh token pinning to taylorbird prevents account-drift 403s during multi-account scenarios
+- Reduce-motion gates: @media + data-ignore-reduce-motion override pair; animations disabled on user's ON-by-default machine
+- --room-list-width declared on main.matrix-main (not :root); fixed layers outside main use --space-bar-width
+
+**Actions Taken**:
+- 0.6.0: rewrite RELEASE_NOTES.md (title bar removed, Inter, unread vs mention, Recent sub-filter, per-room colours gone, read-receipts known)
+- Release: git tag v0.6.0 && release.sh minor (full pipeline: version bump, npm build, go build, tauri build, sign, notarize, staple DMG separately, latest.json, push, GitHub release)
+- DisconnectedScreen: NEW web/src/ui/DisconnectedScreen.tsx/.css (opaque skeleton, filter blur, rgba overlay, centred box, penguin lockup in grid)
+- Loading unified: NEW Loading.css (@keyframes sk-sweep, .sk base + weights, reduce-motion gate); NEW loading/index.tsx (SkeletonLine/Name/Circle/Block/Edge/Row, HairlineWait)
+- Removed react-spinners from package.json/lockfile (npm uninstall)
+- Fixed --tertiary-text-color light mode (#9a9a9a, 2.8:1 contrast ratio)
+- Converted 20 render sites to skeleton/HairlineWait: EventContextModal, EventEditHistory, SettingsView Monaco, LazyWidget, UserInfo*, RoomPreview, maps/async, RoomList post-reconnect, load-more buttons (3 sites), URLPreview description, ConfirmModal, MediaMessageBody, TypingNotifications
+- Fix (7a596c37): room-list.skeleton + placeholder rows both tied to skeletonRows > 0; prevents >12-room reconnect scroll lock
+- 0.6.1: rewrite RELEASE_NOTES.md (disconnected screen, loading vocabulary); git tag v0.6.1 && release.sh patch
+- Verified both 0.6.0 and 0.6.1 feed live
+
+**Context/Thoughts**:
+- Design artifacts for choices: "Reconnect Screen Placement" (cards A–H variant; user picked F, iterated to H with box); "Loading States Sweep" (4×5 grid; user picked Hairline/Skeleton/Skeleton/Text)
+- Skeleton animation now standardized; future regressions to shimmer or spinners must be rejected at review
+- DisconnectedScreen opaque (frozen UI unresponsive) not blurred (blurred reads as broken/glitchy); penguin lockup is Easter egg + visual anchor
+- SyncBox (first sync) stays bare by design; deliberately differs from disconnected screen (first-sync skeleton is live and worth watching)
+- Penguin: 256px downscale via `sips -Z 256`; source in web/src-tauri/icons/echo.icon/
+- Favicon mismatch (web/index.html:5 gomuks.png) is one-line fix, deferred; Dock and browser disagree
+- 0.6.1 is first production build with DisconnectedScreen + loading module; WKWebView divergence possible (history: fetch_og_tags, external links, clipboard had quirks)
+- Tree clean at checkpoint; dev app not running (no token risk)
+
 ## 2026-09-21 08:33
 
 **Session Summary**: Session consisted of bringing the local dev app back online after finding all processes down overnight (tauri dev, app window, sidecar all exited at some point). No code was written and no decisions were made. Dev app was relaunched with tauri dev, fresh 24h backend token minted at ~08:29 PDT (expires ~08:29 on 2026-09-22). All uncommitted work from prior session remains intact: 14 modified files, 1 deletion (WebAuthLogin.css), 3 new untracked files (SyncBox.tsx/css, SignedOut.css), HEAD still f9795a08.

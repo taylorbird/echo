@@ -210,6 +210,36 @@ The `:has()` specificity (0,5,1) beats the element selector (0,0,1), so the most
 
 **Fix pattern:** obtain the profile via `client.rpc.getProfile(userID)` (the pattern already used at `web/src/ui/rightpanel/UserInfo.tsx` ~51) and pass it as the second argument: `getAvatarThumbnailURL(userID, profile)`. The function can then extract `profile.avatar_url` and fetch the thumbnail.
 
+## Loading Module: Two Idioms, One Animation (2026-09-21)
+
+**Architecture:** `web/src/ui/loading/` contains placeholder shapes and wait indicators. All skeleton placeholders use `web/src/ui/loading/Loading.css` and the unified `@keyframes sk-sweep` animation (a gradient highlight travelling left→right via background-position).
+
+**Two idioms:**
+1. **Skeleton** (shape known): export SkeletonLine, SkeletonName, SkeletonCircle, SkeletonBlock, SkeletonEdge, SkeletonRow. Apply `.sk` class for animation, weight modifiers `.sk-name` (.11), `.sk-avatar` (.09), `.sk-circle` (.075), `.sk-line` (.07) for different line heights. Used whenever the final layout's shape is known but data is loading.
+2. **HairlineWait** (shape unknown): component showing text over a 2px `--hairline-color` horizontal rule. Used when the shape is indeterminate — awaiting enough data before layout can be decided. No animation (the hairline is static).
+
+**Animation:** One `@keyframes sk-sweep` defined in Loading.css with reduce-motion gate `@media (prefers-reduced-motion: reduce) { html:not([data-ignore-reduce-motion]) ... animation: none }`. Never add per-file shimmer animations; all new loading work plugs into this system.
+
+**Removed:** react-spinners library completely (npm uninstall). All ten render sites converted to skeleton or HairlineWait.
+
+**Sites using skeleton:** UserInfo avatar, UserInfoDeviceList (2 lines), UserInfoMutualRooms (3 rows), RoomPreview (1 line 40%), maps/async (block), RoomList post-reconnect (full section), URLPreview description (2 lines).
+
+**Sites using HairlineWait:** EventContextModal ("Getting the messages around this one"), EventEditHistory ("Getting the edit history"), SettingsView Monaco editor ("Getting the editor"), LazyWidget ("Getting the widget").
+
+**Sites using SkeletonEdge:** load-more buttons (TimelineView, ThreadView, Notifications, EventContextModal ×2) render label + 2px bar under the button row.
+
+## CSS Scoping: --room-list-width vs --space-bar-width (2026-09-21)
+
+**Fact:** `--room-list-width` is declared on `main.matrix-main` (400px default, overridden inline per session state). Fixed layers outside the main element (modals, alerts, popovers) **cannot resolve** this token because the CSS cascade doesn't reach up to parent scopes — custom properties are inherited down, not up.
+
+**Consequence:** Any element outside `main.matrix-main` that needs a room-list-width value must either (1) use `--space-bar-width` (declared at :root and thus available everywhere), or (2) declare its own token at :root.
+
+**Example:** sidebar width in modals should use `--space-bar-width` (4.5rem + padding), not `--room-list-width` (400px).
+
+## Tertiary Text Colour Light Mode (2026-09-21)
+
+**Addition:** `--tertiary-text-color` was previously defined only in dark mode. Light mode now has `--tertiary-text-color: #9a9a9a` (2.8:1 contrast ratio on white, accepted hierarchy over maximum contrast). This token is used for captions and secondary text where lower emphasis is wanted (search hints, timestamps, etc.).
+
 ## Space Membership: m.space.child Edges, DMs Never Children (2026-09-18)
 
 **Architecture:** Space membership is determined by `m.space.child` edges — events stored under the space's state tree. `SpaceEdgeStore.include(room)` returns `this.#flattenedRooms.has(room.room_id)`, where `#flattenedRooms` is populated from these edges.

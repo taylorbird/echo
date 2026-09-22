@@ -102,3 +102,18 @@ neutral grey (`color-mix` of `--secondary-text-color`), no longer the quoted sen
 Ritual as documented: notes rewritten first, dev stopped, `npm ci` to undo an accidental pnpm
 install, feature commit d8fc2245 then release.sh detached; both notarizations Accepted; feed
 verified serving 0.5.1 with the new notes. Wall time about 30 minutes.
+
+## 2026-09-21 (beforeBuildCommand vs sidecar embed; spctl expected line; account pinning)
+
+### Tauri beforeBuildCommand vs go:embed sidecar (2026-09-21)
+**Gotcha clarified:** `tauri.conf.json` has `beforeBuildCommand: "npm run build"` which re-runs the frontend build during `npx tauri build`. However, the shipped UI in production comes from the Go sidecar's `//go:embed dist` directive, which was compiled much earlier in release.sh (during `go build ./cmd/gomuks`). **Consequence:** editing `web/src` after the Go build runs and before `tauri build` completes makes the bundled app and sidecar disagree — the `web/dist` folder has new assets, but the Go binary carries old ones. **Prevention:** don't touch `web/src` while release.sh is running. The `beforeBuildCommand` rebuilds dist, but the sidecar was already built with an older embedded copy.
+
+### DMG notarization: spctl "rejected" is expected sequencing
+**Fact:** `spctl` is the command-line tool for Apple's Gatekeeper security policy. When `npx tauri build` creates the DMG and release.sh runs `spctl assess -v ...` on it, the output includes lines like "rejected" — this appears to be part of the assessment process, not a failure indicator. The actual failure would be a non-zero exit code or a line like "invalid". The notarization round-trip that follows is the authoritative gate: a successfully notarized DMG will staple cleanly; a rejected one fails at the staple step with "Record not found." So seeing "rejected" in spctl output does not mean the build is bad; wait for notarization and stapling to complete.
+
+### Manual push: GH_TOKEN pinning to taylorbird (2026-09-21 reiterated)
+**Pattern:** After release.sh completes, a bare `git push` may fail 403 if another GitHub account has become active in the meantime (e.g., a browser session to an org account). The credential helper `gh auth git-credential` uses the currently-active `gh auth` account. **Prevention:** explicitly set the token upfront before any push:
+```bash
+GH_TOKEN="$(gh auth token --user taylorbird)" && git push
+```
+This pins both `git push` (via the credential helper) and any subsequent `gh` CLI commands to the taylorbird account, independent of what `gh auth` reports as active.

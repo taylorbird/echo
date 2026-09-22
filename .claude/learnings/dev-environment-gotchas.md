@@ -285,6 +285,24 @@ this issue entirely.
 
 **Recovered pattern:** Briefs should document these forbidden actions explicitly so the subagent knows the constraints.
 
+## Vite HMR survives sidecar death (2026-09-21)
+
+**Pattern:** Vite's HMR (Hot Module Reload) runs on its own socket (port 6173, independent of the gomuks backend on 29325). When only the sidecar is killed (backend dies but Vite keeps running), the browser window remains on the disconnected-screen forever — because there's no backend to reconnect to. **However:** Vite HMR still works. If you edit `web/src` files, the changes reload live in the window (CSS, TSX, etc.), giving you a way to iterate on the disconnected screen UI without a live backend.
+
+**Use case:** testing DisconnectedScreen styling, animations, and layout without spinning up the full backend stack. Kill the sidecar, keep Vite running, edit CSS/TSX, and see the results live on the disconnected-screen display.
+
+## eslint import/order: sorting quirk with @/ alias (2026-09-21)
+
+**Fact:** The `eslint-plugin-import` rule `import/order` sorts imports in a specific sequence: Node.js built-ins, external packages, internal aliases (`@/`), relative paths (`./ ../`), then type imports. Within each group, items are sorted alphabetically. **Quirk:** image/icon imports (`@/icons/x.png`) sort alphabetically WITHIN the `@/` group, so they must come before relative `.tsx` imports if the rule is to pass. This can make the imports look "out of order" if you're not aware of the rule. **Pattern:** put all `@/` imports (including image files) before relative imports in the same group.
+
+## sips for Downscaling UI Raster Assets (2026-09-21)
+
+**Utility:** `sips` (scalable image processing system) is a macOS built-in command-line tool for image manipulation. For downscaling a 1024px icon/image to 256px: `sips -Z 256 in --out out` (where -Z is "scale to fit in square", in is the source file, --out specifies the output file).
+
+**Example:** `sips -Z 256 web/src-tauri/icons/echo.icon/Assets/echo-icon-penguin-positioned\ 2.png --out web/src/icons/echo-penguin.png`
+
+Used this session to create the 256px downscale of the echo penguin for DisconnectedScreen display. No external image tools needed; `sips` is already available on any Mac.
+
 ## Headless Chrome One-Look Render for Artifact HTML (2026-09-13)
 
 **Use case:** visual verification of artifact HTML without a browser window. Headless Chrome renders the page to PNG for a quick "does it look right" check, useful when live dev browser is unavailable (CI, sandboxed environment, visual review after export).

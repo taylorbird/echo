@@ -364,6 +364,53 @@ nohup scripts/release.sh minor > <scratch>/release-<version>.log 2>&1 &
 ### Pre-app screens share one surface with no app shell
 **Architecture:** All pre-authentication screens (`div.pre-main.signed-out`) render on one surface: no sidebar, no room header, no right panel — nothing that requires a room to exist. Includes: backend-auth WebAuthLogin rewrite, LoginScreen, VerificationScreen, sidecar connect wait (SyncBox). They share `.signin-column` styles from `web/src/ui/login/SignedOut.css`. Rationale: before sign-in there are no rooms, and a skeleton of data that does not exist reads as broken.
 
+## 2026-09-21 (DisconnectedScreen, loading sweep, two releases shipped 0.6.0 and 0.6.1)
+
+### Skeleton animation: one vocabulary app-wide
+**Decision:** A single `@keyframes sk-sweep` animation (background-position left→right, 200%-wide gradient highlighting effect) is the single source of truth for all loading placeholders across the app. New placeholder shapes use `.sk` base class (+ weight modifiers `.sk-name`, `.sk-avatar`, `.sk-circle`, etc.) and automatically inherit the animation via CSS.
+
+**Implementation:** web/src/ui/loading/Loading.css defines `sk-sweep` once with media-query reduce-motion gate. RoomListSkeleton and DisconnectedScreen pass their skeleton's `className="sk"` to enable the animation.
+
+**Old pseudo-element skeletons** (e.g., `::before` shimmer rules) are named in Loading.css's selector list and repointed to `sk-sweep` via CSS, killing the need to touch their source files. 
+
+**Critical discipline:** never re-add per-file shimmer animations. All new skeleton work plugs into the `.sk` system.
+
+### Two loading states: skeleton or HairlineWait
+**Decision:** Only two idioms across the entire app: (1) skeleton (the shape is known: profile avatar, name line, title block, etc.) with `sk-sweep` animation; (2) HairlineWait (the shape is unknown: awaiting data before layout is possible) showing text over a 2px `--hairline-color` rule, no animation.
+
+**Removed:** react-spinners library entirely (package.json + lockfile). No ScaleLoaders, PulseLoaders, BarLoaders remain. All ten use sites converted to skeleton or HairlineWait.
+
+**Implementation:** HairlineWait is a new component `web/src/ui/loading/HairlineWait.tsx` used in EventContextModal ("Getting the messages around this one"), EventEditHistory, SettingsView Monaco, LazyWidget, etc. Labels precede the hairline; margins set in Loading.css by `.sk-hairline` selector.
+
+### DisconnectedScreen: full-window opaque skeleton, not blur
+**Architecture:** New component `web/src/ui/DisconnectedScreen.tsx` renders an opaque skeleton of the entire app layout (rail, room list, timeline, composer under `filter: blur(3px)`) with an `rgba(0,0,0,.55)` tint. A centered box over the blurred background carries the message. This differs fundamentally from the old approach (red-bordered box floating over a live conversation).
+
+**Box styling:** `.5rem` radius + AppKit shadow stack (identical to QuickSwitcher.css:11) — the same treatment used for transient modals, so it reads as intentional and consistent.
+
+**Message contents:** "Lost the local server" + explanation + "Next attempt at …" + "Restart echo" button (calls `restartApp()` helper). The raw WebSocket close code moves to a `title` attribute on the box for diagnostics.
+
+**Lockup placement:** echo penguin logomark (4rem) + wordmark beside it, positioned in the lower track of a `1fr auto 1fr` grid so it sits exactly halfway between the box and the window's bottom edge — an Easter egg and a visual anchor that the connection is being re-established.
+
+**Rationale:** app behind is REPLACED not blurred (a frozen, unresponsive conversation would read as broken). Filter blur on the skeleton layer (not backdrop-filter on the overlay) keeps the blur off the box's compositing layer, improving perceived responsiveness.
+
+### echo penguin logomark locked (not gomuks gopher)
+**Fact:** The low-poly purple/blue penguin in `web/src-tauri/icons/echo.icon/` and `web/src/icons/echo-penguin.png` (256px downscale) is echo's own logo, created for this fork. It is NOT gomuks branding — upstream's mascot is the Go gopher with [m], visible in `web/public/gomuks*.png` (upstream leftovers).
+
+**Known issue:** `web/index.html:5` still points the web favicon at `gomuks.png` (the gopher). Dock icon and browser favicon disagree. Not fixed this session but marked for next.
+
+### release.sh gh token pinning (2026-09-21 refinement)
+**Decision:** release.sh pinned `GH_TOKEN` to `taylorbird` upfront (2026-08-27), but the mechanism is worth repeating: if an alternative gh account becomes active mid-build, `git push` and `gh release create` silently switch accounts and fail 403. Running `GH_TOKEN="$(gh auth token --user taylorbird) scripts/release.sh"` or exporting the token in release.sh itself prevents the drift. Verified working 0.6.0 and 0.6.1.
+
+### Reduce Motion gates: media query + data attribute pair
+**Discipline:** Every animation rule lives under `@media (prefers-reduced-motion: reduce)` with an override `html:not([data-ignore-reduce-motion])` that makes the animation apply ONLY when the override is absent. Machine has Reduce Motion ON by default, so animations NEVER run unless StylePreferences explicitly sets the override attribute based on the `Ignore reduce motion` user preference.
+
+**Pattern:** `@media (prefers-reduced-motion: reduce) { html:not([data-ignore-reduce-motion]) .animated-element { animation: none; transition: none; } }`
+
+**JS side:** animation-end event listeners must also check the preference state and skip exit-animation states for reduce-motion users (animationend never fires under animation:none, so relying on it alone leaves animations half-applied).
+
+### --room-list-width scope constraint
+**Fact:** `--room-list-width` is declared on `main.matrix-main` (400px default, inline override per session). It is NOT declared at :root. Fixed layers outside the main element (e.g., modals, alerts, windows) cannot resolve it. For such layers, use `--space-bar-width` (declared at :root) or declare their own token.
+
 ## 2026-09-18 (UI release paused; external tester feedback; push-review findings)
 
 ### RELEASE_NOTES.md must be rewritten before release.sh run

@@ -2,9 +2,14 @@
 
 <!-- Things uncertain, need revisiting, or blocked on -->
 
-## New this session (2026-09-20)
+## New this session (2026-09-21)
 
-- **Where does the sync box go when a room is selected?** A mid-session sync failure currently centres a 30rem column over the conversation being read, with no edge separating it from timeline text. The design agent suggested pinning it to the top of the timeline when a room is active; that is a new composition and needs the user's eye.
+- **Web favicon should point at the penguin** (`web/index.html:5` still `<link rel="icon" href="gomuks.png" />`). The Dock icon is the echo penguin; the browser favicon is the upstream gomuks gopher. Small fix, non-blocking, deferred — note the penguin currently lives at `web/src/icons/echo-penguin.png` (a Vite import), so the favicon needs a copy under `web/public/` (or a Vite-resolved `href`), not just an href swap.
+- **Should first sync's SyncBox also become a box for consistency** with the disconnected screen, or stay bare (current reasoning: during first sync the skeleton behind is live and worth watching)? User has not weighed in; deferred.
+- Light-mode `--tertiary-text-color` is now #9a9a9a (2.8:1 on white) — accept hierarchy over contrast, or change to #767676 (higher ratio)?
+- Nobody has seen most of the new loading states in the app (many last <1s or need specific triggers); user verified the reachable ones ("looks fine for me, I can't see them all"). Real testing pending in production WKWebView.
+
+## New this session (2026-09-20)
 - **The verification screen renders on the new signed-out surface but its internals were not restyled.** It will be the one screen in the sequence still wearing old styling. Defer pending user feedback.
 - **Sign-in → MainScreen is a hard scene change** with no shared element, inherent to dropping the app shell. No transition specced. Defer.
 - **Should the backend token be re-minted on auth failure**, or should the expired screen remain the answer? Currently the screen is the answer. Deferred pending user input.
@@ -102,6 +107,7 @@ Root cause fixed in 0.4.2 (membership events no longer drive unread counts), but
 
 ## Resolved
 
+- **Where does the sync box go when a room is selected?** — RESOLVED (2026-09-21): for the connection-loss case, answered by DisconnectedScreen (box over opaque skeleton, window-centred, with penguin lockup). SyncBox (first sync) itself remains bare and pane-scoped — deliberately different per its comment, since the skeleton behind is live during first sync and worth watching.
 - **Rail profile avatar bug** — RESOLVED (2026-09-20): `getAvatarThumbnailURL(client.userID)` was called with no profile content, so `avatar_url` was never available and it could only ever draw a generated letter tile. Fixed by fetching profile once via `client.rpc.getProfile(client.userID)` and passing as the second argument.
 - **Stale `room_list_color` preference description** — RESOLVED (2026-09-20): preferences.ts ~136 referenced the deleted `uniform_room_list_color` preference. Updated to: "The sidebar accent: the color of the room kind glyphs in the room list."
 - **`toReversed()` macOS floor** — RESOLVED (2026-09-20): `roomList.toReversed()` was replaced with `[...roomList].reverse()`, removing the macOS 13.3+ floor.
