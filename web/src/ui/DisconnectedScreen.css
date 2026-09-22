@@ -52,16 +52,13 @@ div.disconnected-skeleton > div.sk-space-bar {
 	gap: .875rem;
 	padding-top: calc(var(--window-top-margin) + var(--traffic-light-strip) + .5rem);
 
+	/* Fill and sweep come from Loading.css, which names every placeholder shape in the
+	   app in one place — including the first tile's heavier weight. */
 	> i {
 		display: block;
 		width: 2rem;
 		height: 2rem;
 		border-radius: .5rem;
-		background: rgba(var(--warm-tint-rgb), .07);
-
-		&:first-child {
-			background: rgba(var(--warm-tint-rgb), .11);
-		}
 	}
 }
 
@@ -96,7 +93,6 @@ div.disconnected-skeleton > div.sk-room-view {
 			height: .875rem;
 			width: 10.5rem;
 			border-radius: .4375rem;
-			background: rgba(var(--warm-tint-rgb), .11);
 		}
 	}
 
@@ -131,7 +127,6 @@ div.sk-timeline > div.sk-event {
 		height: var(--timeline-avatar-size);
 		flex: none;
 		border-radius: 50%;
-		background: rgba(var(--warm-tint-rgb), .09);
 	}
 
 	> div.sk-event-lines {
@@ -145,14 +140,12 @@ div.sk-timeline > div.sk-event {
 			display: block;
 			height: .8125rem;
 			border-radius: .375rem;
-			background: rgba(var(--warm-tint-rgb), .11);
 		}
 
 		> b {
 			display: block;
 			height: .6875rem;
 			border-radius: .3125rem;
-			background: rgba(var(--warm-tint-rgb), .07);
 		}
 	}
 }

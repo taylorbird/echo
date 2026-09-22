@@ -15,14 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import type { IWidget } from "matrix-widget-api"
 import { Suspense, lazy, use } from "react"
-import { GridLoader } from "react-spinners"
 import ClientContext from "../ClientContext"
+import { HairlineWait } from "../loading"
 import { RoomContext } from "../roomview/roomcontext"
 
 const Widget = lazy(() => import("./widget"))
 
 const widgetLoader = <div className="widget-container widget-loading">
-	<GridLoader color="var(--primary-color)" size={20} />
+	<HairlineWait label="Getting the widget" />
 </div>
 
 

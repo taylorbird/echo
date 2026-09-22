@@ -1,0 +1,162 @@
+/*
+ * The app's one loading vocabulary.
+ *
+ * Two idioms and nothing else: a skeleton where the shape of what is arriving is already
+ * known, and a line of text over a hairline where it is not. The spinners are gone because
+ * a dozen different ones at a dozen different speeds read as a dozen different kinds of
+ * waiting, when there is really only ever the one.
+ */
+
+/* One skeleton animation for the whole app: a soft highlight travelling left to right
+   across every placeholder shape, rather than the shapes pulsing in place. */
+@keyframes sk-sweep {
+	from { background-position: 200% 0; }
+	to { background-position: -200% 0; }
+}
+
+/*
+ * Every placeholder shape carries this. The components below take it as a class; the
+ * skeletons that predate them draw their shapes as pseudo-elements and bare <i>/<b>, which
+ * cannot, so those are named here instead of being rewritten. --sk-base is the shape's own
+ * weight and the sweep is built from it, so the alpha stays the one thing a caller picks.
+ */
+.sk,
+div.room-entry-skeleton > div.sk-avatar > i,
+div.room-entry-skeleton div.sk-name::before,
+div.room-entry-skeleton div.sk-preview::before,
+div.disconnected-skeleton div.sk-space-bar > i,
+div.disconnected-skeleton div.sk-room-header > i,
+div.disconnected-skeleton div.sk-event-avatar,
+div.disconnected-skeleton div.sk-event-lines > i,
+div.disconnected-skeleton div.sk-event-lines > b {
+	--sk-base: rgba(var(--warm-tint-rgb), .07);
+	--sk-highlight: rgba(var(--warm-tint-rgb), .16);
+	background-color: var(--sk-base);
+	background-image: linear-gradient(
+		90deg,
+		var(--sk-base) 0%, var(--sk-base) 40%,
+		var(--sk-highlight) 50%,
+		var(--sk-base) 60%, var(--sk-base) 100%
+	);
+	background-size: 200% 100%;
+	animation: sk-sweep 1.6s linear infinite;
+}
+
+/* The three weights, carried over from the skeletons that already existed: names read
+   strongest, avatars sit just under them, body lines are the quietest. */
+.sk.sk-name,
+div.room-entry-skeleton div.sk-name::before,
+div.disconnected-skeleton div.sk-space-bar > i:first-child,
+div.disconnected-skeleton div.sk-room-header > i,
+div.disconnected-skeleton div.sk-event-lines > i {
+	--sk-base: rgba(var(--warm-tint-rgb), .11);
+}
+
+.sk.sk-avatar,
+div.room-entry-skeleton > div.sk-avatar > i,
+div.disconnected-skeleton div.sk-event-avatar {
+	--sk-base: rgba(var(--warm-tint-rgb), .09);
+}
+
+/* The placeholder geometry already says "loading"; the sweep is the decoration, so it is
+   what goes. Gated on the attribute as well as the query so the "Ignore reduce motion"
+   preference still wins. */
+@media (prefers-reduced-motion: reduce) {
+	html:not([data-ignore-reduce-motion]) .sk,
+	html:not([data-ignore-reduce-motion]) div.room-entry-skeleton > div.sk-avatar > i,
+	html:not([data-ignore-reduce-motion]) div.room-entry-skeleton div.sk-name::before,
+	html:not([data-ignore-reduce-motion]) div.room-entry-skeleton div.sk-preview::before,
+	html:not([data-ignore-reduce-motion]) div.disconnected-skeleton div.sk-space-bar > i,
+	html:not([data-ignore-reduce-motion]) div.disconnected-skeleton div.sk-room-header > i,
+	html:not([data-ignore-reduce-motion]) div.disconnected-skeleton div.sk-event-avatar,
+	html:not([data-ignore-reduce-motion]) div.disconnected-skeleton div.sk-event-lines > i,
+	html:not([data-ignore-reduce-motion]) div.disconnected-skeleton div.sk-event-lines > b {
+		animation: none;
+		background-image: none;
+	}
+}
+
+/*
+ * Shapes. Scoped to .sk so they only reach the components below — div.sk-name and
+ * div.sk-avatar are also the room-list skeleton's own container names, and those are
+ * boxes with no fill of their own.
+ */
+.sk.sk-line {
+	border-radius: .3125rem;
+}
+
+.sk.sk-name {
+	border-radius: .375rem;
+}
+
+.sk.sk-avatar {
+	flex: none;
+	border-radius: 50%;
+}
+
+/* Fills whatever box it is dropped into: the user-info avatar square, the map slot. */
+.sk.sk-block {
+	width: 100%;
+	height: 100%;
+	border-radius: .5rem;
+}
+
+/*
+ * The bottom edge of a button or row that is fetching more of itself. It sits where a
+ * spinner used to sit inside the label, so the label stops reflowing every time a request
+ * starts and finishes.
+ */
+.sk.sk-edge {
+	height: 2px;
+	border-radius: 1px;
+}
+
+div.sk-row {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+}
+
+button.loading-edge {
+	position: relative;
+
+	> div.sk-edge {
+		position: absolute;
+		left: .5rem;
+		right: .5rem;
+		bottom: 0;
+	}
+}
+
+/*
+ * The other half of the vocabulary: one line saying what is being fetched, over the same
+ * 2px hairline the sync box draws. This is for waits with no shape to draw yet — a lazy
+ * chunk, a request whose result could be anything — because a skeleton of an unknown is
+ * only a guess drawn confidently.
+ */
+div.hairline-wait {
+	display: flex;
+	flex-direction: column;
+	gap: .75rem;
+	width: 28rem;
+	max-width: 100%;
+	margin: auto;
+	font-size: .95rem;
+	line-height: 1.5;
+	color: var(--secondary-text-color);
+
+	> div.hairline-wait-rule {
+		height: 2px;
+		border-radius: 1px;
+		background: var(--hairline-color);
+	}
+
+	/* Inside a panel or a modal body there is no room for the full column, and the line is
+	   a caption beside real content rather than the only thing on the surface. */
+	&.compact {
+		width: auto;
+		gap: .5rem;
+		font-size: var(--small-font-size);
+		color: var(--tertiary-text-color);
+	}
+}

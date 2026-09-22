@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useEffect, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import { MemDBEvent } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
+import { HairlineWait } from "../loading"
 import { RoomContext, RoomContextData } from "../roomview/roomcontext.ts"
 import TimelineEvent from "./TimelineEvent.tsx"
 import "./EventEditHistory.css"
@@ -61,7 +61,9 @@ const EventEditHistory = ({ evt, roomCtx }: EventEditHistoryProps) => {
 	}, [client, roomCtx, evt])
 
 	if (loading) {
-		return <ScaleLoader color="var(--primary-color)"/>
+		return <div className="edit-history-loading">
+			<HairlineWait label="Getting the edit history" />
+		</div>
 	} else if (error) {
 		return <div>Failed to load :( {error}</div>
 	}

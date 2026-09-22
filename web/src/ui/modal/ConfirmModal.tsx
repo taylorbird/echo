@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, use, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import { MemDBEvent } from "@/api/types"
+import { SkeletonEdge } from "../loading"
 import TimelineEvent from "../timeline/TimelineEvent.tsx"
 import { ModalCloseContext } from "./contexts.ts"
 import "./ConfirmModal.css"
@@ -61,14 +61,13 @@ const ConfirmModal = <T extends readonly unknown[] = readonly never[]>({
 			{description}
 		</div> : null}
 		{children}
+		{/* The buttons stay put while the action is in flight rather than being swapped
+		    for a spinner, so the modal does not resize under the cursor. */}
 		<div className="confirm-buttons">
-			{confirming ? <>
-				<ScaleLoader barCount={8} color="var(--primary-color)"/>
-			</> : <>
-				<button type="button" onClick={closeModal}>Cancel</button>
-				<button type="submit">{confirmButton}</button>
-			</>}
+			<button type="button" onClick={closeModal} disabled={confirming}>Cancel</button>
+			<button type="submit" disabled={confirming}>{confirmButton}</button>
 		</div>
+		{confirming ? <SkeletonEdge /> : null}
 	</form>
 }
 

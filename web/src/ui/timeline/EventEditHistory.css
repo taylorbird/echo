@@ -1,3 +1,10 @@
+/* The modal body has nothing of its own to centre the wait in. */
+div.edit-history-loading {
+	padding: 2rem;
+	display: grid;
+	place-items: center;
+}
+
 div.event-edit-history-wrapper {
 	padding: 0 !important;
 }

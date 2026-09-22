@@ -61,6 +61,10 @@
 	--text-color: #000;
 	--inverted-text-color: var(--background-color);
 	--secondary-text-color: #888;
+	/* A third text weight, one visible step below --secondary-text-color, for captions that
+	   sit under body copy. Light mode had no value at all, so those captions were silently
+	   falling back to full body colour and outweighing the text they label. */
+	--tertiary-text-color: #9a9a9a;
 	--semisecondary-text-color: #555;
 	--link-text-color: #0467dd;
 	--visited-link-text-color: var(--link-text-color);

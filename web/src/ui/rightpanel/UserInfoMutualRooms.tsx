@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { useEffect, useReducer, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomListEntry } from "@/api/statestore"
 import { UserID } from "@/api/types"
+import { SkeletonRow } from "../loading"
 import ListEntry from "../roomlist/Entry.tsx"
 import UserInfoError from "./UserInfoError.tsx"
 
@@ -58,7 +58,11 @@ const MutualRooms = ({ client, userID }: MutualRoomsProps) => {
 	if (!rooms) {
 		return <div className="mutual-rooms">
 			<h4>Shared rooms</h4>
-			{rooms === undefined && <ScaleLoader className="user-info-loader" color="var(--primary-color)"/>}
+			{rooms === undefined && <div className="mutual-rooms-skeleton">
+				<SkeletonRow width="55%" />
+				<SkeletonRow width="40%" />
+				<SkeletonRow width="62%" />
+			</div>}
 			<UserInfoError errors={errors}/>
 		</div>
 	}

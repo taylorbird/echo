@@ -17,6 +17,7 @@ import echoPenguin from "@/icons/echo-penguin.png"
 import { restartApp } from "@/util/updater.ts"
 import { RoomListSkeleton } from "./roomlist/RoomList.tsx"
 import "./DisconnectedScreen.css"
+import "./loading/Loading.css"
 
 interface DisconnectedScreenProps {
 	error: string

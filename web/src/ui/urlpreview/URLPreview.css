@@ -93,9 +93,14 @@ div.url-preview {
 		}
 	}
 
+	/* Stands in for div.description below, so it takes that slot's full width rather
+	   than centring a token in the middle of it. */
 	div.loading-preview-indicator {
 		grid-area: description;
-		margin: 0 auto;
+		margin: 0 .5rem .5rem;
+		display: flex;
+		flex-direction: column;
+		gap: .375rem;
 	}
 
 	div.description {

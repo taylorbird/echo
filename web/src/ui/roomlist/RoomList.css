@@ -699,13 +699,14 @@ div.room-entry-skeleton {
 		height: 3.5rem;
 		flex: none;
 
+		/* Fill and sweep come from Loading.css, which names this shape along with every
+		   other placeholder in the app. */
 		> i {
 			display: block;
 			width: 3rem;
 			height: 3rem;
 			margin: .25rem;
 			border-radius: 50%;
-			background: rgba(var(--warm-tint-rgb), .09);
 		}
 	}
 
@@ -732,38 +733,19 @@ div.room-entry-skeleton {
 		> div.sk-name::before, > div.sk-preview::before {
 			content: "";
 			display: block;
-			animation: sk-shimmer 1.8s ease-in-out infinite;
 		}
 
 		> div.sk-name::before {
 			height: .75rem;
 			border-radius: .375rem;
 			width: var(--sk-w1, 58%);
-			background: rgba(var(--warm-tint-rgb), .11);
 		}
 
 		> div.sk-preview::before {
 			height: .625rem;
 			border-radius: .3125rem;
 			width: var(--sk-w2, 82%);
-			background: rgba(var(--warm-tint-rgb), .07);
 		}
-	}
-}
-
-@keyframes sk-shimmer {
-	0%, 100% { opacity: .5 }
-	50% { opacity: .95 }
-}
-
-/* The placeholder geometry plus the box's copy already say "loading"; the pulse is the
-   decoration, so it is what goes. Gated on the attribute as well as the query so the
-   "Ignore reduce motion" preference still wins. */
-@media (prefers-reduced-motion: reduce) {
-	html:not([data-ignore-reduce-motion]) div.room-entry-skeleton div.sk-name::before,
-	html:not([data-ignore-reduce-motion]) div.room-entry-skeleton div.sk-preview::before {
-		animation: none;
-		opacity: .7;
 	}
 }
 

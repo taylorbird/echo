@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { useEffect, useState, useTransition } from "react"
-import { ScaleLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { ProfileDevice, ProfileEncryptionInfo, TrustState, UserID } from "@/api/types"
+import { SkeletonLine } from "../loading"
 import UserInfoError from "./UserInfoError.tsx"
 import DevicesIcon from "@/icons/devices.svg?react"
 import EncryptedOffIcon from "@/icons/encrypted-off.svg?react"
@@ -66,7 +66,10 @@ const DeviceList = ({ client, room, userID }: DeviceListProps) => {
 		return <div className="devices not-tracked">
 			<h4>Security</h4>
 			<p>{encryptionMessage}</p>
-			{!errors ? <ScaleLoader className="user-info-loader" color="var(--primary-color)"/> : null}
+			{!errors ? <div className="user-info-skeleton">
+				<SkeletonLine width="68%" />
+				<SkeletonLine width="44%" />
+			</div> : null}
 			<UserInfoError errors={errors}/>
 		</div>
 	}

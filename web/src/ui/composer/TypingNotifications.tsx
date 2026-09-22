@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { JSX, use } from "react"
-import { PulseLoader } from "react-spinners"
 import { getAvatarThumbnailURL } from "@/api/media.ts"
 import { useMultipleRoomMembers, useRoomTyping } from "@/api/statestore"
 import { humanJoin } from "@/util/join.ts"
@@ -29,10 +28,6 @@ const TypingNotifications = () => {
 	const room = roomCtx.store
 	const typing = useRoomTyping(room).filter(u => u !== client.userID)
 	const memberEvts = useMultipleRoomMembers(client, room, typing.slice(0, 5))
-	let loader: JSX.Element | null = null
-	if (typing.length > 0) {
-		loader = <PulseLoader speedMultiplier={0.5} size={5} color="var(--primary-color)" />
-	}
 	const avatars: JSX.Element[] = []
 	const memberNames: string[] = []
 	for (const [sender, member] of memberEvts) {
@@ -48,17 +43,16 @@ const TypingNotifications = () => {
 
 	let description: JSX.Element | null = null
 	if (typing.length > 4) {
-		description = <div className="description">{typing.length} users are typing</div>
+		description = <div className="description">{typing.length} users are typing…</div>
 	} else if (typing.length > 0) {
 		description = <div className="description">
-			{humanJoin(memberNames)} {typing.length === 1 ? "is" : "are"} typing
+			{humanJoin(memberNames)} {typing.length === 1 ? "is" : "are"} typing…
 		</div>
 	}
 
 	return <div className={typing.length ? "typing-notifications" : "typing-notifications empty"}>
 		<div className="avatars">{avatars}</div>
 		{description}
-		{loader}
 	</div>
 }
 

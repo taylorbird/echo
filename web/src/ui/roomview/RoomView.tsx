@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { JSX, Suspense, lazy, useEffect, useState } from "react"
-import { GridLoader } from "react-spinners"
 import { RoomStateStore, usePreference } from "@/api/statestore"
 import { RoomType } from "@/api/types"
 import MessageComposer from "../composer/MessageComposer.tsx"
 import TypingNotifications from "../composer/TypingNotifications.tsx"
+import { HairlineWait } from "../loading"
 import RightPanel, { RightPanelProps } from "../rightpanel/RightPanel.tsx"
 import TimelineView from "../timeline/TimelineView.tsx"
 import ErrorBoundary from "../util/ErrorBoundary.tsx"
@@ -47,7 +47,7 @@ function getViewForRoomType(roomType: RoomType | undefined): JSX.Element | null 
 		return <ElementCall />
 	case "fi.mau.msc2545.image_pack":
 		return <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", marginTop: "2rem" }}>
-			<GridLoader color="var(--primary-color)" size={20} />
+			<HairlineWait label="Getting the editor" />
 		</div>}>
 			<ImagePackView />
 		</Suspense>

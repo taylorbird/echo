@@ -189,9 +189,18 @@ div.right-panel-content.user {
 		padding: .25rem 1rem;
 	}
 
-	.user-info-loader {
-		display: flex !important;
-		justify-content: center;
+	/* Placeholders for the two sections that arrive over the network after the panel
+	   itself: the device list and the shared-room list. */
+	.user-info-skeleton {
+		display: flex;
+		flex-direction: column;
+		gap: .375rem;
+	}
+
+	.mutual-rooms-skeleton {
+		display: flex;
+		flex-direction: column;
+		gap: .5rem;
 	}
 
 	p.verified-message {

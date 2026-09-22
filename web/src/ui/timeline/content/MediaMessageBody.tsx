@@ -13,9 +13,8 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { CSSProperties, JSX, use, useReducer, useState } from "react"
+import React, { JSX, use, useReducer, useState } from "react"
 import { Blurhash } from "react-blurhash"
-import { GridLoader } from "react-spinners"
 import { usePreference } from "@/api/statestore"
 import { ContentWarningType, MediaMessageEventContent } from "@/api/types"
 import { ensureString } from "@/util/validation.ts"
@@ -23,17 +22,6 @@ import ClientContext from "../../ClientContext.ts"
 import TextMessageBody from "./TextMessageBody.tsx"
 import EventContentProps from "./props.ts"
 import { useMediaContent } from "./useMediaContent.tsx"
-
-const loaderSize = (style: CSSProperties): number | undefined => {
-	if (!style.width) {
-		return
-	}
-	const width = +(style.width as string).replace("px", "")
-	const height = +(style.height as string).replace("px", "")
-	// GridLoader takes size of individual bubbles for some reason (so need to divide by 3),
-	// and we want the size to be slightly smaller than the container, so just divide by 5
-	return Math.min(Math.round(Math.min(width, height) / 5), 30)
-}
 
 const switchToTrue = () => true
 
@@ -87,13 +75,11 @@ const MediaMessageBody = ({ event, room, sender }: EventContentProps) => {
 				resolutionX={48}
 				resolutionY={48}
 			/> : <div className="empty-placeholder" style={containerStyle}/>}
-			{isLoadingOnlyCover
-				? <div className="placeholder-spinner">
-					<GridLoader color="var(--primary-color)" size={loaderSize(containerStyle)}/>
-				</div>
-				: <div className="placeholder-reason">
-					{ensureString(contentWarning?.description) || "Show media"}
-				</div>}
+			{/* While only the cover is still loading, the blurhash behind this IS the
+			    placeholder, so nothing is drawn over it. */}
+			{isLoadingOnlyCover ? null : <div className="placeholder-reason">
+				{ensureString(contentWarning?.description) || "Show media"}
+			</div>}
 		</div>
 	}
 

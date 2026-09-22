@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { Suspense, lazy } from "react"
-import { GridLoader } from "react-spinners"
+import { SkeletonBlock } from "../loading"
 import type { LeafletPickerProps, LeafletViewerProps } from "./leaflet.tsx"
 
-const locationLoader = <div className="location-importer"><GridLoader color="var(--primary-color)" size={25}/></div>
+const locationLoader = <div className="location-importer"><SkeletonBlock /></div>
 
 const LazyLeafletViewer = lazy(
 	() => import("./leaflet.tsx").then(res => ({ default: res.LeafletViewer })))

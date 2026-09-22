@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import { usePreferences, useRoomEvent } from "@/api/statestore"
 import { EventID, EventRowID, MemDBEvent } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
 import MessageComposer from "../composer/MessageComposer.tsx"
+import { SkeletonEdge } from "../loading"
 import { RoomContext, RoomContextData, useRoomContext } from "../roomview/roomcontext.ts"
 import TimelineEvent from "./TimelineEvent.tsx"
 import { renderTimelineList } from "./timelineutil.tsx"
@@ -114,10 +114,9 @@ const ThreadView = ({ threadRoot }: ThreadViewProps) => {
 	const prependRoot = rootEvent && !prevBatch && !loading
 	const timelineDiv = <div className="timeline-view" ref={viewRef} onScroll={handleScroll}>
 		<div className="timeline-edge">
-			{(prevBatch || loading) ? <button onClick={loadHistory} disabled={loading}>
-				{loading
-					? <><ScaleLoader color="var(--primary-color)"/> Loading history...</>
-					: "Load more history"}
+			{(prevBatch || loading) ? <button className="loading-edge" onClick={loadHistory} disabled={loading}>
+				{loading ? "Loading history..." : "Load more history"}
+				{loading ? <SkeletonEdge /> : null}
 			</button> : <button disabled>This is the beginning of the thread.</button>}
 		</div>
 		<div className="timeline-list">

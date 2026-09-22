@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { Fragment, Suspense, lazy, use, useCallback, useMemo, useRef, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import { BACKEND_CROSS_ORIGIN, BACKEND_URL } from "@/api/backend.ts"
 import Client from "@/api/client.ts"
 import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
@@ -35,6 +34,7 @@ import { NonNullCachedEventDispatcher, useEventAsState } from "@/util/eventdispa
 import { isMobileDevice } from "@/util/ismobile.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
+import { HairlineWait } from "../loading"
 import { LightboxContext, ModalCloseContext, ModalContext, modals } from "../modal"
 import JSONView from "../util/JSONView.tsx"
 import Toggle from "../util/Toggle.tsx"
@@ -495,7 +495,7 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 		</header>
 		{vscodeOpen ? <div className="vscode-wrapper">
 			<Suspense fallback={
-				<div className="loader"><ScaleLoader width={40} height={80} color="var(--primary-color)"/></div>
+				<div className="loader"><HairlineWait label="Getting the editor" /></div>
 			}>
 				<Monaco
 					initData={vscodeInitialContentRef.current}

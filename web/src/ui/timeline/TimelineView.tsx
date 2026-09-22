@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import { usePreferences, useRoomTimeline } from "@/api/statestore"
 import { EventRowID } from "@/api/types"
 import useFocus from "@/util/focus.ts"
 import ClientContext from "../ClientContext.ts"
+import { SkeletonEdge } from "../loading"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import { renderTimelineList } from "./timelineutil.tsx"
 import "./TimelineView.css"
@@ -116,10 +116,9 @@ const TimelineView = () => {
 
 	return <div className="timeline-view" onScroll={handleScroll} ref={timelineViewRef}>
 		<div className="timeline-edge beginning">
-			{room.hasMoreHistory ? <button onClick={loadHistory} disabled={isLoadingHistory}>
-				{isLoadingHistory
-					? <><ScaleLoader color="var(--primary-color)"/> Loading history...</>
-					: "Load more history"}
+			{room.hasMoreHistory ? <button className="loading-edge" onClick={loadHistory} disabled={isLoadingHistory}>
+				{isLoadingHistory ? "Loading history..." : "Load more history"}
+				{isLoadingHistory ? <SkeletonEdge /> : null}
 			</button> : "No more history available in this room"}
 		</div>
 		<div className="timeline-list">

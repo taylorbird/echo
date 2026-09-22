@@ -34,6 +34,12 @@ form.confirm-message-modal {
 		> button {
 			padding: .5rem 1rem;
 		}
+
+		/* Held back while the action is in flight. The buttons stay where they were so
+		   nothing under the cursor moves; the edge below the row carries the waiting. */
+		> button:disabled {
+			opacity: .5;
+		}
 	}
 
 	> div.output-preview {

@@ -203,7 +203,7 @@ div.media-container {
 			height: 100%;
 		}
 
-		> div.placeholder-reason, > div.placeholder-spinner {
+		> div.placeholder-reason {
 			position: absolute;
 			top: 50%;
 			left: 50%;
@@ -280,4 +280,7 @@ div.location-importer {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	/* The map chunk is lazy, so this box has no content to give it a height until the
+	   chunk lands. Without a floor the placeholder would have nothing to fill. */
+	min-height: 12rem;
 }

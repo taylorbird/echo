@@ -15,12 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useState } from "react"
 import { Blurhash } from "react-blurhash"
-import { ScaleLoader } from "react-spinners"
 import { getEncryptedMediaURL, getMediaURL } from "@/api/media"
 import { RoomStateStore, usePreference } from "@/api/statestore"
 import { URLPreview as URLPreviewType } from "@/api/types"
 import { ImageContainerSize, calculateMediaSize } from "@/util/mediasize"
 import ClientContext from "../ClientContext.ts"
+import { SkeletonLine } from "../loading"
 import { LightboxContext } from "../modal"
 import DeleteIcon from "@/icons/delete.svg?react"
 import RefreshIcon from "@/icons/refresh.svg?react"
@@ -58,7 +58,8 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 					<button onClick={startLoadingPreview}><RefreshIcon/> Load Preview</button>
 				</div>
 				: <div className="loading-preview-indicator">
-					<ScaleLoader color="var(--primary-color)"/>
+					<SkeletonLine width="80%" />
+					<SkeletonLine width="55%" />
 				</div>}
 		</div>
 	}

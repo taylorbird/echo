@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { BarLoader } from "react-spinners"
 import { getAvatarThumbnailURL } from "@/api/media.ts"
 import {
 	RoomListEntry,
@@ -51,6 +50,7 @@ import UserIcon from "@/icons/modern/user.svg?react"
 import UsersIcon from "@/icons/modern/users.svg?react"
 import SearchIcon from "@/icons/search.svg?react"
 import "./RoomList.css"
+import "../loading/Loading.css"
 
 // Renamed from the pre-rebrand "seabug." prefix. Normally that would silently reset everyone's
 // collapsed sections, which is why it was left alone for months — but changing the bundle
@@ -192,6 +192,11 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 	const roomList = useEventAsState(client.store.roomList)
 	const spaces = useEventAsState(client.store.topLevelSpaces)
 	const initComplete = useEventAsState(client.initComplete)
+	// The list is provisional both before the store has finished loading and while the
+	// first sync is still running. Those used to be drawn differently — a bar crawling
+	// across the top for the first, placeholder rows for the second — which made the
+	// same "not all here yet" state look like two unrelated things.
+	const showSkeleton = !initComplete || firstSync
 	// Every room that would currently show a badge, in room-list order.
 	const unreadRooms = useMemo(() => roomList.filter(isUnread), [roomList])
 	const markAllRead = useMarkAllRead(unreadRooms)
@@ -687,9 +692,7 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 				</button>
 			</div>
 		</div>
-		<div className={`room-list ${firstSync ? "skeleton" : ""}`}>
-			{initComplete || firstSync ? null
-				: <BarLoader cssOverride={{ backgroundColor: "unset" }} width="100%" color="var(--primary-color)" />}
+		<div className={`room-list ${showSkeleton ? "skeleton" : ""}`}>
 			{sections.map(section => {
 				// A header with nothing under it is noise, so drop the whole group
 				// once the search query filters out every room in it.
@@ -726,7 +729,7 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 					)}
 				</div>
 			})}
-			{firstSync && <RoomListSkeleton count={Math.max(0, SKELETON_ROWS - roomList.length)} />}
+			{showSkeleton && <RoomListSkeleton count={Math.max(0, SKELETON_ROWS - roomList.length)} />}
 		</div>
 	</div>
 }

@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useCallback, useEffect, useState } from "react"
-import { PuffLoader } from "react-spinners"
 import { getAvatarURL } from "@/api/media.ts"
 import { fakeGomuksSender, maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
 import { UserID, UserProfile } from "@/api/types"
 import { ensureString, getLocalpart } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
+import { SkeletonBlock } from "../loading"
 import { LightboxContext } from "../modal"
 import { RoomContext } from "../roomview/roomcontext.ts"
 import UserExtendedProfile from "./UserExtendedProfile.tsx"
@@ -60,11 +60,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	const fakeUser = userID === fakeGomuksSender
 	return <>
 		<div className="avatar-container">
-			{member === null && globalProfile === null && errors == null ? <PuffLoader
-				color="var(--primary-color)"
-				size="100%"
-				className="avatar-loader"
-			/> : <img
+			{member === null && globalProfile === null && errors == null ? <SkeletonBlock /> : <img
 				className="avatar"
 				// this is a big avatar (236px by default), use full resolution
 				src={getAvatarURL(userID, member ?? globalProfile)}

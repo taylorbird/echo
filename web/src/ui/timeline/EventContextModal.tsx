@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import { usePreferences } from "@/api/statestore"
 import { EventID, MemDBEvent } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
+import { HairlineWait, SkeletonEdge } from "../loading"
 import { RoomContext, RoomContextData } from "../roomview/roomcontext.ts"
 import { jumpToVisibleEvent } from "../util/jumpToEvent.tsx"
 import { renderTimelineList } from "./timelineutil.tsx"
@@ -104,7 +104,7 @@ const EventContextModal = ({ roomCtx, eventID }: EventContextModalProps) => {
 
 	if (error === "loading") {
 		return <div className="event-context-loading">
-			<ScaleLoader color="var(--primary-color)" width="1rem" height="3rem" /> Loading event context...
+			<HairlineWait label="Getting the messages around this one" />
 		</div>
 	} else if (error) {
 		return <div className="event-context-loading error">
@@ -113,20 +113,18 @@ const EventContextModal = ({ roomCtx, eventID }: EventContextModalProps) => {
 	}
 	const content = <div className="timeline-view" ref={viewRef}>
 		<div className="timeline-edge">
-			{start ? <button onClick={loadStart} disabled={startLoading}>
-				{startLoading
-					? <><ScaleLoader color="var(--primary-color)"/> Loading older messages...</>
-					: "Load older messages"}
+			{start ? <button className="loading-edge" onClick={loadStart} disabled={startLoading}>
+				{startLoading ? "Loading older messages..." : "Load older messages"}
+				{startLoading ? <SkeletonEdge /> : null}
 			</button> : "No older messages available in this room"}
 		</div>
 		<div className="timeline-list">
 			{renderTimelineList("context", timeline, room.preferences)}
 		</div>
 		<div className="timeline-edge">
-			{end ? <button onClick={loadEnd} disabled={endLoading}>
-				{endLoading
-					? <><ScaleLoader color="var(--primary-color)"/> Loading newer messages...</>
-					: "Load newer messages"}
+			{end ? <button className="loading-edge" onClick={loadEnd} disabled={endLoading}>
+				{endLoading ? "Loading newer messages..." : "Load newer messages"}
+				{endLoading ? <SkeletonEdge /> : null}
 			</button> : "No newer messages available in this room"}
 		</div>
 	</div>

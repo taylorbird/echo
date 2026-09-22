@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import { MemDBEvent, UnreadType } from "@/api/types"
 import reverseMap from "@/util/reversemap.ts"
 import ClientContext from "../ClientContext.ts"
+import { SkeletonEdge } from "../loading"
 import { RoomContext } from "../roomview/roomcontext.ts"
 import TimelineEvent from "../timeline/TimelineEvent.tsx"
 
@@ -114,13 +114,15 @@ const Notifications = () => {
 			{error}
 		</div>
 		<div className={contentClassNames.join(" ")} ref={viewRef}>
-			{(hasMore || loading) ? <button className="load-more" onClick={() => loadMoreMessages()} disabled={loading}>
+			{(hasMore || loading) ? <button
+				className="load-more loading-edge"
+				onClick={() => loadMoreMessages()}
+				disabled={loading}
+			>
 				{loading
-					? <>
-						<ScaleLoader color="var(--primary-color)"/> Loading
-						{events.length > 0 ? " more" : ""} notifications...
-					</>
+					? <>Loading{events.length > 0 ? " more" : ""} notifications...</>
 					: "Load more notifications"}
+				{loading ? <SkeletonEdge /> : null}
 			</button> : <button className="load-more" disabled>No more notifications</button>}
 			{reverseMap(events, (evt, i) =>
 				<TimelineEvent key={evt.rowid} evt={evt} prevEvt={events[i+1] ?? null} viewType="notifications" />)}

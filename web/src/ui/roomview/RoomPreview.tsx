@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useEffect, useState } from "react"
-import { ScaleLoader } from "react-spinners"
 import { getAvatarThumbnailURL, getAvatarURL, getRoomAvatarURL } from "@/api/media.ts"
 import { usePreference } from "@/api/statestore/hooks.ts"
 import { InvitedRoomStore } from "@/api/statestore/invitedroom.ts"
@@ -22,6 +21,7 @@ import { RoomID, RoomSummary } from "@/api/types"
 import { getDisplayname, getServerName } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
+import { SkeletonLine } from "../loading"
 import { LightboxContext } from "../modal"
 import MutualRooms from "../rightpanel/UserInfoMutualRooms.tsx"
 import ErrorIcon from "@/icons/error.svg?react"
@@ -132,7 +132,7 @@ const RoomPreview = ({ roomID, via, alias, invite }: RoomPreviewProps) => {
 				onClick={use(LightboxContext)}
 				alt=""
 			/>
-			{loading && <ScaleLoader color="var(--primary-color)"/>}
+			{loading && <SkeletonLine width="40%" />}
 			{memberCount && <div className="member-count"><GroupIcon/> {memberCount} members</div>}
 			<div className="room-topic">{topic}</div>
 			<details className="room-invite-meta">
