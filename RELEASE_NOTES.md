@@ -12,69 +12,33 @@
      Anything else comes through as plain text. Links must be http(s) or they render as their
      label alone. -->
 
-## The title bar is gone
+## When the local server goes away
 
-- The separate strip across the top of the window has been removed. The macOS window controls
-  now sit in the space rail, alongside the search field and the room header, the way Mail and
-  Messages seat theirs. The panes run to the top edge and the app gets that band back as
-  reading space.
-- The app's name no longer appears inside the window. It is in the menu bar and the Dock,
-  which is where macOS puts it.
+- If echo's window loses its connection to the local server that holds your conversations, it
+  now says so in words — "Lost the local server", what that means, and when it will try again —
+  in a panel over a faded outline of the app, with a **Restart echo** button. It replaced a red
+  box with a raw error code and a cat.
+- The conversation you were reading is not left on screen behind it. A window that cannot
+  scroll or send is not live, and leaving it readable suggested otherwise.
 
-## One typeface
+## Every wait now looks like every other wait
 
-- Every name, title and username is now Inter. Space Grotesk has been dropped entirely.
-- Room names in the sidebar are mixed case rather than tracked-out capitals, a step larger,
-  and white.
-
-## Unread and being named now look different
-
-- A room with unread messages shows a small blue dot. A room where someone used your name
-  shows a red badge with an **@**.
-- Both were previously the same red, separated only by a pulse on the mention badge — and that
-  pulse is switched off by macOS's Reduce Motion setting. Anyone running Reduce Motion could
-  not tell the two apart at all. The difference is now carried by colour and by the shape of
-  the badge, neither of which an accessibility setting can disable.
-
-## Recent
-
-- The space rail's sub-filters gain **Recent**, next to All chats, Rooms and Direct messages.
-  It shows everything — rooms and direct messages together — most recent first, so the
-  conversation you were last in is at the top whether or not it is unread.
-
-## Signing in, and waiting for the first sync
-
-- The screens you see before the app opens — signing in, and the wait for the first sync — have
-  been rebuilt. They are now one plain surface rather than an empty app shell with a box
-  floating in it.
-- **First sync says what it is doing.** It explains that every room on the account is being
-  downloaded, that this can take several minutes on a busy account, and that it only happens
-  once. It counts the rooms as they arrive, so the wait has a number attached to it even
-  though the server cannot report a percentage.
-- **The room list shows the shape of what is coming** while that runs, instead of sitting
-  empty.
-- **When sync fails, it says so in words** — whether echo can reach the network but not your
-  homeserver and is retrying, or whether it has given up entirely — and the second case offers
-  to restart the app.
-
-## Per-room colours have been removed
-
-- Room names no longer take a colour derived from the room. They are the same white in the
-  sidebar, the room header, the quick switcher and the space view.
-- The **Uniform room list color** setting has gone with them. With one name colour it no longer
-  had a second state to switch to.
-- The sidebar accent colour still colours the small room glyphs, and the colours people's names
-  take in the timeline are unchanged.
+- The app had five different spinners, drawn in a green that appeared nowhere else. They are
+  all gone.
+- Waiting for a whole view — the messages around an event, an edit history, the editor — shows
+  a sentence and a hairline, the way first sync does.
+- Waiting for part of a panel — someone's avatar and devices, the rooms you share, a map, a
+  link preview — shows the shape of what is about to appear.
+- Loading older history keeps its button; a thin light travels along its lower edge while it
+  works. Confirming an action keeps its buttons rather than swapping them for a spinner.
+- The "is typing" line lost its bouncing dots. It was never a wait.
+- If you run macOS's Reduce Motion, the placeholder shapes hold still instead of sweeping, the
+  same as every other animation in echo. The **Ignore reduce motion** setting turns them on.
 
 ## Fixes
 
-- **Your own avatar now loads in the sidebar.** The profile tile at the bottom of the space
-  rail could only ever draw a generated letter tile — it never asked for the picture. It does
-  now.
-- Being signed in now always means being in a space. There was a state where a space could look
-  selected in the rail while its sub-filters sat collapsed, which left the room list looking
-  like it belonged to nothing.
-- The **Room list color** setting described itself in terms of a setting that no longer exists.
+- Caption text in light mode — the line under the first-sync message, for one — had no colour of
+  its own and took the body colour. It has one now.
 
 ## Known issue
 
