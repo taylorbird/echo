@@ -197,6 +197,10 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 	// across the top for the first, placeholder rows for the second — which made the
 	// same "not all here yet" state look like two unrelated things.
 	const showSkeleton = !initComplete || firstSync
+	// Placeholder rows only fill the space real rooms have not claimed yet. Once the list
+	// is already longer than the placeholder set — a reconnect with everything loaded —
+	// there are none to draw, and a list with no fake rows must keep scrolling.
+	const skeletonRows = showSkeleton ? Math.max(0, SKELETON_ROWS - roomList.length) : 0
 	// Every room that would currently show a badge, in room-list order.
 	const unreadRooms = useMemo(() => roomList.filter(isUnread), [roomList])
 	const markAllRead = useMarkAllRead(unreadRooms)
@@ -692,7 +696,7 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 				</button>
 			</div>
 		</div>
-		<div className={`room-list ${showSkeleton ? "skeleton" : ""}`}>
+		<div className={`room-list ${skeletonRows > 0 ? "skeleton" : ""}`}>
 			{sections.map(section => {
 				// A header with nothing under it is noise, so drop the whole group
 				// once the search query filters out every room in it.
@@ -729,7 +733,7 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 					)}
 				</div>
 			})}
-			{showSkeleton && <RoomListSkeleton count={Math.max(0, SKELETON_ROWS - roomList.length)} />}
+			{skeletonRows > 0 && <RoomListSkeleton count={skeletonRows} />}
 		</div>
 	</div>
 }
