@@ -16,6 +16,7 @@
 import { use, useCallback, useMemo, useState } from "react"
 import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
 import { RoomStateStore, usePreferences } from "@/api/statestore"
+import { hasTabs } from "@/api/tabs.ts"
 import {
 	PreferenceCategory,
 	PreferenceContext,
@@ -28,6 +29,7 @@ import { isMobileDevice } from "@/util/ismobile.ts"
 import ClientContext from "../ClientContext.ts"
 import { LightboxContext } from "../modal"
 import JSONView from "../util/JSONView.tsx"
+import BackendManager from "./BackendManager.tsx"
 import CustomCSSInput from "./CustomCSSInput.tsx"
 import EncryptionSettings from "./EncryptionSettings.tsx"
 import MiscButtons from "./MiscButtons.tsx"
@@ -36,6 +38,7 @@ import SettingsDeck from "./SettingsDeck.tsx"
 import { categoryLabels, preferencesByCategory, visiblePreferences } from "./preferenceGroups.ts"
 import CloseIcon from "@/icons/close.svg?react"
 import BracesIcon from "@/icons/modern/braces.svg?react"
+import BackendsIcon from "@/icons/modern/bubble-network.svg?react"
 import RoomIcon from "@/icons/modern/door-open.svg?react"
 import KeyIcon from "@/icons/modern/key.svg?react"
 import LogOutIcon from "@/icons/modern/log-out.svg?react"
@@ -58,6 +61,7 @@ const extraSections = [
 	{ id: "keys", label: "Encryption", Icon: KeyIcon },
 	{ id: "applied", label: "Applied settings", Icon: BracesIcon },
 	{ id: "account", label: "Account", Icon: LogOutIcon },
+	{ id: "backends", label: "Backends", Icon: BackendsIcon },
 ] as const
 
 interface SettingsViewProps {
@@ -116,6 +120,12 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			if (key === "web_push") {
 				client.registerWebPush()
 			}
+			if (key === "low_bandwidth" && !value) {
+				client.store.deleteCache().then(
+					() => console.log("Cleared cache after disabling low bandwidth mode"),
+					err => console.error("Failed to clear cache after disabling low bandwidth mode:", err),
+				)
+			}
 		} else if (context === PreferenceContext.RoomAccount && room) {
 			client.rpc.setAccountData("fi.mau.gomuks.preferences", {
 				...room.serverPreferenceCache,
@@ -159,8 +169,10 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 	const globalLocal = client.store.localPreferenceCache
 	const roomServer = room?.serverPreferenceCache
 	const roomLocal = room?.localPreferenceCache
-	// The room section only exists when there is a room to be about.
-	const railSections = room ? extraSections : extraSections.filter(({ id }) => id !== "room")
+	// The room section only exists when there is a room to be about, and the backend
+	// manager only in a wrapper that can host several backends (upstream's desktop app).
+	const railSections = extraSections.filter(({ id }) =>
+		(id !== "room" || room) && (id !== "backends" || hasTabs()))
 	return <>
 		{/*
 		  * The headline is "Settings", not the room name. Titling the whole screen
@@ -292,6 +304,7 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 				{!searching && section === "keys" && <EncryptionSettings room={room} />}
 
 				{!searching && section === "account" && <MiscButtons />}
+				{!searching && section === "backends" && <BackendManager />}
 			</div>
 		</div>
 	</>

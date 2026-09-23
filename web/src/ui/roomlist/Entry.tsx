@@ -124,6 +124,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 				entry={room}
 				style={getModalStyleFromMouse(evt, RoomMenu.height)}
 			/>,
+			noHistory: true,
 		})
 		evt.preventDefault()
 	}
@@ -142,8 +143,27 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 	// but that hook needs `content-visibility: auto` on the row, which was
 	// removed from the CSS because WebKit deferred repaints of the contained
 	// rows (stale .active highlight for seconds after switching rooms).
+	const classNames = ["room-entry"]
+	if (isActive) {
+		classNames.push("active")
+	}
+	if (hidden) {
+		classNames.push("hidden")
+	}
+	if (room.favorite_order !== undefined) {
+		classNames.push("favorite")
+	}
+	if (room.low_priority) {
+		classNames.push("low-priority")
+	}
+	if (room.dm_user_id) {
+		classNames.push("direct-chat")
+	}
+	if (room.is_invite) {
+		classNames.push("invite")
+	}
 	return <div
-		className={`room-entry ${isActive ? "active" : ""} ${hidden ? "hidden" : ""}`}
+		className={classNames.join(" ")}
 		onClick={mainScreen.clickRoom}
 		onContextMenu={onContextMenu}
 		data-room-id={room.room_id}

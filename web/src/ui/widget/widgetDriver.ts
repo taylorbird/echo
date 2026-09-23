@@ -19,6 +19,7 @@ import {
 	IOpenIDUpdate,
 	IRoomAccountData,
 	IRoomEvent,
+	IRtcTransportsResult,
 	ISendDelayedEventDetails,
 	ISendEventDetails,
 	ITurnServer,
@@ -85,8 +86,7 @@ class GomuksWidgetDriver extends WidgetDriver {
 	}
 
 	async sendDelayedStickyEvent(
-		delay: number | null,
-		parentDelayID: string | null,
+		delay: number,
 		stickyDurationMS: number,
 		eventType: string,
 		content: unknown,
@@ -94,9 +94,7 @@ class GomuksWidgetDriver extends WidgetDriver {
 	): Promise<ISendDelayedEventDetails> {
 		if (!isRecord(content)) {
 			throw new Error("Content must be an object")
-		} else if (parentDelayID !== null) {
-			throw new Error("Parent delayed events are not supported")
-		} else if (!delay) {
+		} else if (!delay || typeof delay !== "number") {
 			throw new Error("Delay must be a number")
 		}
 		roomID = roomID ?? this.room.roomID
@@ -105,8 +103,7 @@ class GomuksWidgetDriver extends WidgetDriver {
 	}
 
 	async sendDelayedEvent(
-		delay: number | null,
-		parentDelayID: string | null,
+		delay: number,
 		eventType: string,
 		content: unknown,
 		stateKey: string | null = null,
@@ -116,9 +113,7 @@ class GomuksWidgetDriver extends WidgetDriver {
 			throw new Error("Content must be an object")
 		} else if (stateKey === null) {
 			throw new Error("Non-state delayed events are not supported")
-		} else if (parentDelayID !== null) {
-			throw new Error("Parent delayed events are not supported")
-		} else if (!delay) {
+		} else if (!delay || typeof delay !== "number") {
 			throw new Error("Delay must be a number")
 		}
 		roomID = roomID ?? this.room.roomID
@@ -313,6 +308,10 @@ class GomuksWidgetDriver extends WidgetDriver {
 	async * getTurnServers(): AsyncGenerator<ITurnServer> {
 		const res = await this.client.rpc.getTurnServers()
 		yield res
+	}
+
+	async getRtcTransports(): Promise<IRtcTransportsResult> {
+		return await this.client.rpc.getRTCTransports()
 	}
 
 	// TODO: searchUserDirectory, readEventRelations

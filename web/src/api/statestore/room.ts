@@ -39,6 +39,7 @@ import {
 	RoomID,
 	SyncRoom,
 	TimelineRowTuple,
+	TombstoneEventContent,
 	UnknownEventContent,
 	UserID,
 	WrappedBotCommand,
@@ -47,6 +48,7 @@ import {
 } from "../types"
 import FakeCommands from "../types/fakecommands.ts"
 import StandardCommands from "../types/stdcommands.json"
+import type StateCache from "./cache.ts"
 import type { StateStore } from "./main.ts"
 
 function arraysAreEqual<T>(arr1?: T[], arr2?: T[]): boolean {
@@ -79,6 +81,34 @@ function visibleMetaIsEqual(meta1: DBRoom, meta2: DBRoom): boolean {
 		llSummaryIsEqual(meta1.lazy_load_summary, meta2.lazy_load_summary) &&
 		meta1.encryption_event?.algorithm === meta2.encryption_event?.algorithm &&
 		meta1.has_member_list === meta2.has_member_list
+}
+
+function tombstoneIsEqual(t1?: TombstoneEventContent, t2?: TombstoneEventContent): boolean {
+	return t1?.body === t2?.body &&
+		t1?.replacement_room === t2?.replacement_room
+}
+
+function otherMetaIsEqual(meta1: DBRoom, meta2: DBRoom): boolean {
+	return meta1.preview_event_rowid === meta2.preview_event_rowid &&
+		meta1.sorting_timestamp === meta2.sorting_timestamp &&
+		meta1.unread_highlights === meta2.unread_highlights &&
+		meta1.unread_notifications === meta2.unread_notifications &&
+		meta1.unread_messages === meta2.unread_messages &&
+		meta1.marked_unread === meta2.marked_unread &&
+		tombstoneIsEqual(meta1.tombstone, meta2.tombstone)
+}
+
+function memToRawEvent(evt: MemDBEvent): RawDBEvent {
+	const content = evt.orig_content ?? evt.content
+	const { mem, pending, viewing_redacted, ...rest } = evt
+	return {
+		...rest,
+		decrypted: evt.encrypted ? content : undefined,
+		content: evt.encrypted ?? content,
+		local_content: evt.orig_local_content ?? evt.local_content,
+		type: evt.encrypted ? "m.room.encrypted" : evt.type,
+		decrypted_type: evt.encrypted ? evt.type : undefined,
+	}
 }
 
 export interface AutocompleteMemberEntry {
@@ -154,6 +184,7 @@ export class RoomStateStore {
 	readonly accountDataSubs = new MultiSubscribable()
 	readonly openNotifications: Map<EventRowID, Notification> = new Map()
 	readonly #emojiPacksCache: Map<string, CustomEmojiPack | null> = new Map()
+	readonly imagePackSub = new Subscribable()
 	readonly preferences: Required<Preferences>
 	readonly localPreferenceCache: Preferences
 	readonly preferenceSub = new NoDataSubscribable()
@@ -303,20 +334,28 @@ export class RoomStateStore {
 		const createEvt = this.getStateEvent("m.room.create", "")
 		const membersCache = memberEvtIDs.values()
 			.map(rowID => this.eventsByRowID.get(rowID))
-			.filter((evt): evt is MemDBEvent => !!evt &&
-				(evt.content.membership === "join" || evt.content.membership === "invite"))
+			.filter((evt): evt is MemDBEvent => !!evt && (
+				evt.content.membership === "join"
+				|| evt.content.membership === "invite"
+				|| evt.content.membership === "knock"
+			))
 			.map((evt): AutocompleteMemberEntry => ({
 				userID: evt.state_key!,
 				displayName: getDisplayname(evt.state_key!, evt.content as MemberEventContent),
 				avatarURL: evt.content?.avatar_url,
-				searchString: toSearchableString(`${evt.content?.displayname ?? ""}${evt.state_key!.slice(1)}`),
+				searchString: toSearchableString(`${evt.content?.displayname ?? ""}${evt.state_key!.slice(1)} ${
+					evt.content.membership !== "join" ? evt.content.membership : ""}`),
 				event: evt,
 			}))
 			.toArray()
 		membersCache.sort((a, b) => {
+			const aKnocked = a.event.content.membership === "knock"
+			const bKnocked = b.event.content.membership === "knock"
 			const aPower = getUserLevel(powerLevels, createEvt, a.userID)
 			const bPower = getUserLevel(powerLevels, createEvt, b.userID)
-			if (aPower !== bPower) {
+			if (aKnocked !== bKnocked) {
+				return aKnocked ? 1 : -1
+			} else if (aPower !== bPower) {
 				return bPower - aPower
 			} else if (a.displayName === b.displayName) {
 				return a.userID.localeCompare(b.userID)
@@ -538,6 +577,7 @@ export class RoomStateStore {
 			this.#emojiPacksCache.delete(key)
 			this.#allPacksCache = null
 			this.parent.invalidateEmojiPacksCache()
+			this.imagePackSub.notify()
 		} else if (evtType === "m.room.member") {
 			this.#membersCache = null
 			this.#allCommandsCache = null
@@ -558,15 +598,20 @@ export class RoomStateStore {
 		)
 	}
 
-	applySync(sync: SyncRoom) {
-		if (sync.meta.dm_user_id === "") {
+	applySync(sync: SyncRoom, isNewRoom: boolean) {
+		if (sync.meta?.dm_user_id === "") {
 			sync.meta.dm_user_id = undefined
 		}
-		if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
-			this.meta.current = sync.meta
-		} else {
-			this.searchString = this.#makeSearchString(sync.meta)
-			this.meta.emit(sync.meta)
+		let metaChanged = false
+		if (sync.meta) {
+			if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
+				metaChanged = isNewRoom || !otherMetaIsEqual(this.meta.current, sync.meta)
+				this.meta.current = sync.meta
+			} else {
+				metaChanged = true
+				this.searchString = this.#makeSearchString(sync.meta)
+				this.meta.emit(sync.meta)
+			}
 		}
 		for (const ad of Object.values(sync.account_data ?? {})) {
 			if (ad.type === "fi.mau.gomuks.preferences") {
@@ -575,6 +620,7 @@ export class RoomStateStore {
 			}
 			this.accountData.set(ad.type, ad.content)
 			this.accountDataSubs.notify(ad.type)
+			this.parent.stateCache?.setRoomAccountData(ad)
 		}
 		for (const evt of sync.events ?? []) {
 			this.applyEvent(evt)
@@ -606,7 +652,7 @@ export class RoomStateStore {
 		} else if (sync.timeline) {
 			this.timeline.push(...sync.timeline)
 		}
-		if (sync.meta.unread_notifications === 0 && sync.meta.unread_highlights === 0) {
+		if (sync.meta && sync.meta.unread_notifications === 0 && sync.meta.unread_highlights === 0) {
 			for (const notif of this.openNotifications.values()) {
 				notif.close()
 			}
@@ -636,6 +682,31 @@ export class RoomStateStore {
 				newState.forEach(listener.onStateEvent)
 			})
 		}
+		if (this.parent.stateCache && metaChanged) {
+			this.parent.stateCache.setRoom(this.getStateForCache())
+		}
+	}
+
+	getStateForCache(): Parameters<StateCache["setRoom"]>[0] {
+		// This should be roughly in sync with pkg/hicli/init.go's getInitialSyncRoom
+		const meta = this.meta.current
+		const events: RawDBEvent[] = []
+		const state: SyncRoom["state"] = {}
+		const previewEvent = meta.preview_event_rowid && this.eventsByRowID.get(meta.preview_event_rowid)
+		if (previewEvent) {
+			events.push(memToRawEvent(previewEvent))
+			const previewMember = this.getStateEvent("m.room.member", previewEvent?.sender ?? "")
+			if (previewMember) {
+				events.push(memToRawEvent(previewMember))
+				const stateMap = state[previewMember.type] ?? {}
+				stateMap[previewMember.state_key!] = previewMember.rowid
+				state[previewMember.type] = stateMap
+			}
+			if (previewEvent.last_edit) {
+				events.push(memToRawEvent(previewEvent.last_edit))
+			}
+		}
+		return { meta, state, events }
 	}
 
 	removeFailedEvent(evt: MemDBEvent) {
@@ -705,6 +776,9 @@ export class RoomStateStore {
 				this.stateSubs.notify(this.stateSubKey(evtType, key))
 			}
 			this.stateSubs.notify(evtType)
+			if (evtType === "m.room.image_pack" || evtType === "im.ponies.room_emotes") {
+				this.imagePackSub.notify()
+			}
 		}
 	}
 
@@ -719,12 +793,19 @@ export class RoomStateStore {
 		}
 		if (decrypted.preview_event_rowid) {
 			this.meta.current.preview_event_rowid = decrypted.preview_event_rowid
+			this.parent.stateCache?.setRoom(this.getStateForCache())
 		}
 	}
 
 	applyTyping(users: string[]) {
 		this.typing = users
 		this.typingSub.notify()
+	}
+
+	clearTyping() {
+		if (this.typing.length) {
+			this.applyTyping([])
+		}
 	}
 
 	doGarbageCollection() {

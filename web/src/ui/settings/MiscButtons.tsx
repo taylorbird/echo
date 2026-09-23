@@ -13,9 +13,13 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { use } from "react"
+import { use, useState } from "react"
 import ClientContext from "../ClientContext.ts"
 import LogOutIcon from "@/icons/modern/log-out.svg?react"
+
+const currentVersion = (
+	document.querySelector("meta[name=gomuks-version-description]") as HTMLMetaElement
+)?.content
 
 const MiscButtons = () => {
 	const client = use(ClientContext)!
@@ -37,6 +41,17 @@ const MiscButtons = () => {
 			err => window.alert(`Failed to request OpenID token: ${err}`),
 		)
 	}
+	const [clearing, setClearing] = useState(false)
+	const clearCache = () => {
+		setClearing(true)
+		client.store.deleteCache().then(
+			() => {
+				console.log("Cleared state cache, reloading")
+				window.location.reload()
+			},
+			err => window.alert(`Failed to clear cache: ${err}`),
+		).finally(() => setClearing(false))
+	}
 	return <section className="settings-section">
 		<header>
 			<LogOutIcon/>
@@ -50,8 +65,16 @@ const MiscButtons = () => {
 			{!window.gomuksAndroid &&
 				<button onClick={client.registerURIHandler}>Register <code>matrix:</code> URI handler</button>
 			}
+			{client.store.anyStateCache ? <button onClick={clearCache} disabled={clearing}>
+				{clearing ? "Clearing cache" : "Clear cache and reload"}
+			</button> : null}
 			<button className="logout danger" onClick={onClickLogout}>Log out</button>
 		</div>
+		<p className="section-note">
+			Room list cache: {client.store.stateCacheStatus}
+			<br/>
+			Local server: {currentVersion || "version unknown"}
+		</p>
 	</section>
 }
 

@@ -269,7 +269,7 @@ const MessageComposer = () => {
 				[],
 		})
 		textInput.current?.focus()
-	}, [room.roomID, roomCtx.threadRoot])
+	}, [room, roomCtx.threadRoot])
 	const canSend = Boolean(state.text || state.media || state.location)
 	const onClickSend = (evt: React.FormEvent) => {
 		evt.preventDefault()
@@ -965,6 +965,7 @@ const MessageComposer = () => {
 			content: <div className="context-menu event-context-menu" style={style}>
 				{makeAttachmentButtons(true)}
 			</div>,
+			noHistory: true,
 		})
 	}
 	const collapseButtons = (composerRef.current ? composerRef.current.clientWidth : window.innerWidth - 16) < 600

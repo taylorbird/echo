@@ -71,7 +71,7 @@ func (gr *GomuksRPC) SetTyping(ctx context.Context, params *jsoncmd.SetTypingPar
 	return executeRequestNoResponse(gr, ctx, jsoncmd.SetTyping, params)
 }
 
-func (gr *GomuksRPC) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*mautrix.RespUserProfile, error) {
+func (gr *GomuksRPC) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.GetProfileResponse, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetProfile, params)
 }
 
@@ -85,6 +85,10 @@ func (gr *GomuksRPC) GetMutualRooms(ctx context.Context, params *jsoncmd.GetMutu
 
 func (gr *GomuksRPC) TrackUserDevices(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.ProfileEncryptionInfo, error) {
 	return executeRequest(gr, ctx, jsoncmd.TrackUserDevices, params)
+}
+
+func (gr *GomuksRPC) ResetMasterKeyTOFU(ctx context.Context, params *jsoncmd.ResetMasterKeyTOFUParams) (*jsoncmd.ProfileEncryptionInfo, error) {
+	return executeRequest(gr, ctx, jsoncmd.ResetMasterKeyTOFU, params)
 }
 
 func (gr *GomuksRPC) GetProfileEncryptionInfo(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.ProfileEncryptionInfo, error) {
@@ -219,6 +223,14 @@ func (gr *GomuksRPC) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLogin
 	return executeRequest(gr, ctx, jsoncmd.GetLoginFlows, params)
 }
 
+func (gr *GomuksRPC) GetVersions(ctx context.Context) (*mautrix.RespVersions, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetVersions, nil)
+}
+
+func (gr *GomuksRPC) GetCapabilities(ctx context.Context) (*mautrix.RespCapabilities, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetCapabilities, nil)
+}
+
 func (gr *GomuksRPC) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuthRegisterClientParams) (*oauth.ClientMetadata, error) {
 	return executeRequest(gr, ctx, jsoncmd.OAuthRegisterClient, params)
 }
@@ -235,6 +247,10 @@ func (gr *GomuksRPC) OAuthGenerateDeviceCode(ctx context.Context, params *jsoncm
 	return executeRequest(gr, ctx, jsoncmd.OAuthGenerateDeviceCode, params)
 }
 
+func (gr *GomuksRPC) OAuthSimpleDeviceCode(ctx context.Context, params *jsoncmd.OAuthSimpleDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthSimpleDeviceCode, params)
+}
+
 func (gr *GomuksRPC) OAuthPollDeviceCode(ctx context.Context, params *jsoncmd.OAuthPollDeviceCodeParams) error {
 	return executeRequestNoResponse(gr, ctx, jsoncmd.OAuthPollDeviceCode, params)
 }
@@ -249,6 +265,10 @@ func (gr *GomuksRPC) ListenToDevice(ctx context.Context, listen bool) (bool, err
 
 func (gr *GomuksRPC) GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetTurnServers, nil)
+}
+
+func (gr *GomuksRPC) GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetRTCTransports, nil)
 }
 
 func (gr *GomuksRPC) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error) {

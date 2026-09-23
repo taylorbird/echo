@@ -13,15 +13,15 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, Menu, MenuItemConstructorOptions } from "electron"
-import electronDl from "electron-dl"
 import path from "node:path"
+import { Menu, MenuItemConstructorOptions, app } from "electron"
+import electronDl from "electron-dl"
 import started from "electron-squirrel-startup"
-import { updateElectronApp, UpdateSourceType } from "update-electron-app"
+import { UpdateSourceType, updateElectronApp } from "update-electron-app"
 import { EmbeddedBackend } from "./backend.ts"
-import { GomuksWindow } from "./mainwindow.ts"
-import { loadConfig } from "./config.ts"
 import buildInfo from "./build-info.ts"
+import { loadConfig } from "./config.ts"
+import { GomuksWindow } from "./mainwindow.ts"
 
 if (started) {
 	app.quit()
@@ -75,6 +75,8 @@ function prepareMenu() {
 app.on("window-all-closed", () => {
 	if (!EmbeddedBackend.runningInstances) {
 		app.quit()
+	} else if (!mainWindow.hasTray()) {
+		EmbeddedBackend.stopAll().then(() => app.quit())
 	}
 })
 
@@ -95,7 +97,9 @@ app.whenReady().then(async () => {
 	mainWindow.initialize()
 	prepareMenu()
 	mainWindow.open()
-	mainWindow.createTray()
+	if (!mainWindow.config.disable_tray) {
+		mainWindow.createTray()
+	}
 	const lastArg = process.argv[process.argv.length - 1]
 	if (lastArg.startsWith("matrix:")) {
 		mainWindow.handleMatrixURI(lastArg)
@@ -105,9 +109,10 @@ app.whenReady().then(async () => {
 		updateElectronApp({
 			updateSource: {
 				type: UpdateSourceType.StaticStorage,
-				baseUrl: `https://update.gomuks.app/desktop-${buildInfo.updateChannel}/${process.platform}/${process.arch}`,
+				baseUrl:
+					`https://update.gomuks.app/desktop-${buildInfo.updateChannel}/${process.platform}/${process.arch}`,
 			},
-			updateInterval: "1 hour",
+			updateInterval: "12 hours",
 			notifyUser: true,
 		})
 	}

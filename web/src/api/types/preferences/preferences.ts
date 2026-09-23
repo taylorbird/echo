@@ -336,6 +336,20 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: false,
 	}),
+	pin_low_priority: new Preference<boolean>({
+		displayName: "Pin low priority to bottom",
+		description: "Always keep low priority at the bottom of the room list, ignoring recent activity.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+		category: "appearance",
+	}),
+	mute_low_priority: new Preference<boolean>({
+		displayName: "No unreads in low priority",
+		description: "Disable the unread message counter in low priority rooms. Notifications and highlights are still counted.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+		category: "appearance",
+	}),
 	alphabetical_order: new Preference<boolean>({
 		displayName: "Alphabetical room list",
 		description: "Sort rooms by name instead of recent activity.",
@@ -350,7 +364,7 @@ export const preferences = {
 		category: "notifications",
 		allowedContexts: anyContext,
 		defaultValue: "sounds/bright.flac",
-		hidden: window.gomuksAndroid,
+		hidden: Boolean(window.gomuksAndroid),
 	}),
 	notification_sound_volume: new Preference<number>({
 		displayName: "Notification sound volume",
@@ -361,7 +375,7 @@ export const preferences = {
 		minValue: 0,
 		maxValue: 100,
 		numberType: "range",
-		hidden: window.gomuksAndroid,
+		hidden: Boolean(window.gomuksAndroid),
 	}),
 	room_window_title: new Preference<string>({
 		displayName: "In-room window title",
@@ -369,7 +383,7 @@ export const preferences = {
 		category: "advanced",
 		allowedContexts: anyContext,
 		defaultValue: "$room - gomuks web",
-		hidden: window.gomuksAndroid,
+		hidden: Boolean(window.gomuksAndroid),
 	}),
 	window_title: new Preference<string>({
 		displayName: "Default window title",
@@ -377,7 +391,7 @@ export const preferences = {
 		category: "advanced",
 		allowedContexts: anyGlobalContext,
 		defaultValue: "gomuks web",
-		hidden: window.gomuksAndroid,
+		hidden: Boolean(window.gomuksAndroid),
 	}),
 	favicon: new Preference<string>({
 		displayName: "Favicon",
@@ -403,6 +417,13 @@ export const preferences = {
 		allowedContexts: globalDeviceSpecific,
 		defaultValue: false,
 		hidden: Boolean(window.gomuksDesktop?.isEmbedded() || window.gomuksWebWasm),
+	}),
+	server_sent_events: new Preference<boolean>({
+		displayName: "Use SSE",
+		description: "Use server-sent events instead of a websocket. Refresh to apply changes.",
+		allowedContexts: globalDeviceSpecific,
+		defaultValue: false,
+		hidden: Boolean(window.gomuksWebWasm),
 	}),
 	web_push: new Preference<boolean>({
 		displayName: "Web push notifications",

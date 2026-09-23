@@ -1,4 +1,4 @@
--- v0 -> v23 (compatible with v10+): Latest revision
+-- v0 -> v26 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT    NOT NULL PRIMARY KEY,
 	device_id      TEXT    NOT NULL,
@@ -35,6 +35,7 @@ CREATE TABLE room (
 
 	preview_event_rowid  INTEGER,
 	sorting_timestamp    INTEGER,
+	mod_timestamp        INTEGER NOT NULL DEFAULT (unixepoch('subsec')*1000),
 	unread_highlights    INTEGER NOT NULL DEFAULT 0,
 	unread_notifications INTEGER NOT NULL DEFAULT 0,
 	unread_messages      INTEGER NOT NULL DEFAULT 0,
@@ -46,14 +47,14 @@ CREATE TABLE room (
 ) STRICT;
 CREATE INDEX room_type_idx ON room (room_type);
 CREATE INDEX room_sorting_timestamp_idx ON room (sorting_timestamp DESC);
+CREATE INDEX room_mod_timestamp_idx ON room (mod_timestamp);
 CREATE INDEX room_preview_idx ON room (preview_event_rowid);
--- CREATE INDEX room_sorting_timestamp_idx ON room (unread_notifications > 0);
--- CREATE INDEX room_sorting_timestamp_idx ON room (unread_messages > 0);
 
 CREATE TABLE invited_room (
-	room_id      TEXT    NOT NULL PRIMARY KEY,
-	received_at  INTEGER NOT NULL,
-	invite_state TEXT    NOT NULL
+	room_id       TEXT    NOT NULL PRIMARY KEY,
+	received_at   INTEGER NOT NULL,
+	mod_timestamp INTEGER NOT NULL DEFAULT (unixepoch('subsec') * 1000),
+	invite_state  TEXT    NOT NULL
 ) STRICT;
 
 CREATE TRIGGER invited_room_delete_on_room_insert
@@ -61,26 +62,36 @@ CREATE TRIGGER invited_room_delete_on_room_insert
 	ON room
 BEGIN
 	DELETE FROM invited_room WHERE room_id = NEW.room_id;
+	DELETE FROM left_room WHERE room_id = NEW.room_id;
 END;
 
+CREATE TABLE left_room (
+	room_id       TEXT    NOT NULL PRIMARY KEY,
+	mod_timestamp INTEGER NOT NULL DEFAULT (unixepoch('subsec') * 1000)
+) STRICT;
+
 CREATE TABLE account_data (
-	user_id TEXT NOT NULL,
-	type    TEXT NOT NULL,
-	content TEXT NOT NULL,
+	user_id       TEXT    NOT NULL,
+	type          TEXT    NOT NULL,
+	content       TEXT    NOT NULL,
+	mod_timestamp INTEGER NOT NULL DEFAULT (unixepoch('subsec') * 1000),
 
 	PRIMARY KEY (user_id, type)
 ) STRICT;
+CREATE INDEX account_data_mod_timestamp_idx ON account_data (mod_timestamp);
 
 CREATE TABLE room_account_data (
-	user_id TEXT NOT NULL,
-	room_id TEXT NOT NULL,
-	type    TEXT NOT NULL,
-	content TEXT NOT NULL,
+	user_id       TEXT    NOT NULL,
+	room_id       TEXT    NOT NULL,
+	type          TEXT    NOT NULL,
+	content       TEXT    NOT NULL,
+	mod_timestamp INTEGER NOT NULL DEFAULT (unixepoch('subsec') * 1000),
 
 	PRIMARY KEY (user_id, room_id, type),
 	CONSTRAINT room_account_data_room_fkey FOREIGN KEY (room_id) REFERENCES room (room_id) ON DELETE CASCADE
 ) STRICT;
 CREATE INDEX room_account_data_room_id_idx ON room_account_data (room_id);
+CREATE INDEX room_account_data_mod_timestamp_idx ON account_data (mod_timestamp);
 
 CREATE TABLE event (
 	rowid             INTEGER PRIMARY KEY,
@@ -128,7 +139,20 @@ CREATE TRIGGER event_update_redacted_by
 	AFTER INSERT
 	ON event
 	WHEN NEW.type = 'm.room.redaction'
-	-- TODO check that event isn't soft failed
+		AND NOT COALESCE(NEW.unsigned->>'io.element.synapse.soft_failed', false)
+		AND NEW.event_id LIKE '$%'
+BEGIN
+	UPDATE event SET redacted_by = NEW.event_id WHERE room_id = NEW.room_id AND event_id = NEW.content ->> 'redacts';
+END;
+
+CREATE TRIGGER event_update_redacted_by_on_send_success
+	AFTER UPDATE
+	ON event
+	WHEN OLD.type = 'm.room.redaction' AND NEW.type = 'm.room.redaction'
+		AND (COALESCE(OLD.unsigned->>'io.element.synapse.soft_failed', false)
+			OR OLD.event_id NOT LIKE '$%')
+		AND NOT COALESCE(NEW.unsigned->>'io.element.synapse.soft_failed', false)
+		AND NEW.event_id LIKE '$%'
 BEGIN
 	UPDATE event SET redacted_by = NEW.event_id WHERE room_id = NEW.room_id AND event_id = NEW.content ->> 'redacts';
 END;

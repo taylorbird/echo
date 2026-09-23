@@ -30,6 +30,7 @@ import type {
 	TombstoneEventContent,
 	UnknownEventContent,
 	UserID,
+	UserProfile,
 } from "./mxtypes.ts"
 import type { OAuthServerMetadata } from "./oauth.ts"
 
@@ -71,8 +72,6 @@ export interface DBRoom {
 	unread_notifications: number
 	unread_messages: number
 	marked_unread: boolean
-
-	prev_batch: string
 }
 
 export interface DBSpaceEdge {
@@ -202,6 +201,16 @@ export interface MutualRoomsResponse {
 	joined: RoomID[]
 	count: number
 	next_batch?: string
+}
+
+export interface SanitizedBio {
+	html: string
+	edit_source?: string
+}
+
+export interface GetProfileResponse {
+	profile: UserProfile
+	bio?: SanitizedBio
 }
 
 export interface ManualPaginationResponse {
@@ -361,6 +370,11 @@ export interface PassphraseMetadata {
 export interface RecoveryKeyResponse {
 	recovery_key: string
 	passphrase_meta?: PassphraseMetadata
+	cross_signing_keys: {
+		"m.cross_signing.master": string
+		"m.cross_signing.self_signing": string
+		"m.cross_signing.user_signing": string
+	}
 }
 
 interface BaseSearchParams {

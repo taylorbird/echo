@@ -13,19 +13,19 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, BaseWindow, shell, WebContentsView, desktopCapturer } from "electron"
 import path from "node:path"
+import { BaseWindow, WebContentsView, app, desktopCapturer, shell } from "electron"
 import contextMenu from "electron-context-menu"
 import { EmbeddedBackend, GomuksBackend, RemoteBackend } from "./backend.ts"
-import { type GomuksWindow } from "./mainwindow.ts"
 import { loadPage } from "./html.ts"
-import { TabInfo } from "./tabinfo.ts"
+import { type GomuksWindow } from "./mainwindow.ts"
 
 interface BaseBackendConfig {
 	type: "embedded" | "remote"
-	name: string
-	displayname?: string
+	id: string
+	displayname: string
 	icon?: string
+	disable_notifications: boolean
 }
 
 export type BackendConfig = BaseBackendConfig & ({
@@ -38,6 +38,27 @@ export type BackendConfig = BaseBackendConfig & ({
 	password: string
 })
 
+export interface TabInfo extends BaseBackendConfig {
+	address?: string
+	username?: string
+	password?: string
+
+	unread: number
+	exited: boolean
+
+	env?: Record<string, string>
+}
+
+export type TabInfoUpdate = Omit<TabInfo, "unread" | "exited">
+
+export interface TabState {
+	tab_id: string
+	embedded: boolean
+	disable_notifications: boolean
+}
+
+const globalDisableNotifications = process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true"
+
 export class GomuksView {
 	public unreadCount: number = 0
 	public exited = false
@@ -46,12 +67,29 @@ export class GomuksView {
 	private readonly partition: string
 
 	constructor(public config: BackendConfig, private parent: GomuksWindow) {
-		this.partition = `persist:${config.name}`
+		this.partition = `persist:${config.id}`
 		if (config.type === "embedded") {
-			this.backend = new EmbeddedBackend(config.name, config.env, this.onBackendQuit, this.handleMatrixURI)
+			this.backend = new EmbeddedBackend(
+				config.id,
+				config.env,
+				config.disable_notifications || globalDisableNotifications || !this.parent.hasTray(),
+				this.onBackendQuit,
+				this.handleMatrixURI,
+			)
 		} else {
 			this.backend = new RemoteBackend(config.address, config.username, config.password)
 		}
+	}
+
+	get tabInfo(): TabInfo {
+		const info: TabInfo = {
+			...this.config,
+			unread: this.unreadCount,
+			exited: this.exited,
+		}
+		delete info.env
+		delete info.password
+		return info
 	}
 
 	private onBackendQuit = () => {
@@ -80,6 +118,15 @@ export class GomuksView {
 		if (this.webContentsView) {
 			this.webContentsView.webContents.toggleDevTools()
 		}
+	}
+
+	public destroy() {
+		if (this.webContentsView) {
+			this.webContentsView.webContents.close({ waitForBeforeUnload: false })
+			this.parent.removeView(this.webContentsView)
+			this.webContentsView = null
+		}
+		this.backend.stop()
 	}
 
 	public onWindowCreated(window: BaseWindow) {
@@ -119,6 +166,11 @@ export class GomuksView {
 		this.parent.setFocused(this)
 
 		let serverURL: string | null = null
+		view.webContents.ipc.handle("get-state", (): TabState => ({
+			disable_notifications: this.notificationsDisabled,
+			tab_id: this.config.id,
+			embedded: this.backend instanceof EmbeddedBackend,
+		}))
 		view.webContents.ipc.on("set-notification-count", (_evt, count) => {
 			this.unreadCount = count
 			this.parent.emitTabs()
@@ -179,17 +231,17 @@ export class GomuksView {
 		view.webContents.session.setDisplayMediaRequestHandler((_, callback) => {
 			if (process.env.XDG_SESSION_TYPE === "wayland") {
 				// Wayland forces using the system picker and will always only return one source.
-				desktopCapturer.getSources({ types: ["screen", "window"] }).then(
+				desktopCapturer.getSources({ types: ["screen", "window"]}).then(
 					sources => callback({ video: sources[0] }),
 					err => {
 						console.error("Wayland: failed to get user-selected source:", err)
-						callback({ video: { id: "", name: "" } })
+						callback({ video: { id: "", name: "" }})
 					},
 				)
 			} else {
 				// TODO add support for windows
 				console.error("Screen capture requested on non-Wayland session, which is not supported")
-				callback({ video: { id: "", name: "" } })
+				callback({ video: { id: "", name: "" }})
 			}
 		}, { useSystemPicker: true })
 		this.backend.address.then(addr => {
@@ -198,18 +250,25 @@ export class GomuksView {
 		}, err => {
 			console.error("Failed to get backend address:", err)
 		})
-		if (this.backend instanceof EmbeddedBackend || process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true") {
-			view.webContents.send("disable-notifications")
-		}
-		view.webContents.send("tab-id", {
-			name: this.config.name,
-			embedded: this.backend instanceof EmbeddedBackend,
-		})
 
 		if (process.env.NODE_ENV === "development") {
 			view.webContents.openDevTools()
 		}
 
 		this.webContentsView = view
+		this.sendDisableNotifications()
+	}
+
+	private get notificationsDisabled() {
+		return (this.backend instanceof EmbeddedBackend && this.parent.hasTray())
+			|| this.config.disable_notifications
+			|| globalDisableNotifications
+	}
+
+	sendDisableNotifications() {
+		this.webContentsView?.webContents.send(
+			"disable-notifications",
+			this.notificationsDisabled,
+		)
 	}
 }

@@ -422,6 +422,7 @@ div.room-search-wrapper {
 		outline: none;
 		background-color: transparent;
 		flex: 1;
+		min-width: 0;
 	}
 
 	> button {

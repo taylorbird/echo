@@ -644,7 +644,7 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 			{query === "" && <button onClick={openCreateRoom} title="Create room">
 				<AddCircleIcon/>
 			</button>}
-			<button onClick={clearQuery} disabled={query === ""}>
+			<button onClick={clearQuery} disabled={query === ""} className="search-clear-button">
 				{query !== "" ? <CloseIcon/> : <SearchIcon/>}
 			</button>
 		</div>

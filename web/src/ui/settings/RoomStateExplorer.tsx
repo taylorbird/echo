@@ -15,7 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { JSX, use, useCallback, useEffect, useState } from "react"
 import { RoomStateStore, StateStore, useAccountData, useRoomAccountData, useRoomState } from "@/api/statestore"
-import { MemDBEvent, UnknownEventContent } from "@/api/types"
+import { MemDBEvent, RawDBEvent, UnknownEventContent } from "@/api/types"
+import { formatFullTime, newSafeDate } from "@/util/datetime.ts"
 import ClientContext from "../ClientContext.ts"
 import JSONView from "../util/JSONView"
 import { PushRuleEditor, PushRuleList, PushRuleView } from "./PushRuleEditor.tsx"
@@ -24,6 +25,9 @@ import "./RoomStateExplorer.css"
 
 interface StateExplorerProps {
 	room: RoomStateStore
+	initialViewKind?: EventKind
+	initialSelectedType?: string
+	initialSelectedStateKey?: string
 }
 
 interface BaseEventViewProps {
@@ -104,6 +108,7 @@ const EventView = ({
 			? kind === EventKind.Profile ? "" : "{\n\n}"
 			: null,
 	)
+	const [prevEvents, setPrevEvents] = useState<MemDBEvent[] | null>(null)
 	const [newType, setNewType] = useState<string>(type || "")
 	const [newStateKey, setNewStateKey] = useState<string>(stateKey || "")
 	const [disableEncryption, setDisableEncryption] = useState<boolean>(false)
@@ -163,12 +168,46 @@ const EventView = ({
 		)
 	}
 	const stopEdit = () => setEditingContent(null)
-	const startEdit = () => setEditingContent(
-		kind === EventKind.Profile
-			? JSON.stringify(event, null, 4)
-			: JSON.stringify((nestedContent ? event?.content : event) || {}, null, 4),
-	)
+	const startEdit = () => {
+		setEditingContent(
+			kind === EventKind.Profile
+				? JSON.stringify(event, null, 4)
+				: JSON.stringify((nestedContent ? event?.content : event) || {}, null, 4),
+		)
+		setPrevEvents(null)
+	}
+	const oldestEvent = prevEvents ? prevEvents[prevEvents.length - 1] : event
+	const addPrevEvent = (evt: MemDBEvent | RawDBEvent) => {
+		setPrevEvents(prev => {
+			if (prev?.find(e => e.event_id === evt.event_id)) {
+				return prev
+			}
+			return [...(prev || []), "mem" in evt ? evt : room!.applyEvent(evt)]
+		})
+	}
+	const doFetchPrev = () => {
+		const targetEvtID = oldestEvent?.unsigned?.replaces_state
+		if (!targetEvtID || !room) {
+			return
+		}
+		const evt = room.eventsByID.get(targetEvtID)
+		if (!evt) {
+			if (room.requestedEvents.has(targetEvtID)) {
+				return
+			}
+			room.requestedEvents.add(targetEvtID)
+			client.rpc.getEvent(room.roomID, targetEvtID).then(
+				addPrevEvent,
+				err => window.alert(`Failed to fetch previous event: ${err}`),
+			)
+		} else {
+			addPrevEvent(evt)
+		}
+	}
 
+	const mainContent = editingContent !== null
+		? <textarea rows={10} value={editingContent} onChange={evt => setEditingContent(evt.target.value)}/>
+		: <JSONView data={event}/>
 	return (
 		<div className="state-explorer state-event-view">
 			<div className="state-header">
@@ -196,10 +235,18 @@ const EventView = ({
 				</div> : null}
 			</div>
 			<div className="state-event-content">
-				{editingContent !== null
-					? <textarea rows={10} value={editingContent} onChange={evt => setEditingContent(evt.target.value)}/>
-					: <JSONView data={event}/>
-				}
+				{prevEvents ? <>
+					<details>
+						<summary><code>{event!.event_id}</code> (current)</summary>
+						{mainContent}
+					</details>
+					{prevEvents.map(prevEvent => <details key={prevEvent.event_id}>
+						<summary>
+							<code>{prevEvent.event_id}</code> ({formatFullTime(newSafeDate(prevEvent.timestamp))})
+						</summary>
+						<JSONView data={prevEvent}/>
+					</details>)}
+				</> : mainContent}
 			</div>
 			<div className="nav-buttons">
 				{editingContent !== null ? <>
@@ -218,6 +265,8 @@ const EventView = ({
 					<button onClick={onBack}>Back</button>
 					<div className="spacer"/>
 					{kind === EventKind.Profile ? <button onClick={doDelete}>Delete</button> : null}
+					{kind === EventKind.State && oldestEvent?.unsigned?.replaces_state
+						? <button onClick={doFetchPrev}>Fetch previous event</button> : null}
 					<button onClick={startEdit}>Edit</button>
 				</>}
 			</div>
@@ -255,11 +304,13 @@ const StateKeyList = ({ room, type, onSelectStateKey, onBack }: StateKeyListProp
 	)
 }
 
-export const StateExplorer = ({ room }: StateExplorerProps) => {
-	const [viewKind, setViewKind] = useState<EventKind>(EventKind.State)
+export const StateExplorer = ({
+	room, initialViewKind, initialSelectedType, initialSelectedStateKey,
+}: StateExplorerProps) => {
+	const [viewKind, setViewKind] = useState<EventKind>(initialViewKind ?? EventKind.State)
 	const [creatingNew, setCreatingNew] = useState<EventKind | null>(null)
-	const [selectedType, setSelectedType] = useState<string | null>(null)
-	const [selectedStateKey, setSelectedStateKey] = useState<string | null>(null)
+	const [selectedType, setSelectedType] = useState<string | null>(initialSelectedType ?? null)
+	const [selectedStateKey, setSelectedStateKey] = useState<string | null>(initialSelectedStateKey ?? null)
 	const [loadingState, setLoadingState] = useState(false)
 	const [resettingTimeline, setResettingTimeline] = useState(false)
 	const [profile, setProfile] = useState<UnknownEventContent | null>(null)
@@ -268,7 +319,7 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 	useEffect(() => {
 		if (!profile && viewKind == EventKind.Profile) {
 			client.rpc.getProfile(client.userID).then(
-				setProfile,
+				resp => setProfile(resp.profile),
 				err => {
 					console.error("Failed to load profile", err)
 					window.alert(`Failed to load profile: ${err}`)

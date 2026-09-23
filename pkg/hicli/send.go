@@ -48,6 +48,7 @@ var baseExtensions = goldmark.WithExtensions(
 var (
 	rainbowWithHTML = goldmark.New(baseExtensions, format.HTMLOptions, goldmark.WithExtensions(rainbow.Extension))
 	defaultNoHTML   = goldmark.New(baseExtensions, format.HTMLOptions, goldmark.WithExtensions(mdext.EscapeHTML))
+	defaultWithHTML = goldmark.New(baseExtensions, format.HTMLOptions)
 )
 
 var htmlToMarkdownForInput = ptr.Clone(format.MarkdownHTMLParser)
@@ -78,33 +79,87 @@ func init() {
 	}
 }
 
-var accountDataPerMessageProfiles = event.Type{
-	Type:  "fi.mau.msc4461.per_message_profiles",
-	Class: event.AccountDataEventType,
+func (h *HiClient) getPerMessageProfilesForRoom(ctx context.Context, roomID id.RoomID) *event.PerMessageProfilesEventContent {
+	profiles, ok := h.roomPerMessageProfiles.Get(roomID)
+	if ok {
+		return profiles
+	}
+	evt, err := h.DB.AccountData.GetRoom(ctx, h.Account.UserID, roomID, event.AccountDataPerMessageProfiles)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Stringer("room_id", roomID).Msg("Failed to get per-message profiles from room account data")
+		return nil
+	}
+	if evt != nil {
+		if err = json.Unmarshal(evt.Content, &profiles); err != nil {
+			zerolog.Ctx(ctx).Err(err).Stringer("room_id", roomID).Msg("Failed to unmarshal per-message profiles from room account data")
+		}
+	}
+	h.roomPerMessageProfiles.Set(roomID, profiles)
+	return profiles
 }
 
-func (h *HiClient) getPerMessageProfile(ctx context.Context, name string) *event.BeeperPerMessageProfile {
-	var profiles map[string]*event.BeeperPerMessageProfile
-	profilesPtr := h.perMessageProfiles.Load()
-	if profilesPtr == nil {
-		evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataPerMessageProfiles)
-		if err != nil {
-			zerolog.Ctx(ctx).Err(err).Msg("Failed to get per-message profiles from account data")
-			return nil
-		}
-		defer h.perMessageProfiles.Store(&profiles)
-		if evt == nil {
-			return nil
-		} else if err = json.Unmarshal(evt.Content, &profiles); err != nil {
+func (h *HiClient) getPerMessageProfiles(ctx context.Context) *event.PerMessageProfilesEventContent {
+	profilesPtr := h.globalPerMessageProfiles.Load()
+	if profilesPtr != nil {
+		return *profilesPtr
+	}
+	evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataPerMessageProfiles)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("Failed to get per-message profiles from account data")
+		return nil
+	}
+	var profiles *event.PerMessageProfilesEventContent
+	if evt != nil {
+		if err = json.Unmarshal(evt.Content, &profiles); err != nil {
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal per-message profiles from account data")
 			return nil
 		}
-	} else if *profilesPtr == nil {
-		return nil
-	} else {
-		profiles = *profilesPtr
 	}
-	return profiles[name]
+	h.globalPerMessageProfiles.Store(&profiles)
+	return profiles
+}
+
+func parseTextFormatCommand(text string) (event.MessageEventContent, bool) {
+	if strings.HasPrefix(text, "/rainbow ") {
+		text = strings.TrimPrefix(text, "/rainbow ")
+		content := format.RenderMarkdownCustom(text, rainbowWithHTML)
+		content.FormattedBody = rainbow.ApplyColor(content.FormattedBody)
+		return content, true
+	} else if strings.HasPrefix(text, "/plain ") {
+		text = strings.TrimPrefix(text, "/plain ")
+		return format.TextToContent(text), true
+	} else if strings.HasPrefix(text, "/html ") {
+		text = strings.TrimPrefix(text, "/html ")
+		return format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1)), true
+	} else if strings.HasPrefix(text, "/htmlmd ") {
+		text = strings.TrimPrefix(text, "/htmlmd ")
+		return format.RenderMarkdownCustom(text, defaultWithHTML), true
+	}
+	return event.MessageEventContent{}, false
+}
+
+const gomuksInputMime = "text/x-gomuks-input"
+
+func inputTextToExtensible(text string) *event.ExtensibleTextContainer {
+	content, ok := parseTextFormatCommand(text)
+	if !ok {
+		content = format.RenderMarkdownCustom(text, defaultNoHTML)
+	}
+	container := &event.ExtensibleTextContainer{Text: make([]event.ExtensibleText, 0, 3)}
+	if content.FormattedBody != "" {
+		container.Text = append(container.Text, event.ExtensibleText{
+			Body:     content.FormattedBody,
+			MimeType: "text/html",
+		})
+	}
+	container.Text = append(container.Text, event.ExtensibleText{
+		Body:     content.Body,
+		MimeType: "text/plain",
+	}, event.ExtensibleText{
+		MimeType: gomuksInputMime,
+		Body:     text,
+	})
+	return container
 }
 
 func (h *HiClient) SendMessage(
@@ -125,21 +180,18 @@ func (h *HiClient) SendMessage(
 	var ts int64
 	var rawInputBody bool
 	var perMessageProfile *event.BeeperPerMessageProfile
+	globalPMPs := h.getPerMessageProfiles(ctx)
+	roomPMPs := h.getPerMessageProfilesForRoom(ctx, roomID)
 	msgType := event.MsgText
 	origText := text
 Loop:
 	for {
+		if perMessageProfile == nil {
+			text, perMessageProfile = event.PickPerMessageProfile(globalPMPs, roomPMPs, text)
+		}
 		spaceIdx := strings.IndexByte(text, ' ')
 		if spaceIdx < 2 {
 			break
-		}
-		colonIdx := strings.IndexByte(text, ':')
-		if perMessageProfile == nil && colonIdx > 0 && colonIdx < spaceIdx {
-			perMessageProfile = h.getPerMessageProfile(ctx, text[:colonIdx])
-			if perMessageProfile != nil {
-				text = strings.TrimPrefix(text[colonIdx+1:], " ")
-				continue
-			}
 		}
 		switch strings.ToLower(text[:spaceIdx]) {
 		case "/timestamp":
@@ -151,17 +203,6 @@ Loop:
 			ts, err = strconv.ParseInt(parts[1], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("malformed timestamp: %w", err)
-			}
-			text = parts[2]
-			continue
-		case "/pmp", "/profile":
-			parts := strings.SplitN(text, " ", 3)
-			if len(parts) != 3 {
-				return nil, fmt.Errorf("missing parameters for /profile")
-			}
-			perMessageProfile = h.getPerMessageProfile(ctx, parts[1])
-			if perMessageProfile == nil {
-				return nil, fmt.Errorf("unknown per-message profile: %s", parts[1])
 			}
 			text = parts[2]
 			continue
@@ -178,18 +219,8 @@ Loop:
 		}
 		text = text[spaceIdx+1:]
 	}
-	var content event.MessageEventContent
-	if strings.HasPrefix(text, "/rainbow ") {
-		text = strings.TrimPrefix(text, "/rainbow ")
-		content = format.RenderMarkdownCustom(text, rainbowWithHTML)
-		content.FormattedBody = rainbow.ApplyColor(content.FormattedBody)
-	} else if strings.HasPrefix(text, "/plain ") {
-		text = strings.TrimPrefix(text, "/plain ")
-		content = format.TextToContent(text)
-	} else if strings.HasPrefix(text, "/html ") {
-		text = strings.TrimPrefix(text, "/html ")
-		content = format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1))
-	} else if text != "" {
+	content, ok := parseTextFormatCommand(text)
+	if !ok && text != "" {
 		hasUnstructuredCommand := unencrypted || rawInputBody || ts != 0 || msgType != event.MsgText ||
 			content.BeeperPerMessageProfile != nil
 		if !hasCommand && strings.HasPrefix(text, "/") && !hasUnstructuredCommand {
@@ -213,6 +244,9 @@ Loop:
 			base.Mentions = content.Mentions
 		}
 		content = *base
+		if text == "" && content.MsgType.IsText() && content.FormattedBody != "" && content.Body == "" {
+			content.Body, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, content.FormattedBody)
+		}
 	}
 	if perMessageProfile != nil {
 		content.BeeperPerMessageProfile = perMessageProfile
@@ -336,10 +370,6 @@ func (h *HiClient) Send(
 	disableEncryption bool,
 	synchronous bool,
 ) (*database.Event, error) {
-	if evtType == event.EventRedaction {
-		// TODO implement
-		return nil, fmt.Errorf("redaction is not supported")
-	}
 	return h.send(ctx, roomID, evtType, content, "", disableEncryption, synchronous, false, 0)
 }
 
@@ -637,7 +667,7 @@ func (h *HiClient) loadMembers(ctx context.Context, room *database.Room) error {
 		if err != nil {
 			return err
 		}
-		return h.DB.Room.Upsert(ctx, &database.Room{
+		return h.DB.Room.Update(ctx, &database.Room{
 			ID:            room.ID,
 			HasMemberList: true,
 		})

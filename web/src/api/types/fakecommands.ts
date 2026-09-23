@@ -35,26 +35,17 @@ function makeFakeCommand(name: string, description: string, ...extraParams: BotP
 	}
 }
 
-const profileArgs: BotParameter = {
-	key: "key",
-	schema: {
-		schema_type: "primitive",
-		type: "string",
-	},
-}
-
 const FakeCommands: WrappedBotCommand[] = [
 	makeFakeCommand("plain", "Send a plain text message without any formatting"),
 	makeFakeCommand("html", "Send a formatted message with only HTML (no markdown)"),
 	makeFakeCommand("rainbow", "Send a message with rainbow colors (markdown allowed)"),
+	makeFakeCommand("htmlmd", "Send a formatted message that allows both HTML and markdown"),
 	makeFakeCommand("me", "Send an m.emote message"),
 	makeFakeCommand("notice", "Send an m.notice message"),
 	makeFakeCommand("unencrypted", "Send an unencrypted message even if the room is encrypted"),
 	makeFakeCommand(
 		"rawinputbody", "Use the input text as the body field as-is, rather than re-parsing generated HTML",
 	),
-	makeFakeCommand("profile", "Use a stored per-message profile", profileArgs),
-	makeFakeCommand("pmp", "Use a stored per-message profile", profileArgs),
 	makeFakeCommand("timestamp", "Send a message with a custom timestamp", {
 		key: "timestamp",
 		schema: {
@@ -70,11 +61,10 @@ export function isFakeCommand(text: string): boolean {
 		|| text.startsWith("/notice ")
 		|| text.startsWith("/rainbow ")
 		|| text.startsWith("/html ")
+		|| text.startsWith("/htmlmd ")
 		|| text.startsWith("/timestamp ")
 		|| text.startsWith("/unencrypted ")
 		|| text.startsWith("/rawinputbody ")
-		|| text.startsWith("/pmp ")
-		|| text.startsWith("/profile ")
 }
 
 export default FakeCommands

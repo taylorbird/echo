@@ -237,26 +237,43 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 				updatedRoom.Avatar = &dmAvatarURL
 			}
 		}
-		roomChanged := updatedRoom.CheckChangesAndCopyInto(room)
-		// TODO dispatch space edge changes if something changed? (fairly unlikely though)
-		err = sdc.Apply(ctx, room, h.DB.SpaceEdge)
+		roomChanged, syncRoomChanged := updatedRoom.CheckChangesAndCopyInto(room)
+		err = sdc.Apply(ctx, room, h.DB.Room, h.DB.SpaceEdge)
 		if err != nil {
 			return err
 		}
-		if roomChanged {
+		if roomChanged || len(sdc.Children) > 0 {
 			// Only set this here so it doesn't unconditionally flag the room as changed
 			updatedRoom.LazyLoadSummary = llSummary
-			err = h.DB.Room.Upsert(ctx, updatedRoom)
+			err = h.DB.Room.Update(ctx, updatedRoom)
 			if err != nil {
 				return fmt.Errorf("failed to save room data: %w", err)
 			}
-			if dispatchEvt {
+			// TODO also dispatch parent spaces? those are usually less important though
+			var spaceEdges map[id.RoomID][]*database.SpaceEdge
+			var topLevelSpaces []id.RoomID
+			if room.GetType() == event.RoomTypeSpace {
+				spaceEdges, err = h.DB.SpaceEdge.GetAll(ctx, room.ID)
+				if err != nil {
+					return fmt.Errorf("failed to get space edges: %w", err)
+				}
+				topLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
+				if err != nil {
+					return fmt.Errorf("failed to get top-level spaces: %w", err)
+				}
+				if _, edgesFound := spaceEdges[room.ID]; !edgesFound {
+					spaceEdges[room.ID] = []*database.SpaceEdge{}
+				}
+			}
+			if dispatchEvt && syncRoomChanged {
 				h.EventHandler(&jsoncmd.SyncComplete{
 					Rooms: map[id.RoomID]*jsoncmd.SyncRoom{
 						roomID: {
 							Meta: room,
 						},
 					},
+					SpaceEdges:     spaceEdges,
+					TopLevelSpaces: topLevelSpaces,
 				})
 			}
 		}
@@ -404,6 +421,11 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 	if err != nil {
 		return nil, fmt.Errorf("failed to get messages from server: %w", err)
 	}
+	zerolog.Ctx(ctx).Debug().
+		Int("event_count", len(resp.Chunk)).
+		Str("start", resp.Start).
+		Str("end", resp.End).
+		Msg("Got pagination response from server")
 	events := make([]*database.Event, len(resp.Chunk))
 	if resp.End == "" {
 		resp.End = database.PrevBatchPaginationComplete
@@ -420,7 +442,7 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		}, nil
 	}
 	wakeupSessionRequests := false
-	err = h.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
+	paginationTxn := func(ctx context.Context) error {
 		if err = ctx.Err(); err != nil {
 			return err
 		}
@@ -446,6 +468,10 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		}
 		if iOffset >= len(events) {
 			events = events[:0]
+			err = h.DB.Room.SetPrevBatch(ctx, room.ID, resp.End)
+			if err != nil {
+				return fmt.Errorf("failed to set prev_batch: %w", err)
+			}
 			return nil
 		}
 		events = events[:len(events)-iOffset]
@@ -478,6 +504,9 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 			evt.TimelineRowID = tuples[i].Timeline
 		}
 		return nil
+	}
+	err = h.withEventDecryptionLock(ctx, "", false, func(ctx context.Context) error {
+		return h.DB.DoTxn(ctx, nil, paginationTxn)
 	})
 	if err == nil && wakeupSessionRequests {
 		h.WakeupRequestQueue()

@@ -13,10 +13,11 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, Notification } from "electron"
-import path from "node:path"
 import { ChildProcess, spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
+import fs from "node:fs/promises"
+import path from "node:path"
+import { Notification, app } from "electron"
 
 const binaryName = "gomuks" + (process.platform === "win32" ? ".exe" : "")
 const backendBinaryPath = process.env.GOMUKS_DESKTOP_BINARY_PATH ||
@@ -54,6 +55,7 @@ export class EmbeddedBackend implements GomuksBackend {
 	constructor(
 		private profileName = "backend",
 		private env: Record<string, string> = {},
+		private disableNotifications: boolean,
 		private onQuit: () => void,
 		private handleMatrixURI: (uri: string) => void,
 	) {}
@@ -73,12 +75,20 @@ export class EmbeddedBackend implements GomuksBackend {
 		return this.addressPromise
 	}
 
+	static async deleteData(profileName: string) {
+		await fs.rm(path.join(app.getPath("sessionData"), profileName), { recursive: true })
+		await fs.rm(path.join(app.getPath("logs"), profileName), { recursive: true })
+	}
+
 	start() {
 		if (this.process) {
 			return
 		} else if (EmbeddedBackend.instances === null) {
 			throw new Error("App is stopping")
-		} else if (EmbeddedBackend.instances.has(this.profileName) && EmbeddedBackend.instances.get(this.profileName) !== this) {
+		} else if (
+			EmbeddedBackend.instances.has(this.profileName)
+			&& EmbeddedBackend.instances.get(this.profileName) !== this
+		) {
 			throw new Error("Duplicate backend profile name: " + this.profileName)
 		}
 		EmbeddedBackend.instances.set(this.profileName, this)
@@ -130,7 +140,7 @@ export class EmbeddedBackend implements GomuksBackend {
 					console.warn("Unexpected backend output:", data)
 				}
 			} catch (err) {
-				console.error("Failed to parse backend output:", output.toString())
+				console.error("Failed to parse backend output:", err, output.toString())
 			}
 		})
 	}
@@ -175,7 +185,7 @@ export class EmbeddedBackend implements GomuksBackend {
 	}
 
 	private onPushNotification(data: PushNewMessage) {
-		if (process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true") {
+		if (this.disableNotifications) {
 			return
 		}
 		const notif = new Notification({
@@ -190,7 +200,9 @@ export class EmbeddedBackend implements GomuksBackend {
 		this.getNotifMap(data.room_id).set(data.event_rowid, notif)
 		notif.on("close", () => this.getNotifMap(data.room_id).delete(data.event_rowid))
 		notif.on("click", () => {
-			const targetURI = `matrix:roomid/${encodeURIComponent(data.room_id.slice(1))}/e/${encodeURIComponent(data.event_id.slice(1))}`
+			const targetURI = `matrix:roomid/${
+				encodeURIComponent(data.room_id.slice(1))
+			}/e/${encodeURIComponent(data.event_id.slice(1))}`
 			console.log("Opening", targetURI, "after notification click")
 			this.handleMatrixURI(targetURI)
 		})

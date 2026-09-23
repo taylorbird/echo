@@ -99,8 +99,10 @@ const DisconnectedScreen = ({ error, reconnecting, nextAttempt }: DisconnectedSc
 				<div className="disconnected-foot">
 					<span>
 						{reconnecting
+							// Arrives as a phrase ("next attempt at 12:01:02", "currently trying
+							// to connect"), so it only needs a capital to stand on its own.
 							? nextAttempt
-								? `Next attempt at ${nextAttempt}`
+								? nextAttempt.charAt(0).toUpperCase() + nextAttempt.slice(1)
 								: "Reconnecting"
 							: "Not retrying"}
 					</span>

@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useReducer, useState, useSyncExternalStore } from "react"
 import Client from "@/api/client.ts"
 import type { CustomEmojiPack } from "@/util/emoji"
+import { useEventAsState } from "@/util/eventdispatcher.ts"
 import type {
 	BeeperPerMessageProfile,
 	DBSpaceEdge,
@@ -24,6 +25,7 @@ import type {
 	MemDBEvent,
 	MemReceipt,
 	MemberEventContent,
+	RoomStateGUID,
 	UnknownEventContent,
 	UserID,
 	WrappedBotCommand,
@@ -42,6 +44,11 @@ export function useRoomTimeline(room: RoomStateStore | undefined): (MemDBEvent |
 
 export function useRoomTyping(room: RoomStateStore): string[] {
 	return useSyncExternalStore(room.typingSub.subscribe, () => room.typing)
+}
+
+export function useCapabilities(client: Client) {
+	client.fetchCapabilities()
+	return useEventAsState(client.capabilities)
 }
 
 function getAllReceipts(
@@ -217,7 +224,7 @@ export function useCustomEmojis(
 		() => ss.getRoomEmojiPacks(),
 	)
 	const specialRoomPacks = useSyncExternalStore<Record<string, CustomEmojiPack>>(
-		room.stateSubs.getSubscriber("im.ponies.room_emotes"),
+		room.imagePackSub.subscribe,
 		() => room.preferences.show_room_emoji_packs ? room.getAllEmojiPacks() : emptyObject,
 	)
 	return useMemo(() => {
@@ -226,9 +233,16 @@ export function useCustomEmojis(
 	}, [watchedRoomPacks, specialRoomPacks, usage])
 }
 
+export function useSubscribedPacks(ss: StateStore, bothKeys: boolean = true): RoomStateGUID[] {
+	return useSyncExternalStore(
+		ss.emojiRoomsSub.subscribe,
+		() => ss.getEmojiPackKeys(bothKeys),
+	)
+}
+
 export function useRoomImagePacks(room: RoomStateStore): Record<string, CustomEmojiPack> {
 	return useSyncExternalStore<Record<string, CustomEmojiPack>>(
-		room.stateSubs.getSubscriber("im.ponies.room_emotes"),
+		room.imagePackSub.subscribe,
 		() => room.getAllEmojiPacks(),
 	)
 }

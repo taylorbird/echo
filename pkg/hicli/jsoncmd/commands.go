@@ -21,6 +21,14 @@ type Container[T any] struct {
 	Data      T     `json:"data"`
 }
 
+func (c *Container[T]) AsAny() *Container[any] {
+	return &Container[any]{
+		Command:   c.Command,
+		RequestID: c.RequestID,
+		Data:      c.Data,
+	}
+}
+
 type Name string
 
 func (n Name) String() string {
@@ -47,6 +55,7 @@ const (
 	ReqSetProfileField          Name = "set_profile_field"
 	ReqGetMutualRooms           Name = "get_mutual_rooms"
 	ReqTrackUserDevices         Name = "track_user_devices"
+	ReqResetMasterKeyTOFU       Name = "reset_master_key_tofu"
 	ReqGetProfileEncryptionInfo Name = "get_profile_encryption_info"
 	ReqGetOwnDevices            Name = "get_own_devices"
 	ReqGetEvent                 Name = "get_event"
@@ -81,21 +90,27 @@ const (
 	ReqOAuthGetAuthorizationURL Name = "oauth_get_authorization_url"
 	ReqOAuthExchangeToken       Name = "oauth_exchange_token"
 	ReqOAuthGenerateDeviceCode  Name = "oauth_generate_device_code"
+	ReqOAuthSimpleDeviceCode    Name = "oauth_simple_device_code"
 	ReqOAuthPollDeviceCode      Name = "oauth_poll_device_code"
 	ReqVerify                   Name = "verify"
 	ReqGenerateRecoveryKey      Name = "generate_recovery_key"
 	ReqResetEncryption          Name = "reset_encryption"
 	ReqDiscoverHomeserver       Name = "discover_homeserver"
 	ReqGetLoginFlows            Name = "get_login_flows"
+	ReqGetVersions              Name = "get_versions"
+	ReqGetCapabilities          Name = "get_capabilities"
 	ReqRegisterPush             Name = "register_push"
 	ReqListenToDevice           Name = "listen_to_device"
 	ReqGetTurnServers           Name = "get_turn_servers"
+	ReqGetRTCTransports         Name = "get_rtc_transports"
 	ReqGetMediaConfig           Name = "get_media_config"
 	ReqCalculateRoomID          Name = "calculate_room_id"
 	ReqRerequestSession         Name = "rerequest_session"
 
 	ReqGetAccountInfo Name = "get_account_info"
 	ReqUploadMedia    Name = "upload_media"
+	ReqDownloadMedia  Name = "download_media"
+	ReqGetURLPreview  Name = "get_url_preview"
 	ReqExportKeys     Name = "export_keys"
 
 	RespError   Name = "error"
@@ -153,7 +168,7 @@ var (
 	// SetTyping starts or stops sending typing notifications in a room.
 	SetTyping = &CommandSpecWithoutResponse[*SetTypingParams]{Name: ReqSetTyping}
 	// GetProfile returns a Matrix user profile from the homeserver.
-	GetProfile = &CommandSpec[*GetProfileParams, *mautrix.RespUserProfile]{Name: ReqGetProfile}
+	GetProfile = &CommandSpec[*GetProfileParams, *GetProfileResponse]{Name: ReqGetProfile}
 	// SetProfileField sets a field in the current user's Matrix profile.
 	SetProfileField = &CommandSpecWithoutResponse[*SetProfileFieldParams]{Name: ReqSetProfileField}
 	// GetMutualRooms returns the list of rooms shared between the current user and another user
@@ -162,6 +177,9 @@ var (
 	// TrackUserDevices start tracking a user’s e2ee device list if it's not already tracked, then returns
 	// encryption info (same result as `get_profile_encryption_info`).
 	TrackUserDevices = &CommandSpec[*GetProfileParams, *ProfileEncryptionInfo]{Name: ReqTrackUserDevices}
+	// ResetMasterKeyTOFU marks a user's changed master key as trusted.
+	// This is NOT meant for user verification, it just flips from untrusted back to trusted-on-first-use.
+	ResetMasterKeyTOFU = &CommandSpec[*ResetMasterKeyTOFUParams, *ProfileEncryptionInfo]{Name: ReqResetMasterKeyTOFU}
 	// GetProfileEncryptionInfo returns the device list and trust state information for a user.
 	GetProfileEncryptionInfo = &CommandSpec[*GetProfileParams, *ProfileEncryptionInfo]{Name: ReqGetProfileEncryptionInfo}
 	// GetOwnDevices returns the current user's full device list and other details.
@@ -219,6 +237,8 @@ var (
 	LeaveRoom = &CommandSpec[*LeaveRoomParams, *mautrix.RespLeaveRoom]{Name: ReqLeaveRoom}
 	// CreateRoom creates a new room.
 	CreateRoom = &CommandSpec[*mautrix.ReqCreateRoom, *mautrix.RespCreateRoom]{Name: ReqCreateRoom}
+	// GetCapabilities fetches the user's capabilities.
+	GetCapabilities = &CommandSpecWithoutRequest[*mautrix.RespCapabilities]{Name: ReqGetCapabilities}
 	// MuteRoom mutes or unmutes a room by manipulating push rules. It returns the previous mute state.
 	MuteRoom = &CommandSpec[*MuteRoomParams, bool]{Name: ReqMuteRoom}
 	// UpdatePushRule is used to create, edit, delete, enable or disable push rules.
@@ -262,6 +282,10 @@ var (
 	// After showing the URL to the user, the frontend should call `oauth_poll_device_code`,
 	// which will block until the login succeeds or times out.
 	OAuthGenerateDeviceCode = &CommandSpec[*OAuthGenerateDeviceCodeParams, *oauth.DeviceCodeResponse]{Name: ReqOAuthGenerateDeviceCode}
+	// OAuthSimpleDeviceCode is a minimal alternative to manually calling `oauth_register_client` + `oauth_generate_device_code`.
+	// It registers a client with default details and generates a device code in one step.
+	// The generated data is cached on the backend, so the frontend can then call `oauth_poll_device_code` with no parameters.
+	OAuthSimpleDeviceCode = &CommandSpec[*OAuthSimpleDeviceCodeParams, *oauth.DeviceCodeResponse]{Name: ReqOAuthSimpleDeviceCode}
 	// OAuthPollDeviceCode polls the homeserver for a device code login.
 	// After a successful login, the `client_state` event will be dispatched.
 	// The frontend should use the event rather than the response to this method to update its state.
@@ -279,6 +303,8 @@ var (
 	DiscoverHomeserver = &CommandSpec[*DiscoverHomeserverParams, *mautrix.ClientWellKnown]{Name: ReqDiscoverHomeserver}
 	// GetLoginFlows returns the available login flows on the given homeserver.
 	GetLoginFlows = &CommandSpec[*GetLoginFlowsParams, *LoginFlowsResponse]{Name: ReqGetLoginFlows}
+	// GetVersions returns the spec versions and unstable features supported by the homeserver.
+	GetVersions = &CommandSpecWithoutRequest[*mautrix.RespVersions]{Name: ReqGetVersions}
 	// RegisterPush stores a gomuks-specific pusher in the database. This will not register a
 	// pusher on the homeserver. Push notifications will not work without the gomuks backend
 	// being online.
@@ -288,6 +314,8 @@ var (
 	ListenToDevice = &CommandSpec[bool, bool]{Name: ReqListenToDevice}
 	// GetTurnServers returns TURN server credentials from the homeserver.
 	GetTurnServers = &CommandSpecWithoutRequest[*mautrix.RespTurnServer]{Name: ReqGetTurnServers}
+	// GetRTCTransports returns MatrixRTC transports from the homeserver.
+	GetRTCTransports = &CommandSpecWithoutRequest[*mautrix.RespRTCTransports]{Name: ReqGetRTCTransports}
 	// GetMediaConfig returns the homeserver's media repository configuration (e.g. upload size limit)
 	GetMediaConfig = &CommandSpecWithoutRequest[*mautrix.RespMediaConfig]{Name: ReqGetMediaConfig}
 	// CalculateRoomID calculates a room ID locally from a timestamp and creation content. This is
@@ -306,6 +334,13 @@ var (
 	// UploadMedia uploads a file on the local disk to the server and returns the m.room.message to use in `send_message`.
 	// This is only available in the C FFI. HTTP clients must use the /upload API.
 	UploadMedia = &CommandSpec[*UploadMediaParams, *event.MessageEventContent]{Name: ReqUploadMedia}
+	// DownloadMedia downloads a file from the server and returns the file path on the local disk.
+	// This is only available in the C FFI. HTTP clients must use the /download API.
+	DownloadMedia = &CommandSpec[*DownloadMediaParams, *DownloadMediaResponse]{Name: ReqDownloadMedia}
+	// GetURLPreview generates a URL preview for the given URL. This should be used
+	// when sending a message to attach bundled URL previews, not when receiving messages.
+	// This is only available in the C FFI. HTTP clients must use the /url_preview API.
+	GetURLPreview = &CommandSpec[*GetURLPreviewParams, *event.BeeperLinkPreview]{Name: ReqGetURLPreview}
 	// ExportKeys exports megolm room keys and returns the exported file as a string.
 	// This is only available in the C FFI. HTTP clients must use the /keys/export API.
 	ExportKeys = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
@@ -359,12 +394,18 @@ var AllNames = []Name{
 	ReqSetProfileField,
 	ReqGetMutualRooms,
 	ReqTrackUserDevices,
+	ReqResetMasterKeyTOFU,
 	ReqGetProfileEncryptionInfo,
+	ReqGetOwnDevices,
 	ReqGetEvent,
+	ReqGetEventByRowID,
 	ReqGetEventContext,
 	ReqPaginateManual,
+	ReqSearchLocal,
+	ReqSearchServer,
 	ReqGetMentions,
 	ReqGetRelatedEvents,
+	ReqGetStickyEvents,
 	ReqGetRoomState,
 	ReqGetSpecificRoomState,
 	ReqGetReceipts,
@@ -375,7 +416,9 @@ var AllNames = []Name{
 	ReqKnockRoom,
 	ReqLeaveRoom,
 	ReqCreateRoom,
+	ReqGetCapabilities,
 	ReqMuteRoom,
+	ReqUpdatePushRule,
 	ReqEnsureGroupSessionShared,
 	ReqSendToDevice,
 	ReqResolveAlias,
@@ -383,6 +426,11 @@ var AllNames = []Name{
 	ReqLogout,
 	ReqLogin,
 	ReqLoginCustom,
+	ReqOAuthRegisterClient,
+	ReqOAuthGetAuthorizationURL,
+	ReqOAuthExchangeToken,
+	ReqOAuthGenerateDeviceCode,
+	ReqOAuthPollDeviceCode,
 	ReqVerify,
 	ReqGenerateRecoveryKey,
 	ReqResetEncryption,
@@ -396,6 +444,9 @@ var AllNames = []Name{
 	ReqRerequestSession,
 	ReqGetAccountInfo,
 	ReqUploadMedia,
+	ReqDownloadMedia,
+	ReqGetURLPreview,
+	ReqExportKeys,
 	RespError,
 	RespSuccess,
 	ReqPing,

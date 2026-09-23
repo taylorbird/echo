@@ -18,8 +18,11 @@ import { CancellablePromise } from "@/util/promise.ts"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
 import { BACKEND_CREDENTIALS, BACKEND_URL } from "./backend.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
+import SSEClient from "./sseclient.ts"
 import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
+import { getTabsAPI } from "./tabs.ts"
 import {
+	Capabilities,
 	ClientState,
 	ElementRecentEmoji,
 	EventID,
@@ -52,16 +55,22 @@ export default class Client {
 	#gcInterval: ReturnType<typeof setInterval> | undefined
 	#toDeviceRequested = false
 	passwordCache?: string
+	readonly capabilities = new CachedEventDispatcher<Capabilities>()
+	#capabilitiesRequest?: Promise<Capabilities> | null = null
 
 	constructor(readonly rpc: RPCClient) {
+		this.rpc.getCachedServerTimestamp = () => this.store.serverTimestamp
 		this.rpc.event.listen(this.#handleEvent)
-		this.rpc.connect.listen(() => this.initComplete.emit(false))
+		this.rpc.connect.listen(() => {
+			this.initComplete.emit(false)
+			this.store.clearTyping()
+		})
 		this.store.accountDataSubs.getSubscriber("im.ponies.emote_rooms")(() =>
 			queueMicrotask(() => this.#handleEmoteRoomsChange(true)))
 		this.store.accountDataSubs.getSubscriber("m.image_pack.rooms")(() =>
 			queueMicrotask(() => this.#handleEmoteRoomsChange(false)))
 
-		const notifListener = window.gomuksDesktop?.setNotificationCount
+		const notifListener = getTabsAPI()?.setNotificationCount
 		if (notifListener) {
 			this.store.homeSpace.counts.listen(counts => {
 				if (this.initComplete.current) {
@@ -86,13 +95,16 @@ export default class Client {
 	}
 
 	async #reallyStart(signal: AbortSignal, credentials?: { username: string; password: string }) {
-		if (!await this.rpc.doAuth(signal, credentials)) {
+		if (!await this.rpc.tryAuth(signal, credentials)) {
 			return
 		}
 		if (signal.aborted) {
 			return
 		}
 		console.log("Successfully authenticated, connecting to websocket")
+		if (this.store.preferences.low_bandwidth && this.rpc instanceof SSEClient) {
+			await this.store.loadCache()
+		}
 		this.rpc.start()
 		this.requestNotificationPermission()
 	}
@@ -150,6 +162,9 @@ export default class Client {
 					return
 				}
 				console.log("Successfully authenticated, connecting to websocket")
+				if (this.store.preferences.low_bandwidth && this.rpc instanceof SSEClient) {
+					await this.store.loadCache()
+				}
 				this.rpc.start()
 				return
 			case "share":
@@ -256,6 +271,23 @@ export default class Client {
 		})
 	}
 
+	async fetchCapabilities(): Promise<Capabilities> {
+		if (!this.#capabilitiesRequest) {
+			this.#capabilitiesRequest = this.rpc.getCapabilities().then(
+				resp => {
+					this.capabilities.emit(resp.capabilities)
+					return resp.capabilities
+				},
+				err => {
+					console.error("Failed to fetch capabilities", err)
+					this.#capabilitiesRequest = null
+					throw err
+				},
+			)
+		}
+		return this.#capabilitiesRequest
+	}
+
 	registerURIHandler = () => {
 		navigator.registerProtocolHandler("matrix", "#/uri/%s")
 	}
@@ -288,6 +320,7 @@ export default class Client {
 		}, window.gcSettings.interval)
 		return () => {
 			abort.abort()
+			this.store.closeCache()
 			this.rpc.stop()
 			clearInterval(this.#gcInterval)
 		}
@@ -300,7 +333,11 @@ export default class Client {
 	#handleEvent = (ev: RPCEvent) => {
 		if (ev.command === "client_state") {
 			this.state.emit(ev.data)
-			this.store.userID = ev.data.is_logged_in ? ev.data.user_id : ""
+			const userID = ev.data.is_logged_in ? ev.data.user_id : ""
+			if (userID !== this.store.userID) {
+				this.store.userID = userID
+				this.store.stateCache?.setUserID(userID)
+			}
 			if (ev.data.is_verified) {
 				this.registerWebPush(true)
 			}
@@ -308,6 +345,7 @@ export default class Client {
 			this.syncStatus.emit(ev.data)
 		} else if (ev.command === "init_complete") {
 			this.initComplete.emit(true)
+			this.store.stateCache?.tryFlush()
 		} else if (ev.command === "sync_complete") {
 			this.store.applySync(ev.data)
 		} else if (ev.command === "events_decrypted") {

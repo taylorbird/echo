@@ -17,6 +17,7 @@ import React, { useEffect, useMemo } from "react"
 import { BACKEND_WS_URL } from "./api/backend.ts"
 import Client from "./api/client.ts"
 import RPCClient from "./api/rpc.ts"
+import SSEClient from "./api/sseclient.ts"
 import { getLocalStoragePreferences } from "./api/types/preferences"
 import WasmClient from "./api/wasmclient.ts"
 import WSClient from "./api/wsclient.ts"
@@ -25,7 +26,7 @@ import DisconnectedScreen from "./ui/DisconnectedScreen.tsx"
 import MainScreen from "./ui/MainScreen.tsx"
 import WebAuthLogin from "./ui/WebAuthLogin.tsx"
 import { LoginScreen, VerificationScreen } from "./ui/login"
-import { LightboxWrapper } from "./ui/modal"
+import { LightboxWrapper, ModalContext, ModalWrapper, NestableModalContext } from "./ui/modal"
 import { useEventAsState } from "./util/eventdispatcher.ts"
 import { startUpdateChecks } from "./util/updater.ts"
 import "./ui/login/SignedOut.css"
@@ -34,8 +35,11 @@ function makeRPCClient(): RPCClient {
 	if (window.gomuksWebWasm) {
 		return new WasmClient()
 	}
-	const lb = getLocalStoragePreferences("global_prefs", () => {}).low_bandwidth
-	return new WSClient(`${BACKEND_WS_URL}_gomuks/websocket`, lb ?? false)
+	const prefs = getLocalStoragePreferences("global_prefs", () => {})
+	if (prefs.server_sent_events) {
+		return new SSEClient()
+	}
+	return new WSClient(`${BACKEND_WS_URL}_gomuks/websocket`, prefs.low_bandwidth ?? false)
 }
 
 /*
@@ -115,9 +119,17 @@ function App() {
 			</main>
 		</SignedOut>
 	} else if (!clientState.is_logged_in) {
-		return <SignedOut><LoginScreen client={client} clientState={clientState}/></SignedOut>
+		return <ModalWrapper ContextType={ModalContext}>
+			<ModalWrapper ContextType={NestableModalContext}>
+				<SignedOut><LoginScreen client={client} clientState={clientState}/></SignedOut>
+			</ModalWrapper>
+		</ModalWrapper>
 	} else if (!clientState.is_verified) {
-		return <SignedOut><VerificationScreen client={client} clientState={clientState}/></SignedOut>
+		return <ModalWrapper ContextType={ModalContext}>
+			<ModalWrapper ContextType={NestableModalContext}>
+				<SignedOut><VerificationScreen client={client} clientState={clientState}/></SignedOut>
+			</ModalWrapper>
+		</ModalWrapper>
 	} else {
 		return <ClientContext value={client}>
 			<LightboxWrapper>

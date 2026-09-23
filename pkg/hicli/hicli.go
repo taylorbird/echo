@@ -24,6 +24,7 @@ import (
 	"go.mau.fi/util/dbutil"
 	_ "go.mau.fi/util/dbutil/litestream"
 	"go.mau.fi/util/exerrors"
+	"go.mau.fi/util/exsync"
 	"go.mau.fi/util/jsontime"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto"
@@ -46,7 +47,7 @@ type HiClient struct {
 	ClientStore *database.ClientStateStore
 	Log         zerolog.Logger
 
-	Initialized       bool
+	Initialized       *exsync.Event
 	VerificationState jsoncmd.VerificationState
 
 	KeyBackupVersion id.KeyBackupVersion
@@ -62,12 +63,15 @@ type HiClient struct {
 	EventHandler func(evt any)
 	LogoutFunc   func(context.Context) error
 
-	firstSyncReceived bool
-	syncingID         int
-	syncLock          sync.Mutex
-	stopSync          atomic.Pointer[context.CancelFunc]
-	encryptLock       sync.Mutex
-	loginLock         sync.Mutex
+	firstSyncReceived     bool
+	sendInitSyncToClients bool
+	syncingID             int
+	syncLock              sync.Mutex
+	stopSync              atomic.Pointer[context.CancelFunc]
+	encryptLock           sync.Mutex
+	loginLock             sync.Mutex
+
+	eventDecryptionLock sync.Mutex
 
 	requestQueueWakeup chan struct{}
 
@@ -85,7 +89,10 @@ type HiClient struct {
 	directChatUsers     event.DirectChatsEventContent
 	directChatRooms     map[id.RoomID]id.UserID
 
-	perMessageProfiles atomic.Pointer[map[string]*event.BeeperPerMessageProfile]
+	globalPerMessageProfiles atomic.Pointer[*event.PerMessageProfilesEventContent]
+	roomPerMessageProfiles   *exsync.Map[id.RoomID, *event.PerMessageProfilesEventContent]
+
+	pendingOAuthAutoDeviceCode atomic.Pointer[jsoncmd.OAuthPollDeviceCodeParams]
 
 	lastOwnProfileFetch time.Time
 	ownProfileFetchLock sync.Mutex
@@ -121,6 +128,10 @@ func New(rawDB, cryptoDB *dbutil.Database, log zerolog.Logger, pickleKey []byte,
 		jsonRequests:          make(map[int64]context.CancelCauseFunc),
 		paginationInterrupter: make(map[id.RoomID]context.CancelCauseFunc),
 		sendLock:              make(map[id.RoomID]*sync.Mutex),
+
+		roomPerMessageProfiles: exsync.NewMap[id.RoomID, *event.PerMessageProfilesEventContent](),
+
+		Initialized: exsync.NewEvent(),
 
 		EventHandler: evtHandler,
 	}
@@ -162,6 +173,7 @@ func New(rawDB, cryptoDB *dbutil.Database, log zerolog.Logger, pickleKey []byte,
 	c.CryptoStore = crypto.NewSQLCryptoStore(cryptoDB, dbutil.ZeroLogger(log.With().Str("db_section", "crypto").Logger()), "", "", pickleKey)
 	cryptoLog := log.With().Str("component", "crypto").Logger()
 	c.Crypto = crypto.NewOlmMachine(c.Client, &cryptoLog, c.CryptoStore, c.ClientStore)
+	c.Crypto.SetMegolmDecryptLock(c.withEventDecryptionLock)
 	c.Crypto.SessionReceived = c.handleReceivedMegolmSession
 	c.Crypto.DisableRatchetTracking = true
 	c.Crypto.DisableDecryptKeyFetching = true
@@ -211,10 +223,11 @@ func (h *HiClient) IsLoggedIn() bool {
 	return h.Account != nil
 }
 
-func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount *database.Account) error {
-	if expectedAccount != nil && userID != expectedAccount.UserID {
-		panic(fmt.Errorf("invalid parameters: different user ID in expected account and user ID"))
-	}
+func (h *HiClient) IsLoggedInAndVerified() bool {
+	return h.IsLoggedIn() && h.VerificationState.IsVerified
+}
+
+func (h *HiClient) Start(ctx context.Context, userID id.UserID) error {
 	err := h.DB.Upgrade(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade hicli db: %w", err)
@@ -226,14 +239,6 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount 
 	account, err := h.DB.Account.Get(ctx, userID)
 	if err != nil {
 		return err
-	} else if account == nil && expectedAccount != nil {
-		err = h.DB.Account.Put(ctx, expectedAccount)
-		if err != nil {
-			return err
-		}
-		account = expectedAccount
-	} else if expectedAccount != nil && expectedAccount.DeviceID != account.DeviceID {
-		return fmt.Errorf("device ID mismatch: expected %s, got %s", expectedAccount.DeviceID, account.DeviceID)
 	}
 	if account != nil {
 		zerolog.Ctx(ctx).Debug().Stringer("user_id", account.UserID).Msg("Preparing client with existing credentials")
@@ -265,11 +270,16 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount 
 			Any("verification_state", h.VerificationState).
 			Msg("Checked current device verification status")
 		if h.VerificationState.IsVerified {
+			h.sendInitSyncToClients = false
 			go h.Sync()
+		} else {
+			h.sendInitSyncToClients = true
 		}
 		go h.loadOwnProfile(ctx)
+	} else {
+		h.sendInitSyncToClients = true
 	}
-	h.Initialized = true
+	h.Initialized.Set()
 	h.dispatchCurrentState()
 	return nil
 }
@@ -321,6 +331,26 @@ func (h *HiClient) loadOwnProfile(ctx context.Context) {
 		}
 		h.dispatchCurrentState()
 	}
+}
+
+func (h *HiClient) withEventDecryptionLock(ctx context.Context, sessID id.SessionID, storeOnly bool, fn func(context.Context) error) error {
+	if ctx.Value(eventDecryptionLockContextKey) != nil {
+		return fn(ctx)
+	}
+	start := time.Now()
+	h.eventDecryptionLock.Lock()
+	defer h.eventDecryptionLock.Unlock()
+	dur := time.Since(start)
+	if dur > 5*time.Second {
+		zerolog.Ctx(ctx).Warn().Dur("wait_dur", dur).Msg("Waited long to acquire event decryption lock")
+	}
+	start = time.Now()
+	err := fn(context.WithValue(ctx, eventDecryptionLockContextKey, true))
+	dur = time.Since(start)
+	if dur > 5*time.Second {
+		zerolog.Ctx(ctx).Warn().Dur("exec_dur", dur).Msg("Held event decryption lock for long")
+	}
+	return err
 }
 
 func (h *HiClient) IsSyncing() bool {

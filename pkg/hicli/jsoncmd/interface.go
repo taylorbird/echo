@@ -23,7 +23,7 @@ type GomuksAPI interface {
 	SetAccountData(ctx context.Context, params *SetAccountDataParams) error
 	MarkRead(ctx context.Context, params *MarkReadParams) error
 	SetTyping(ctx context.Context, params *SetTypingParams) error
-	GetProfile(ctx context.Context, params *GetProfileParams) (*mautrix.RespUserProfile, error)
+	GetProfile(ctx context.Context, params *GetProfileParams) (*GetProfileResponse, error)
 	SetProfileField(ctx context.Context, params *SetProfileFieldParams) error
 	GetMutualRooms(ctx context.Context, params *GetMutualRoomsParams) (*mautrix.RespMutualRooms, error)
 	TrackUserDevices(ctx context.Context, params *GetProfileParams) (*ProfileEncryptionInfo, error)
@@ -59,14 +59,18 @@ type GomuksAPI interface {
 	Verify(ctx context.Context, params *VerifyParams) error
 	DiscoverHomeserver(ctx context.Context, params *DiscoverHomeserverParams) (*mautrix.ClientWellKnown, error)
 	GetLoginFlows(ctx context.Context, params *GetLoginFlowsParams) (*LoginFlowsResponse, error)
+	GetVersions(ctx context.Context) (*mautrix.RespVersions, error)
+	GetCapabilities(ctx context.Context) (*mautrix.RespCapabilities, error)
 	OAuthRegisterClient(ctx context.Context, params *OAuthRegisterClientParams) (*oauth.ClientMetadata, error)
 	OAuthGetAuthorizationURL(ctx context.Context, params *OAuthGetAuthorizationURLParams) (*oauth.AuthorizationCodeResponse, error)
 	OAuthExchangeToken(ctx context.Context, params *OAuthExchangeTokenParams) error
 	OAuthGenerateDeviceCode(ctx context.Context, params *OAuthGenerateDeviceCodeParams) (*oauth.DeviceCodeResponse, error)
+	OAuthSimpleDeviceCode(ctx context.Context, params *OAuthSimpleDeviceCodeParams) (*oauth.DeviceCodeResponse, error)
 	OAuthPollDeviceCode(ctx context.Context, params *OAuthPollDeviceCodeParams) error
 	RegisterPush(ctx context.Context, params *database.PushRegistration) error
 	ListenToDevice(ctx context.Context, listen bool) (bool, error)
 	GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, error)
+	GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error)
 	GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error)
 	CalculateRoomID(ctx context.Context, params *CalculateRoomIDParams) (id.RoomID, error)
 }

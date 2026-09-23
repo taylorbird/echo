@@ -78,7 +78,7 @@ func (h *HiClient) markSyncOK() {
 	}
 }
 
-func (h *HiClient) preProcessSyncResponse(ctx context.Context, resp *mautrix.RespSync, since string) error {
+func (h *HiClient) preProcessSyncResponse(ctx context.Context, resp *mautrix.RespSync) (hasEncrypted bool) {
 	log := zerolog.Ctx(ctx)
 	listenToDevice := h.ToDeviceInSync.Load()
 	var syncTD []*jsoncmd.SyncToDevice
@@ -125,6 +125,14 @@ func (h *HiClient) preProcessSyncResponse(ctx context.Context, resp *mautrix.Res
 			}
 		}
 	}
+	for _, room := range resp.Rooms.Join {
+		for _, evt := range room.Timeline.Events {
+			if evt.Type.Type == event.EventEncrypted.Type {
+				hasEncrypted = true
+				break
+			}
+		}
+	}
 	resp.ToDevice.Events = postponedToDevices
 	if len(syncTD) > 0 {
 		syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
@@ -134,7 +142,7 @@ func (h *HiClient) preProcessSyncResponse(ctx context.Context, resp *mautrix.Res
 	}
 	h.Crypto.MarkOlmHashSavePoint(ctx)
 
-	return nil
+	return
 }
 
 func (h *HiClient) maybeDiscardOutboundSession(ctx context.Context, newMembership event.Membership, evt *event.Event) bool {
@@ -189,10 +197,11 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 		}
 		h.Client.Client.Timeout = 180 * time.Second
 	}
-	if since == "" {
+	if since == "" || h.sendInitSyncToClients {
+		h.sendInitSyncToClients = false
 		zerolog.Ctx(ctx).Info().Msg("Init sync complete, dispatching chunked room list to clients")
-		for payload := range h.GetInitialSync(ctx, 100) {
-			payload.Since = &since
+		for payload := range h.GetInitialSync(ctx, 100, 0) {
+			payload.Since = ptr.Ptr("")
 			h.EventHandler(payload)
 		}
 		zerolog.Ctx(ctx).Debug().Msg("Finished sending chunked room list to clients after init sync")
@@ -277,8 +286,10 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 			if syncCtx != nil {
 				syncCtx.changedDMs = changes
 			}
-		case accountDataPerMessageProfiles:
-			h.perMessageProfiles.Store(nil)
+		case event.AccountDataPerMessageProfiles:
+			_ = evt.Content.ParseRaw(evt.Type)
+			content, _ := evt.Content.Parsed.(*event.PerMessageProfilesEventContent)
+			h.globalPerMessageProfiles.Store(&content)
 		}
 	}
 	if syncCtx != nil {
@@ -311,7 +322,7 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 				continue
 			}
 			existingRoomData.DMUserID = &newDMUserID
-			err = h.DB.Room.Upsert(ctx, existingRoomData)
+			err = h.DB.Room.Update(ctx, existingRoomData)
 			if err != nil {
 				return fmt.Errorf("failed to update DM user ID for room %s: %w", roomID, err)
 			}
@@ -408,6 +419,12 @@ func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, 
 		accountData[evt.Type], err = h.DB.AccountData.PutRoom(ctx, h.Account.UserID, roomID, evt.Type, evt.Content.VeryRaw)
 		if err != nil {
 			return fmt.Errorf("failed to save account data event %s: %w", evt.Type.Type, err)
+		}
+		switch evt.Type {
+		case event.AccountDataPerMessageProfiles:
+			_ = evt.Content.ParseRaw(evt.Type)
+			content, _ := evt.Content.Parsed.(*event.PerMessageProfilesEventContent)
+			h.roomPerMessageProfiles.Set(roomID, content)
 		}
 	}
 	var receiptsList []*database.Receipt
@@ -635,12 +652,12 @@ func (h *HiClient) cacheMedia(ctx context.Context, evt *event.Event, rowID datab
 
 func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Event, evt *event.Event) (*database.LocalContent, []id.ContentURI) {
 	if evt.Type != event.EventMessage {
-		return nil, nil
+		return dbEvt.LocalContent, nil
 	}
 	_ = evt.Content.ParseRaw(evt.Type)
 	content, ok := evt.Content.Parsed.(*event.MessageEventContent)
 	if !ok {
-		return nil, nil
+		return dbEvt.LocalContent, nil
 	}
 	if dbEvt.RelationType == event.RelReplace && content.NewContent != nil {
 		content = content.NewContent
@@ -651,7 +668,7 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 		var inlineImages []id.ContentURI
 		if content.Format == event.FormatHTML && content.FormattedBody != "" {
 			var err error
-			sanitizedHTML, inlineImages, err = sanitizeAndLinkifyHTML(content.FormattedBody)
+			sanitizedHTML, inlineImages, err = sanitizeAndLinkifyHTML(content.FormattedBody, evt.Sender == h.Account.UserID)
 			if err != nil {
 				zerolog.Ctx(ctx).Warn().Err(err).
 					Stringer("event_id", dbEvt.ID).
@@ -683,10 +700,7 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 				}
 			}
 			if hasSpecialCharacters {
-				var builder strings.Builder
-				builder.Grow(len(content.Body) + builderPreallocBuffer)
-				linkifyAndWriteBytes(&builder, []byte(content.Body))
-				sanitizedHTML = builder.String()
+				sanitizedHTML = linkifyPlaintext(content.Body)
 			} else if len(content.Body) < 100 && emojirunes.IsOnlyEmojis(content.Body) {
 				bigEmoji = true
 			}
@@ -711,7 +725,7 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 	return dbEvt.LocalContent, nil
 }
 
-const CurrentHTMLSanitizerVersion = 13
+const CurrentHTMLSanitizerVersion = 15
 
 func (h *HiClient) ReprocessExistingEvent(ctx context.Context, evt *database.Event) {
 	if (evt.Type != event.EventMessage.Type && evt.DecryptedType != event.EventMessage.Type) ||
@@ -1168,14 +1182,14 @@ func (h *HiClient) processStateAndTimeline(
 	if timeline.PrevBatch != "" && (room.PrevBatch == "" || timeline.Limited) {
 		updatedRoom.PrevBatch = timeline.PrevBatch
 	}
-	roomChanged := updatedRoom.CheckChangesAndCopyInto(room)
+	roomChanged, syncRoomChanged := updatedRoom.CheckChangesAndCopyInto(room)
 	if roomChanged {
-		err = h.DB.Room.Upsert(ctx, updatedRoom)
+		err = h.DB.Room.Update(ctx, updatedRoom)
 		if err != nil {
 			return fmt.Errorf("failed to save room data: %w", err)
 		}
 	}
-	err = sdc.Apply(ctx, room, h.DB.SpaceEdge)
+	err = sdc.Apply(ctx, room, h.DB.Room, h.DB.SpaceEdge)
 	if err != nil {
 		return err
 	}
@@ -1184,7 +1198,11 @@ func (h *HiClient) processStateAndTimeline(
 		for _, receipt := range receipts {
 			receipt.RoomID = ""
 		}
-		syncCtx.evt.Rooms[room.ID] = &jsoncmd.SyncRoom{
+		roomID := room.ID
+		if !syncRoomChanged {
+			room = nil
+		}
+		syncCtx.evt.Rooms[roomID] = &jsoncmd.SyncRoom{
 			Meta:        room,
 			Timeline:    timelineRowTuples,
 			AccountData: accountData,
@@ -1355,7 +1373,7 @@ func splitMapValues[T any](m map[id.RoomID]*T) (added []T, removed []id.RoomID) 
 	return
 }
 
-func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, seq *database.SpaceEdgeQuery) error {
+func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, rdb *database.RoomQuery, seq *database.SpaceEdgeQuery) error {
 	if room.CreationContent == nil || room.CreationContent.Type != event.RoomTypeSpace {
 		sdc.Children = nil
 		sdc.PowerLevelChanged = false
@@ -1368,7 +1386,9 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 		return nil
 	}
 	return seq.GetDB().DoTxn(ctx, nil, func(ctx context.Context) error {
+		var modTimestampBumps []id.RoomID
 		if len(sdc.Children) > 0 {
+			modTimestampBumps = append(modTimestampBumps, room.ID)
 			children, removedChildren := splitMapValues(sdc.Children)
 			err := seq.SetChildren(ctx, room.ID, children, removedChildren, sdc.IsFullState)
 			if err != nil {
@@ -1381,6 +1401,7 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 			syncCtx.changedSpaces = append(syncCtx.changedSpaces, room.ID)
 		}
 		if len(sdc.Parents) > 0 {
+			modTimestampBumps = slices.AppendSeq(modTimestampBumps, maps.Keys(sdc.Parents))
 			parents, removedParents := splitMapValues(sdc.Parents)
 			err := seq.SetParents(ctx, room.ID, parents, removedParents, sdc.IsFullState)
 			if err != nil {
@@ -1404,7 +1425,7 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 				return fmt.Errorf("failed to revalidate child parent references to self: %w", err)
 			}
 		}
-		return nil
+		return rdb.BumpModTimestamp(ctx, modTimestampBumps...)
 	})
 }
 

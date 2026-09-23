@@ -11,6 +11,7 @@ import (
 
 	"go.mau.fi/util/jsontime"
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/crypto/attachment"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
@@ -119,6 +120,11 @@ type SetTypingParams struct {
 
 type GetProfileParams struct {
 	UserID id.UserID `json:"user_id"`
+}
+
+type ResetMasterKeyTOFUParams struct {
+	UserID    id.UserID `json:"user_id"`
+	MasterKey string    `json:"master_key"`
 }
 
 type GetMutualRoomsParams struct {
@@ -394,6 +400,28 @@ type UploadMediaParams struct {
 	Quality int `json:"quality,omitempty"`
 }
 
+type DownloadMediaParams struct {
+	MXC id.ContentURI `json:"mxc"`
+	// Whether the media is encrypted. The keys are fetched from the local database.
+	Encrypted bool `json:"encrypted,omitempty"`
+	// Optionally, the raw keys for the file. This is only used if the keys aren't found in the database.
+	// Using this field is not recommended, except for custom events which the backend doesn't extract keys from.
+	Keys *attachment.EncryptedFile `json:"keys,omitempty"`
+
+	// If the media is an avatar, the backend will ensure that the mime type is acceptable.
+	// It will also ignore the server returning application/octet-stream and detect the mime from the data instead.
+	IsAvatar bool `json:"is_avatar,omitempty"`
+	// Whether the client wants a thumbnail of the avatar. This will always return a square webp image.
+	ThumbnailAvatar bool `json:"thumbnail_avatar,omitempty"`
+}
+
+type GetURLPreviewParams struct {
+	// The URL to generate a preview for.
+	URL string `json:"url"`
+	// Whether potential preview images should be encrypted.
+	Encrypt bool `json:"encrypt,omitempty"`
+}
+
 type ExportKeysParams struct {
 	Passphrase string    `json:"passphrase"`
 	RoomID     id.RoomID `json:"room_id,omitempty"`
@@ -403,6 +431,11 @@ type RerequestSessionParams struct {
 	RoomID    id.RoomID    `json:"room_id"`
 	SessionID id.SessionID `json:"session_id"`
 	Sender    id.UserID    `json:"sender"`
+}
+
+type OAuthSimpleDeviceCodeParams struct {
+	HomeserverURL string    `json:"homeserver_url"`
+	UserIDHint    id.UserID `json:"user_id_hint,omitempty"`
 }
 
 type OAuthRegisterClientParams struct {

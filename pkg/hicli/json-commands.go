@@ -9,6 +9,7 @@ package hicli
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -16,9 +17,11 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"go.mau.fi/util/random"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 	"maunium.net/go/mautrix/pushrules"
@@ -78,6 +81,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetMutualRooms.RunCtx(ctx, req.Data, h.API.GetMutualRooms)
 	case jsoncmd.ReqTrackUserDevices:
 		return jsoncmd.TrackUserDevices.RunCtx(ctx, req.Data, h.API.TrackUserDevices)
+	case jsoncmd.ReqResetMasterKeyTOFU:
+		return jsoncmd.ResetMasterKeyTOFU.RunCtx(ctx, req.Data, h.API.ResetMasterKeyTOFU)
 	case jsoncmd.ReqGetProfileEncryptionInfo:
 		return jsoncmd.GetProfileEncryptionInfo.RunCtx(ctx, req.Data, h.API.GetProfileEncryptionInfo)
 	case jsoncmd.ReqGetOwnDevices:
@@ -144,6 +149,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.OAuthExchangeToken.RunCtx(ctx, req.Data, h.API.OAuthExchangeToken)
 	case jsoncmd.ReqOAuthGenerateDeviceCode:
 		return jsoncmd.OAuthGenerateDeviceCode.RunCtx(ctx, req.Data, h.API.OAuthGenerateDeviceCode)
+	case jsoncmd.ReqOAuthSimpleDeviceCode:
+		return jsoncmd.OAuthSimpleDeviceCode.RunCtx(ctx, req.Data, h.API.OAuthSimpleDeviceCode)
 	case jsoncmd.ReqOAuthPollDeviceCode:
 		return jsoncmd.OAuthPollDeviceCode.RunCtx(ctx, req.Data, h.API.OAuthPollDeviceCode)
 	case jsoncmd.ReqLoginCustom:
@@ -158,12 +165,18 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.DiscoverHomeserver.RunCtx(ctx, req.Data, h.API.DiscoverHomeserver)
 	case jsoncmd.ReqGetLoginFlows:
 		return jsoncmd.GetLoginFlows.RunCtx(ctx, req.Data, h.API.GetLoginFlows)
+	case jsoncmd.ReqGetVersions:
+		return jsoncmd.GetVersions.RunCtx(ctx, req.Data, h.API.GetVersions)
+	case jsoncmd.ReqGetCapabilities:
+		return jsoncmd.GetCapabilities.RunCtx(ctx, req.Data, h.API.GetCapabilities)
 	case jsoncmd.ReqRegisterPush:
 		return jsoncmd.RegisterPush.RunCtx(ctx, req.Data, h.API.RegisterPush)
 	case jsoncmd.ReqListenToDevice:
 		return jsoncmd.ListenToDevice.RunCtx(ctx, req.Data, h.API.ListenToDevice)
 	case jsoncmd.ReqGetTurnServers:
 		return jsoncmd.GetTurnServers.RunCtx(ctx, req.Data, h.API.GetTurnServers)
+	case jsoncmd.ReqGetRTCTransports:
+		return jsoncmd.GetRTCTransports.RunCtx(ctx, req.Data, h.API.GetRTCTransports)
 	case jsoncmd.ReqGetMediaConfig:
 		return jsoncmd.GetMediaConfig.RunCtx(ctx, req.Data, h.API.GetMediaConfig)
 	case jsoncmd.ReqCalculateRoomID:
@@ -264,14 +277,59 @@ func (h *JSONAPI) SetTyping(ctx context.Context, params *jsoncmd.SetTypingParams
 	return h.HiClient.SetTyping(ctx, params.RoomID, time.Duration(params.Timeout)*time.Millisecond)
 }
 
-func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*mautrix.RespUserProfile, error) {
-	return h.Client.GetProfile(mautrix.WithMaxRetries(ctx, 0), params.UserID)
+func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.GetProfileResponse, error) {
+	resp, err := h.Client.GetProfile(mautrix.WithMaxRetries(ctx, 0), params.UserID)
+	if err != nil {
+		return nil, err
+	}
+	var bio *jsoncmd.ProfileBio
+	if bioData, ok := resp.Extra["gay.fomx.biography"]; ok {
+		var text event.ExtensibleTextContainer
+		d, _ := json.Marshal(bioData)
+		_ = json.Unmarshal(d, &text)
+		var bioHTML, bioEditSource string
+		for _, repr := range text.Text {
+			switch repr.MimeType {
+			case "text/html":
+				if bioHTML == "" {
+					bioHTML, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
+				}
+			case "text/plain", "":
+				if bioHTML == "" {
+					bioHTML = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
+				}
+			case gomuksInputMime:
+				if params.UserID == h.Account.UserID {
+					bioEditSource = repr.Body
+				}
+			}
+		}
+		if bioEditSource == "" && bioHTML != "" && params.UserID == h.Account.UserID {
+			bioEditSource, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, bioHTML)
+		}
+		bio = &jsoncmd.ProfileBio{
+			HTML:       bioHTML,
+			EditSource: bioEditSource,
+		}
+	}
+	return &jsoncmd.GetProfileResponse{
+		Profile: resp,
+		Bio:     bio,
+	}, nil
 }
 
 func (h *JSONAPI) SetProfileField(ctx context.Context, params *jsoncmd.SetProfileFieldParams) error {
 	// Value is a raw JSON field, so nil means it was omitted
 	if params.Value == nil {
 		return h.Client.DeleteProfileField(ctx, params.Field)
+	}
+	if params.Field == "_gomuks_bio" {
+		var inputText string
+		err := json.Unmarshal(params.Value, &inputText)
+		if err != nil {
+			return err
+		}
+		return h.Client.SetProfileField(ctx, "gay.fomx.biography", inputTextToExtensible(inputText))
 	}
 	return h.Client.SetProfileField(ctx, params.Field, params.Value)
 }
@@ -281,7 +339,16 @@ func (h *JSONAPI) GetMutualRooms(ctx context.Context, params *jsoncmd.GetMutualR
 }
 
 func (h *JSONAPI) TrackUserDevices(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.ProfileEncryptionInfo, error) {
-	err := h.HiClient.TrackUserDevices(ctx, params.UserID)
+	_, err := h.Crypto.FetchKeys(ctx, []id.UserID{params.UserID}, true)
+	if err != nil {
+		return nil, err
+	}
+	return h.HiClient.GetProfileEncryptionInfo(ctx, params.UserID)
+}
+
+func (h *JSONAPI) ResetMasterKeyTOFU(ctx context.Context, params *jsoncmd.ResetMasterKeyTOFUParams) (*jsoncmd.ProfileEncryptionInfo, error) {
+	masterKey := id.Ed25519(strings.ReplaceAll(params.MasterKey, " ", ""))
+	err := h.CryptoStore.ResetMasterKeyTOFU(ctx, params.UserID, masterKey)
 	if err != nil {
 		return nil, err
 	}
@@ -514,14 +581,19 @@ func (h *JSONAPI) GenerateRecoveryKey(params *jsoncmd.GenerateRecoveryKeyParams)
 	if err != nil {
 		return nil, err
 	}
+	keys, err := h.Crypto.GenerateCrossSigningKeys()
+	if err != nil {
+		return nil, err
+	}
 	return &jsoncmd.RecoveryKeyResponse{
-		RecoveryKey:    key.RecoveryKey(),
-		PassphraseMeta: key.Metadata.Passphrase,
+		RecoveryKey:      key.RecoveryKey(),
+		PassphraseMeta:   key.Metadata.Passphrase,
+		CrossSigningKeys: keys.Seeds(),
 	}, nil
 }
 
 func (h *JSONAPI) ResetEncryption(ctx context.Context, params *jsoncmd.ResetEncryptionParams) error {
-	return h.HiClient.ResetEncryption(ctx, params.RecoveryKey, params.PassphraseMeta, params.AccountPassword)
+	return h.HiClient.ResetEncryption(ctx, params.RecoveryKey, params.PassphraseMeta, params.CrossSigningKeys, params.AccountPassword)
 }
 
 func (h *JSONAPI) DiscoverHomeserver(ctx context.Context, params *jsoncmd.DiscoverHomeserverParams) (*mautrix.ClientWellKnown, error) {
@@ -561,9 +633,51 @@ func (h *JSONAPI) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLoginFlo
 	}, err
 }
 
+func (h *JSONAPI) GetVersions(_ context.Context) (*mautrix.RespVersions, error) {
+	return h.Client.SpecVersions, nil
+}
+
+func (h *JSONAPI) GetCapabilities(ctx context.Context) (*mautrix.RespCapabilities, error) {
+	return h.Client.Capabilities(ctx)
+}
+
 func (h *JSONAPI) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuthRegisterClientParams) (*oauth.ClientMetadata, error) {
 	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, func() (*oauth.ClientMetadata, error) {
 		return h.Client.OAuthRegisterClient(ctx, &params.ClientMetadata)
+	})
+}
+
+func (h *JSONAPI) OAuthSimpleDeviceCode(ctx context.Context, params *jsoncmd.OAuthSimpleDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
+	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, func() (*oauth.DeviceCodeResponse, error) {
+		clientMeta, err := h.Client.OAuthRegisterClient(ctx, &oauth.ClientMetadata{
+			ApplicationType:         oauth.ApplicationTypeNative,
+			ClientName:              "gomuks web",
+			ClientURI:               "https://gomuks.app/",
+			LogoURI:                 "https://gomuks.app/favicon.png",
+			GrantTypes:              []oauth.GrantType{oauth.GrantTypeRefreshToken, oauth.GrantTypeDeviceCode},
+			TokenEndpointAuthMethod: oauth.AuthMethodNone,
+		})
+		if err != nil {
+			return nil, err
+		}
+		deviceID := id.DeviceID(random.StringCharset(10, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))
+		resp, err := h.Client.OAuthGenerateDeviceCode(ctx, oauth.GenerateDeviceCodeParams{
+			Scopes:     []oauth.Scope{oauth.ScopeClientAPI, oauth.ScopeDevice(deviceID)},
+			UserIDHint: params.UserIDHint,
+			ClientID:   clientMeta.ClientID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		h.pendingOAuthAutoDeviceCode.Store(&jsoncmd.OAuthPollDeviceCodeParams{
+			HomeserverURL: params.HomeserverURL,
+			PollDeviceCodeParams: oauth.PollDeviceCodeParams{
+				DeviceCode:       resp.DeviceCode,
+				ClientID:         clientMeta.ClientID,
+				StoreCredentials: true,
+			},
+		})
+		return resp, nil
 	})
 }
 
@@ -587,12 +701,23 @@ func (h *JSONAPI) OAuthGenerateDeviceCode(ctx context.Context, params *jsoncmd.O
 }
 
 func (h *JSONAPI) OAuthPollDeviceCode(ctx context.Context, params *jsoncmd.OAuthPollDeviceCodeParams) error {
+	if params.HomeserverURL == "" && params.ClientID == "" && params.DeviceCode == "" {
+		params = h.pendingOAuthAutoDeviceCode.Load()
+		if params == nil {
+			return fmt.Errorf("no pending auto device code login data found")
+		}
+	}
 	if err := h.ensureHomeserverURL(params.HomeserverURL); err != nil {
 		return err
 	}
 	return h.loginOAuth(ctx, params.HomeserverURL, params.ClientID, func() (*oauth.TokenResponse, error) {
 		params.StoreCredentials = true
-		return h.Client.OAuthPollDeviceCode(ctx, params.PollDeviceCodeParams)
+		resp, err := h.Client.OAuthPollDeviceCode(ctx, params.PollDeviceCodeParams)
+		if err != nil {
+			return nil, err
+		}
+		h.pendingOAuthAutoDeviceCode.Store(nil)
+		return resp, nil
 	})
 }
 
@@ -606,6 +731,10 @@ func (h *JSONAPI) ListenToDevice(ctx context.Context, listen bool) (bool, error)
 
 func (h *JSONAPI) GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, error) {
 	return h.Client.TurnServer(ctx)
+}
+
+func (h *JSONAPI) GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error) {
+	return h.Client.RTCTransports(ctx)
 }
 
 func (h *JSONAPI) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error) {

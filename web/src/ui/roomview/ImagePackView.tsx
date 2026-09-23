@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities"
 import React, { use, useState } from "react"
 import { BACKEND_CREDENTIALS, BACKEND_URL } from "@/api/backend.ts"
 import { getMediaURL } from "@/api/media.ts"
-import { useRoomImagePacks } from "@/api/statestore"
+import { useRoomImagePacks, useSubscribedPacks } from "@/api/statestore"
 import {
 	ImagePack, ImagePackEntry, ImagePackUsage, MediaEncodingOptions, MediaMessageEventContent,
 	stringToRoomStateGUID,
@@ -62,7 +62,7 @@ const ImagePackView = () => {
 			},
 			images: {},
 		}
-		client.rpc.setState(roomCtx.store.roomID, "im.ponies.room_emotes", packID, emptyPack)
+		client.rpc.setState(roomCtx.store.roomID, "m.room.image_pack", packID, emptyPack)
 	}
 	return <div className="image-pack-view">
 		<div className="image-pack-chooser" onWheel={onWheel}>
@@ -179,6 +179,17 @@ const ImagePackEditor = ({ id, pack }: ImagePackEditorProps) => {
 			.then(() => {}, err => window.alert(`Failed to save image pack: ${err.message}`))
 			.finally(() => setSaving(false))
 	}
+	const onClickSubscribePack = () => {
+		client.subscribeToEmojiPack(guid!, true)
+			.catch(err => window.alert(`Failed to subscribe to emoji pack: ${err}`))
+	}
+	const onClickUnsubscribePack = () => {
+		client.subscribeToEmojiPack(guid!, false)
+			.catch(err => window.alert(`Failed to unsubscribe from emoji pack: ${err}`))
+	}
+	const subscribedPacks = useSubscribedPacks(client.store, false)
+	const isWatched = !!subscribedPacks
+		.find(item => item.room_id === guid?.room_id && item.state_key === guid?.state_key)
 	return <div className="image-pack-editor">
 		<div className="input-fields">
 			<label htmlFor="image-pack-editor-id">Pack ID:</label>
@@ -219,9 +230,15 @@ const ImagePackEditor = ({ id, pack }: ImagePackEditorProps) => {
 				<button onClick={() => openEditor(null)} title="Add new image"><StickerAddIcon /></button>
 			</div>
 		</div>
-		<button className="global-save" disabled={saving} onClick={savePack}>
-			{saving ? "Saving..." : "Save changes"}
-		</button>
+		<div className="buttons">
+			<button
+				className="subscribe-button"
+				onClick={isWatched ? onClickUnsubscribePack : onClickSubscribePack}
+			>{isWatched ? "Unsubscribe" : "Subscribe"}</button>
+			<button className="global-save" disabled={saving} onClick={savePack}>
+				{saving ? "Saving..." : "Save changes"}
+			</button>
+		</div>
 	</div>
 }
 

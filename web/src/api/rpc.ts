@@ -25,6 +25,7 @@ import {
 	EventRowID,
 	EventType,
 	GetOwnDevicesResponse,
+	GetProfileResponse,
 	JSONValue,
 	LocalSearchParams,
 	LoginFlowsResponse,
@@ -55,9 +56,11 @@ import {
 	RelationType,
 	ReqCreateRoom,
 	ResolveAliasResponse,
+	RespCapabilities,
 	RespCreateRoom,
 	RespMediaConfig,
 	RespOpenIDToken,
+	RespRTCTransports,
 	RespRoomJoin,
 	RespSpaceHierarchy,
 	RespTurnServer,
@@ -70,8 +73,11 @@ import {
 	URLPreview,
 	UnreadType,
 	UserID,
-	UserProfile,
 } from "./types"
+
+// What doAuth throws on a 401: the backend wants a username and password (echo's web
+// auth form), or the ones just submitted were wrong.
+export const authRequiredErrors = ["AUTH_REQUIRED", "Invalid credentials"]
 
 export interface ConnectionEvent {
 	connected: boolean
@@ -101,6 +107,7 @@ export default abstract class RPCClient {
 	public readonly connect: CachedEventDispatcher<ConnectionEvent> = new CachedEventDispatcher()
 	public readonly event: EventDispatcher<RPCEvent> = new EventDispatcher()
 	public readonly rpcMediaUpload: boolean = false
+	public getCachedServerTimestamp?: () => number | undefined
 	protected readonly pendingRequests: Map<number, {
 		resolve: (data: unknown) => void,
 		reject: (err: Error) => void
@@ -150,45 +157,44 @@ export default abstract class RPCClient {
 		throw new Error("Media upload not supported by this RPC client")
 	}
 
-	async doAuth(signal: AbortSignal, credentials?: { username: string; password: string }): Promise<boolean> {
-		try {
-			const headers: Record<string, string> = {}
-			if (credentials) {
-				headers["Authorization"] = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
-			}
-
-			const resp = await fetch(`${BACKEND_URL}_gomuks/auth?secure=${window.isSecureContext}`, {
-				method: "POST",
-				headers,
-				credentials: BACKEND_CREDENTIALS,
-				signal,
-			})
-
-			if (resp.status === 401 && !signal.aborted) {
-				this.connect.emit({
-					connected: false,
-					reconnecting: false,
-					error: credentials ? "Invalid credentials" : "AUTH_REQUIRED",
-				})
-				return false
-			}
-
+	// Throws on failure. A 401 throws with one of authRequiredErrors, which App.tsx matches
+	// on to show the backend sign-in form instead of a generic failure.
+	async doAuth(signal?: AbortSignal, credentials?: { username: string; password: string }): Promise<void> {
+		const headers: Record<string, string> = {}
+		if (credentials) {
+			headers["Authorization"] = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
+		}
+		const resp = await fetch(`${BACKEND_URL}_gomuks/auth?secure=${window.isSecureContext}`, {
+			method: "POST",
+			headers,
+			credentials: BACKEND_CREDENTIALS,
+			signal,
+		})
+		if (resp.status === 401) {
+			throw new Error(credentials ? "Invalid credentials" : "AUTH_REQUIRED")
+		}
+		if (!resp.ok) {
 			let body = ""
 			try {
 				body = (await resp.text()).trim()
 			} catch {}
-			const authFailPrefix = `Authentication failed: ${resp.status} ${resp.statusText}`
-			if (!resp.ok && !signal.aborted) {
-				this.connect.emit({
-					connected: false,
-					reconnecting: false,
-					error: [authFailPrefix, body].filter(x => !!x).join(" - "),
-				})
-				return false
+			let errMsg = `Authentication failed: ${resp.status} ${resp.statusText}`
+			if (body) {
+				errMsg += ` - ${body}`
 			}
+			throw new Error(errMsg)
+		}
+	}
+
+	async tryAuth(signal: AbortSignal, credentials?: { username: string; password: string }): Promise<boolean> {
+		try {
+			await this.doAuth(signal, credentials)
 			return true
 		} catch (err) {
-			this.connect.emit({ connected: false, reconnecting: false, error: `Authentication failed: ${err}` })
+			if (!signal.aborted) {
+				const errStr = err instanceof Error ? err.message : String(err)
+				this.connect.emit({ connected: false, reconnecting: false, error: errStr })
+			}
 			return false
 		}
 	}
@@ -288,7 +294,7 @@ export default abstract class RPCClient {
 		return this.request("set_typing", { room_id, timeout })
 	}
 
-	getProfile(user_id: UserID): Promise<UserProfile> {
+	getProfile(user_id: UserID): Promise<GetProfileResponse> {
 		return this.request("get_profile", { user_id })
 	}
 
@@ -310,6 +316,10 @@ export default abstract class RPCClient {
 
 	trackUserDevices(user_id: UserID): Promise<ProfileEncryptionInfo> {
 		return this.request("track_user_devices", { user_id })
+	}
+
+	resetMasterKeyTOFU(user_id: UserID, master_key: string): Promise<ProfileEncryptionInfo> {
+		return this.request("reset_master_key_tofu", { user_id, master_key })
 	}
 
 	ensureGroupSessionShared(room_id: RoomID): Promise<void> {
@@ -423,6 +433,10 @@ export default abstract class RPCClient {
 		return this.request("create_room", request)
 	}
 
+	getCapabilities(): Promise<RespCapabilities> {
+		return this.request("get_capabilities", {})
+	}
+
 	muteRoom(room_id: RoomID, muted: boolean): Promise<boolean> {
 		return this.request("mute_room", { room_id, muted })
 	}
@@ -506,6 +520,10 @@ export default abstract class RPCClient {
 
 	getTurnServers(): Promise<RespTurnServer> {
 		return this.request("get_turn_servers", {})
+	}
+
+	getRTCTransports(): Promise<RespRTCTransports> {
+		return this.request("get_rtc_transports", {})
 	}
 
 	getMediaConfig(): Promise<RespMediaConfig> {

@@ -36,6 +36,7 @@ import {
 	UserID,
 	UserProfile,
 } from "@/api/types"
+import { formatDate, formatFullTime, formatShortTime, newSafeDate } from "@/util/datetime.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { getDisplayname, getRelatesTo, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
@@ -66,20 +67,6 @@ export interface TimelineEventProps {
 	smallThreads?: boolean
 	isFocused?: boolean
 	viewType: TimelineEventViewType
-}
-
-const fullTimeFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "medium" })
-const dateFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full" })
-const formatShortTime = (time: Date) =>
-	`${time.getHours().toString().padStart(2, "0")}:${time.getMinutes().toString().padStart(2, "0")}`
-const formatFullTime = (time: Date) => fullTimeFormatter.format(time)
-const formatDate = (time: Date) => dateFormatter.format(time)
-const newSafeDate = (val: number) => {
-	const date = new Date(val)
-	if (isNaN(+date)) {
-		return new Date(0)
-	}
-	return date
 }
 
 interface ReactionRelations {
@@ -655,6 +642,8 @@ const TimelineEvent = ({
 
 	const fullTime = formatFullTime(eventTS)
 	const shortTime = formatShortTime(eventTS)
+	const renderMemberEventDisplayname = getDisplayname(evt.sender, renderMemberEvtContent)
+	const mainMemberEventDisplayname = getDisplayname(evt.sender, memberEvtContent)
 	const mainEvent = <div
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
@@ -699,9 +688,9 @@ const TimelineEvent = ({
 				onContextMenu={onSenderContextMenu}
 				title={`${perMessageSender ? perMessageSender.id : evt.sender} (right-click for color)`}
 			>
-				{getDisplayname(evt.sender, renderMemberEvtContent)}
+				{renderMemberEventDisplayname}
 			</span>
-			{perMessageSender && <div className="per-message-event-sender">
+			{renderMemberEventDisplayname !== mainMemberEventDisplayname && <div className="per-message-event-sender">
 				<span className="via">via</span>
 				<span
 					className="event-sender"
@@ -713,7 +702,7 @@ const TimelineEvent = ({
 					// per-message sender the row is coloured for.
 					style={{ color: getSenderColor(evt.room_id, evt.sender) }}
 				>
-					{getDisplayname(evt.sender, memberEvtContent)}
+					{mainMemberEventDisplayname}
 				</span>
 			</div>}
 			<span className="event-time" title={fullTime} onClick={onClickTimestamp}>{shortTime}</span>

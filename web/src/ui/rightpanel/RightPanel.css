@@ -189,7 +189,7 @@ div.right-panel-content.user {
 		max-height: 4rem;
 	}
 
-	div.userid, div.extended-profile, div.devices, div.user-moderation, div.mutual-rooms, div.errors {
+	div.userid, div.extended-profile, div.devices, div.user-moderation, div.mutual-rooms {
 		border-bottom: 1px solid var(--border-color);
 		padding-bottom: .5rem;
 		margin-bottom: .5rem;
@@ -198,7 +198,7 @@ div.right-panel-content.user {
 	div.extended-profile {
 		display: grid;
 		gap: 0.25rem;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: auto 1fr;
 
 		> input {
 			border: 0;
@@ -208,9 +208,57 @@ div.right-panel-content.user {
 			border-bottom: 1px solid var(--blockquote-border-color);
 		}
 
-		> button {
+		> div.view-buttons {
+			grid-column: span 2;
+			display: flex;
+
+			> button {
+				width: 100%;
+			}
+		}
+
+		button {
 			grid-column: span 2;
 			padding: .25rem;
+		}
+
+		.blur {
+			filter: blur(8px);
+			pointer-events: none;
+		}
+
+		> .user-info-loader {
+			grid-column: span 2;
+			display: flex;
+			flex-direction: column;
+			gap: .375rem;
+		}
+
+		> div.profile-small-bio {
+			grid-column: span 2;
+
+			border-left: 2px solid var(--blockquote-border-color);
+			padding-left: .5rem;
+
+			> div.html-body {
+				display: -webkit-box;
+				-webkit-line-clamp: 5;
+				-webkit-box-orient: vertical;
+				max-height: 12rem;
+				overflow: hidden;
+
+				img.hicli-custom-emoji {
+					height: 1.5rem;
+				}
+
+				img.hicli-inline-img {
+					max-width: 100%;
+				}
+			}
+
+			> button {
+				width: 100%;
+			}
 		}
 	}
 
@@ -261,6 +309,10 @@ div.right-panel-content.user {
 		&.tofu-broken {
 			color: darkorange;
 		}
+
+		> button {
+			padding: 0 .25rem;
+		}
 	}
 
 	div.devices > details > summary > h4 {
@@ -268,10 +320,14 @@ div.right-panel-content.user {
 	}
 
 	button.action {
-		padding: .5rem 1rem;
+		padding: .5rem;
 		width: 100%;
 		gap: .25rem;
 		justify-content: left;
+	}
+
+	div.devices > details:open {
+		margin-bottom: .5rem;
 	}
 
 	div.devices > details > ul {
@@ -360,6 +416,38 @@ div.right-panel-content.user {
 				color: var(--error-color);
 				flex-shrink: 0;
 			}
+		}
+	}
+}
+
+div.profile-full-bio-modal-wrapper {
+	--modal-max-width: 40rem;
+	width: 100%;
+}
+
+div.profile-full-bio-modal {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+
+	> div.html-body {
+		overflow: scroll;
+	}
+
+	> textarea {
+		width: 100%;
+		box-sizing: border-box;
+		border: none;
+		outline: none;
+		resize: vertical;
+	}
+
+	> div.buttons {
+		display: flex;
+		justify-content: space-between;
+
+		> button {
+			padding: .5rem 1rem;
 		}
 	}
 }

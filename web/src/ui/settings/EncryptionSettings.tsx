@@ -16,6 +16,7 @@
 import { JSX, use, useEffect, useMemo, useState } from "react"
 import { RoomStateStore } from "@/api/statestore"
 import { DeviceID, GetOwnDevicesResponse, OwnDevice, ProfileDevice } from "@/api/types"
+import { formatFullTime } from "@/util/datetime.ts"
 import ClientContext from "../ClientContext.ts"
 import { SkeletonCircle, SkeletonLine, SkeletonName } from "../loading"
 import KeyExportView from "./KeyExportView.tsx"
@@ -25,14 +26,13 @@ import EncryptedIcon from "@/icons/encrypted.svg?react"
 import DevicesIcon from "@/icons/modern/layers.svg?react"
 
 const deltaFormatter = new Intl.RelativeTimeFormat("en-GB")
-const timeFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "medium" })
 
 const MINUTE = 60 * 1000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 const WEEK = 7 * DAY
-const MONTH = 4 * WEEK
-const YEAR = MONTH * 12
+const MONTH = 30 * DAY
+const YEAR = 365 * DAY
 
 function pickUnit(x: number): Intl.RelativeTimeFormatUnit {
 	x = Math.abs(x)
@@ -73,6 +73,11 @@ function roundToUnit(x: number, unit: Intl.RelativeTimeFormatUnit) {
 	}
 }
 
+function formatLastSeen(sinceLastSeen: number): string {
+	const unit = pickUnit(sinceLastSeen)
+	return deltaFormatter.format(-roundToUnit(sinceLastSeen, unit), unit)
+}
+
 interface DeviceInfoProps {
 	dev: OwnDevice
 	enc?: ProfileDevice
@@ -98,19 +103,18 @@ const DeviceInfo = ({ dev, enc, isCurrent }: DeviceInfoProps) => {
 	}
 	const lastSeen = new Date(dev.last_seen_ts)
 	const sinceLastSeen = Date.now() - dev.last_seen_ts
-	const unit = pickUnit(sinceLastSeen)
 
 	return <div className={`device-info${isCurrent ? " current" : ""}`}>
 		<span className="device-shield" title={trustLabel}>{icon}</span>
 		<div className="device-name">{dev.display_name || dev.device_id}</div>
 		<div className="metadata">
 			<code className="device-id">{dev.device_id}</code>
-			<span className="last-seen" title={dev.last_seen_ts ? timeFormatter.format(lastSeen) : undefined}>
+			<span className="last-seen" title={dev.last_seen_ts > 0 ? formatFullTime(lastSeen) : undefined}>
 				{isCurrent
 					? "This device"
-					: dev.last_seen_ts
-						? `Last seen ${deltaFormatter.format(-roundToUnit(sinceLastSeen, unit), unit)}`
-						: "Never seen"}
+					: dev.last_seen_ts > 0
+						? `Last seen ${formatLastSeen(sinceLastSeen)}`
+						: "Never seen online"}
 			</span>
 			{dev.last_seen_ip && <span className="last-seen-ip">{dev.last_seen_ip}</span>}
 		</div>

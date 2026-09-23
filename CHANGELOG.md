@@ -1,3 +1,68 @@
+# v26.08
+
+### Backend
+* Added streaming HTTP response as an alternative for websockets.
+  * The stream can either use server-sent events (`text/event-stream`)
+    or plain JSON objects (`application/jsonl`) based on the `Accept` header.
+* Added support for room list catch-up syncs for frontends.
+* Added media download method to C FFI.
+* Added support for using the reply UI with the `/raw` command.
+* Added `/htmlmd` command which allows sending messages that mix HTML and
+  markdown.
+* Added support for calling any HTTP endpoint with basic auth without having
+  to exchange it for an auth cookie first.
+* Added `get_versions` and `get_capabilities` commands to get features supported
+  by the homeserver.
+* Switched to latest revision of [MSC4461] for sending per-message profiles.
+* Changed recovery key reset RPC API generate cross-signing with the recovery
+  key and taking them as a parameter to the upload request instead of generating
+  at upload time.
+* Changed format of `get_profile` responses to allow locally generated fields.
+* Changed sync responses to allow omitting any field in room entries.
+* Changed HTML sanitizer to only allow checkboxes inside unordered list items.
+* Changed room state resync to send space edges to clients if the room being
+  resynced is a space.
+* Changed verification check to fall back to the verify screen if the key backup
+  encryption key has changed.
+* Fixed HTML sanitizer not applying the depth limit specified by Matrix.
+* Fixed `prev_batch` token not being saved when paginating messages from the
+  server returns no new messages.
+* Fixed `prev_batch` not being reset on limited syncs.
+* Fixed clients never receiving initial sync payload if they connect during
+  database initialization.
+
+### Web
+* Added option to use server-sent events instead of websockets.
+* Added optional client-side room list cache, which is used to reduce the
+  initial payload size when reloading the page. The cache is enabled when both
+  SSE and low-bandwidth mode are enabled.
+* Added knocked users to room user list.
+* Added option to pin low priority rooms to bottom of room list.
+* Added option to stop counting unread messages in low priority rooms.
+* Added button to reset TOFU status after another user's master key changed.
+* Added hacky support for checking/unchecking todo list items in own messages.
+* Added button to subscribe to image packs in the image pack editor.
+* Added button to open the user's member event from the right panel user info.
+* Added button for fetching previous state events in the room state explorer.
+* Added current backend version string to settings.
+* Added support for [MSC4440] profile biographies.
+* Changed user info panel to blur any user-defined fields if the user is banned
+  in the current room.
+* Changed per-message profile rendering to not render "via" if the name is the
+  same.
+* Fixed websocket auto-reconnection getting throttled by browsers.
+* Fixed typing notifications getting stuck when the websocket reconnects.
+* Fixed unread counts and space bar not being visible when the room list was
+  resized to be too small.
+
+[MSC4440]: https://github.com/matrix-org/matrix-spec-proposals/pull/4440
+
+### Desktop
+* Added UI for managing backends.
+* Added option to disable tray icon.
+  * Closing the main window will stop the backend too when the tray is disabled.
+* Added option to disable notifications per backend.
+
 # v26.07
 
 ### Backend
