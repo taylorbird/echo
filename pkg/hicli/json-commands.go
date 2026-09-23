@@ -81,6 +81,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetProfileEncryptionInfo.RunCtx(ctx, req.Data, h.API.GetProfileEncryptionInfo)
 	case jsoncmd.ReqGetEvent:
 		return jsoncmd.GetEvent.RunCtx(ctx, req.Data, h.API.GetEvent)
+	case jsoncmd.ReqGetEventByRowID:
+		return jsoncmd.GetEventByRowID.RunCtx(ctx, req.Data, h.API.GetEventByRowID)
 	case jsoncmd.ReqGetRelatedEvents:
 		return jsoncmd.GetRelatedEvents.RunCtx(ctx, req.Data, h.API.GetRelatedEvents)
 	case jsoncmd.ReqGetStickyEvents:
@@ -89,6 +91,10 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetEventContext.RunCtx(ctx, req.Data, h.API.GetEventContext)
 	case jsoncmd.ReqPaginateManual:
 		return jsoncmd.PaginateManual.RunCtx(ctx, req.Data, h.API.PaginateManual)
+	case jsoncmd.ReqSearchLocal:
+		return jsoncmd.SearchLocal.RunCtx(ctx, req.Data, h.API.SearchLocal)
+	case jsoncmd.ReqSearchServer:
+		return jsoncmd.SearchServer.RunCtx(ctx, req.Data, h.API.SearchServer)
 	case jsoncmd.ReqGetMentions:
 		return jsoncmd.GetMentions.RunCtx(ctx, req.Data, h.API.GetMentions)
 	case jsoncmd.ReqGetRoomState:
@@ -113,6 +119,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.CreateRoom.RunCtx(ctx, req.Data, h.API.CreateRoom)
 	case jsoncmd.ReqMuteRoom:
 		return jsoncmd.MuteRoom.RunCtx(ctx, req.Data, h.API.MuteRoom)
+	case jsoncmd.ReqUpdatePushRule:
+		return jsoncmd.UpdatePushRule.RunCtx(ctx, req.Data, h.API.UpdatePushRule)
 	case jsoncmd.ReqEnsureGroupSessionShared:
 		return jsoncmd.EnsureGroupSessionShared.RunCtx(ctx, req.Data, h.API.EnsureGroupSessionShared)
 	case jsoncmd.ReqSendToDevice:
@@ -278,6 +286,17 @@ func (h *JSONAPI) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) 
 	return h.HiClient.GetEvent(mautrix.WithMaxRetries(ctx, 2), params.RoomID, params.EventID)
 }
 
+func (h *JSONAPI) GetEventByRowID(ctx context.Context, params *jsoncmd.GetEventByRowIDParams) (*database.Event, error) {
+	evt, err := h.DB.Event.GetByRowID(ctx, params.RowID)
+	if err != nil {
+		return nil, err
+	} else if evt == nil {
+		return nil, mautrix.MNotFound.WithMessage("event %d not found", params.RowID)
+	}
+	h.ReprocessExistingEvent(ctx, evt)
+	return evt, nil
+}
+
 func (h *JSONAPI) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
 	return nonNilArray(h.DB.Event.GetRelatedEvents(ctx, params.RoomID, params.EventID, params.RelationType))
 }
@@ -308,6 +327,14 @@ func (h *JSONAPI) Paginate(ctx context.Context, params *jsoncmd.PaginateParams) 
 
 func (h *JSONAPI) PaginateManual(ctx context.Context, params *jsoncmd.PaginateManualParams) (*jsoncmd.ManualPaginationResponse, error) {
 	return h.HiClient.PaginateManual(mautrix.WithMaxRetries(ctx, 0), params.RoomID, params.ThreadRoot, params.Since, params.Direction, params.Limit)
+}
+
+func (h *JSONAPI) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return h.HiClient.SearchLocal(ctx, params)
+}
+
+func (h *JSONAPI) SearchServer(ctx context.Context, params *jsoncmd.SearchServerParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return h.HiClient.SearchServer(mautrix.WithMaxRetries(ctx, 0), params)
 }
 
 func (h *JSONAPI) GetMentions(ctx context.Context, params *jsoncmd.GetMentionsParams) ([]*database.Event, error) {
@@ -393,10 +420,27 @@ func (h *JSONAPI) CreateRoom(ctx context.Context, params *mautrix.ReqCreateRoom)
 func (h *JSONAPI) MuteRoom(ctx context.Context, params *jsoncmd.MuteRoomParams) (bool, error) {
 	if params.Muted {
 		return true, h.Client.PutPushRule(ctx, "global", pushrules.RoomRule, string(params.RoomID), &mautrix.ReqPutPushRule{
-			Actions: []pushrules.PushActionType{},
+			Actions: []*pushrules.PushAction{},
 		})
 	}
 	return false, h.Client.DeletePushRule(ctx, "global", pushrules.RoomRule, string(params.RoomID))
+}
+
+func (h *JSONAPI) UpdatePushRule(ctx context.Context, params *jsoncmd.UpdatePushRuleParams) error {
+	switch params.Action {
+	case jsoncmd.UpdatePushRuleActionEnable:
+		return h.Client.SetPushRuleEnabled(ctx, "global", params.Kind, params.RuleID, true)
+	case jsoncmd.UpdatePushRuleActionDisable:
+		return h.Client.SetPushRuleEnabled(ctx, "global", params.Kind, params.RuleID, false)
+	case jsoncmd.UpdatePushRuleActionDelete:
+		return h.Client.DeletePushRule(ctx, "global", params.Kind, params.RuleID)
+	case jsoncmd.UpdatePushRuleActionPut:
+		return h.Client.PutPushRule(ctx, "global", params.Kind, params.RuleID, params.NewContent)
+	case jsoncmd.UpdatePushRuleActionPutActions:
+		return h.Client.PutPushRuleActions(ctx, "global", params.Kind, params.RuleID, params.Actions)
+	default:
+		return fmt.Errorf("unknown action %q", params.Action)
+	}
 }
 
 func (h *JSONAPI) EnsureGroupSessionShared(ctx context.Context, params *jsoncmd.EnsureGroupSessionSharedParams) error {

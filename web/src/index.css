@@ -10,6 +10,7 @@
 	--monospace-font-stack: "Fira Code", monospace;
 
 	--window-top-margin: env(safe-area-inset-top, 0px);
+	--window-bottom-margin: env(safe-area-inset-bottom, 0px);
 
 	/* Mac-native chrome: inset sidebar rows, hairline seams, rounded reading surface. */
 	--sidebar-inset: .5rem;

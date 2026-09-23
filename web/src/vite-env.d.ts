@@ -20,7 +20,17 @@ declare global {
 		openModal: openNonNestableModal
 		openNestableModal: openNestableModal
 		gomuksAndroid?: true
-		gomuksDesktop?: boolean
+		gomuksDesktop?: {
+			isDesktop: true
+			getTabID(): string
+			isEmbedded(): boolean
+			getDisableNotifications(): boolean
+			setNotificationCount: (count: number) => void
+			subscribeToTabs: (listener: (tabs: TabInfo[]) => void) => void
+			switchTab: (tab: string) => void
+			restartBackend: () => void
+			quitApp: () => void
+		}
 		gomuksWebWasm?: boolean
 		// Injected by Tauri into its webview; absent in a plain browser.
 		__TAURI_INTERNALS__?: unknown

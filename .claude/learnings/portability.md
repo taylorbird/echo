@@ -9,7 +9,7 @@ Assessment findings from evaluating iOS/Android and Linux/Windows ports of echo.
 - **Inferred:** `CGO_ENABLED=0` compiles without errors but fails at runtime with an unknown-driver error when the app tries to open `gomuks.db`.
 - **Cross-compiling the sidecar requires a C cross-toolchain per target** (or per-OS CI runners). Upstream's `.gitlab-ci.yml:124-153` uses per-target Docker images (`dock.mau.dev/tulir/gomuks-build-docker:<target>` for linux/amd64, linux/arm, linux/arm64, windows/amd64).
 - **Other CGO dependencies:** HEIC (image format, `media_heic.go`) and cwebp (WebP transcoding, `media_cwebp.go`) are also cgo-gated but degrade gracefully with `//go:build cgo` guards; format is simply unavailable on pure-Go builds.
-- **Libolm is already avoided:** Release builds use `-tags goolm` (release.sh:241) to swap the C Olm library for mautrix-go's pure-Go reimplementation (`maunium.net/go/mautrix/crypto/goolm`, selected by the `goolm` build tag).
+- **Libolm is already avoided:** Release builds use `-tags goolm,sqlite_fts5` (release.sh; `sqlite_fts5` is required since the gomuks v26.06 merge) to swap the C Olm library for mautrix-go's pure-Go reimplementation (`maunium.net/go/mautrix/crypto/goolm`, selected by the `goolm` build tag).
 
 ## The wasmuks path: WASM backend exists, unfit for iOS
 

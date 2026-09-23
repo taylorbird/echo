@@ -28,6 +28,7 @@ type GomuksAPI interface {
 	TrackUserDevices(ctx context.Context, params *GetProfileParams) (*ProfileEncryptionInfo, error)
 	GetProfileEncryptionInfo(ctx context.Context, params *GetProfileParams) (*ProfileEncryptionInfo, error)
 	GetEvent(ctx context.Context, params *GetEventParams) (*database.Event, error)
+	GetEventByRowID(ctx context.Context, params *GetEventByRowIDParams) (*database.Event, error)
 	GetRelatedEvents(ctx context.Context, params *GetRelatedEventsParams) ([]*database.Event, error)
 	GetEventContext(ctx context.Context, params *GetEventContextParams) (*EventContextResponse, error)
 	GetRoomState(ctx context.Context, params *GetRoomStateParams) ([]*database.Event, error)
@@ -35,6 +36,8 @@ type GomuksAPI interface {
 	GetReceipts(ctx context.Context, params *GetReceiptsParams) (map[id.EventID][]*database.Receipt, error)
 	Paginate(ctx context.Context, params *PaginateParams) (*PaginationResponse, error)
 	PaginateManual(ctx context.Context, params *PaginateManualParams) (*ManualPaginationResponse, error)
+	SearchLocal(ctx context.Context, params *SearchParams) (*ManualPaginationResponse, error)
+	SearchServer(ctx context.Context, params *SearchServerParams) (*ManualPaginationResponse, error)
 	GetMentions(ctx context.Context, params *GetMentionsParams) ([]*database.Event, error)
 	GetRoomSummary(ctx context.Context, params *GetRoomSummaryParams) (*mautrix.RespRoomSummary, error)
 	GetSpaceHierarchy(ctx context.Context, params *GetHierarchyParams) (*mautrix.RespHierarchy, error)
@@ -43,6 +46,7 @@ type GomuksAPI interface {
 	LeaveRoom(ctx context.Context, params *LeaveRoomParams) (*mautrix.RespLeaveRoom, error)
 	CreateRoom(ctx context.Context, params *mautrix.ReqCreateRoom) (*mautrix.RespCreateRoom, error)
 	MuteRoom(ctx context.Context, params *MuteRoomParams) (bool, error)
+	UpdatePushRule(ctx context.Context, params *UpdatePushRuleParams) error
 	EnsureGroupSessionShared(ctx context.Context, params *EnsureGroupSessionSharedParams) error
 	SendToDevice(ctx context.Context, params *SendToDeviceParams) (*mautrix.RespSendToDevice, error)
 	ResolveAlias(ctx context.Context, params *ResolveAliasParams) (*mautrix.RespAliasResolve, error)

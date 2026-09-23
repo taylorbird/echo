@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"html"
 	"image"
+	"image/color"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
@@ -180,10 +181,46 @@ func (gmx *Gomuks) saveMediaCacheEntryWithThumbnail(ctx context.Context, entry *
 	}
 }
 
-func decodeImageWithOrientationFix(file *os.File) (image.Image, error) {
-	decoded, decodedFrom, err := image.Decode(file)
+func BytesPerPixel(cm color.Model) int {
+	switch cm {
+	case color.GrayModel:
+		return 1
+	case color.Gray16Model:
+		return 2
+	case color.YCbCrModel:
+		return 3
+	case color.RGBAModel, color.NRGBAModel, color.CMYKModel, color.NYCbCrAModel:
+		return 4
+	case color.RGBA64Model, color.NRGBA64Model:
+		return 8
+	default:
+		return 16
+	}
+}
+
+func decodeImageWithOrientationFix(file *os.File, maxDecodeMemory int) (image.Image, error) {
+	cfg, decodedFrom, err := image.DecodeConfig(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode image: %w", err)
+		return nil, fmt.Errorf("failed to decode image config: %w", err)
+	} else if cfg.Width > 20000 || cfg.Height > 20000 || cfg.Width*cfg.Height*BytesPerPixel(cfg.ColorModel) > maxDecodeMemory {
+		return nil, fmt.Errorf("image dimensions too large: %dx%d (color model: %T)", cfg.Width, cfg.Height, cfg.ColorModel)
+	}
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
+	}
+	decoded, _, err := image.Decode(file)
+	if err != nil {
+		if decodedFrom == "webp" {
+			_, err = file.Seek(0, io.SeekStart)
+			if err != nil {
+				return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
+			}
+			decoded, err = decodeAnimatedWebp(file)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode image: %w", err)
+		}
 	}
 	var o orientation.Orientation
 	if decodedFrom == "jpeg" {
@@ -192,7 +229,17 @@ func decodeImageWithOrientationFix(file *os.File) (image.Image, error) {
 			return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
 		}
 		o = orientation.Read(file)
-	} // TODO heic orientation?
+	} else if decodedFrom == "heic" {
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
+		}
+		exif, err := parseHEICEXIF(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse HEIC EXIF: %w", err)
+		}
+		o = orientation.ReadEXIF(bytes.NewReader(exif))
+	}
 	if o != orientation.Unspecified {
 		decoded = o.Fix(decoded)
 	}
@@ -207,12 +254,22 @@ var encodeWebp = func(writer io.Writer, img image.Image, quality float32, lossle
 	return fmt.Errorf("webp encoding not implemented")
 }
 
+var decodeAnimatedWebp = func(data io.Reader) (image.Image, error) {
+	return nil, fmt.Errorf("animated webp decoding not implemented")
+}
+
+var parseHEICEXIF = func(data io.ReaderAt) ([]byte, error) {
+	return nil, fmt.Errorf("HEIC EXIF parsing not implemented")
+}
+
+const maxAvatarDecodeMemory = 128 * 1024 * 1024
+
 func (gmx *Gomuks) generateAvatarThumbnail(entry *database.Media, size int) error {
 	cacheFile, err := os.Open(gmx.cacheEntryToPath(entry.Hash[:]))
 	if err != nil {
 		return fmt.Errorf("failed to open full file: %w", err)
 	}
-	img, err := decodeImageWithOrientationFix(cacheFile)
+	img, err := decodeImageWithOrientationFix(cacheFile, maxAvatarDecodeMemory)
 	if err != nil {
 		return err
 	}
@@ -528,6 +585,8 @@ func (gmx *Gomuks) DownloadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+const maxUploadDecodeMemory = 512 * 1024 * 1024
+
 func (gmx *Gomuks) reencodeMedia(ctx context.Context, params jsoncmd.UploadMediaParams, tempFile *os.File) ([]byte, error) {
 	defer func() {
 		_ = tempFile.Close()
@@ -544,7 +603,7 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, params jsoncmd.UploadMedia
 		if params.Quality == 0 {
 			params.Quality = 80
 		}
-		decoded, err := decodeImageWithOrientationFix(tempFile)
+		decoded, err := decodeImageWithOrientationFix(tempFile, maxUploadDecodeMemory)
 		if err != nil {
 			return nil, err
 		}
@@ -655,20 +714,32 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, params jsoncmd.UploadMedia
 	return checksum, nil
 }
 
+const progressMime = "application/x-mau-progress-stream+json"
+
 func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	log := hlog.FromRequest(r)
 	progress, _ := strconv.ParseBool(r.URL.Query().Get("progress"))
+	progress = progress || r.Header.Get("Accept") == progressMime
 	var respEnc *json.Encoder
 	var progressCallback func(progress float64)
 	if progress {
-		w.Header().Set("Content-Type", "application/x-mau-progress-stream+json")
+		w.Header().Set("Content-Type", progressMime)
 		w.WriteHeader(http.StatusOK)
 		respEnc = json.NewEncoder(w)
 		lastFlush := time.Now()
 		var progressLock sync.Mutex
+		var done bool
+		defer func() {
+			progressLock.Lock()
+			done = true
+			progressLock.Unlock()
+		}()
 		updateInterval := 250 * time.Millisecond
 		realProgressCallback := func(progress float64) {
 			defer progressLock.Unlock()
+			if r.Context().Err() != nil || done {
+				return
+			}
 			start := time.Now()
 			_ = respEnc.Encode(progress)
 			w.(http.Flusher).Flush()
@@ -1065,6 +1136,9 @@ func (gmx *Gomuks) GenerateFileInfo(ctx context.Context, file io.ReadSeeker) (ev
 		msgType = event.MsgImage
 		defaultFileName = "image" + mimeType.Extension()
 		img, _, err := image.Decode(file)
+		if err != nil && strings.Contains(err.Error(), "webp: invalid format") {
+			img, err = decodeAnimatedWebp(file)
+		}
 		if err != nil {
 			if magickPath != "" && osFile != nil {
 				zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to decode image config, trying with magick")

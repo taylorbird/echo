@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { isMobileDevice } from "@/util/ismobile.ts"
 import type { ContentURI, RoomType } from "../../types"
 import { Preference, anyContext, anyGlobalContext, globalDeviceSpecific, roomSpecific } from "./types.ts"
 
@@ -303,7 +304,7 @@ export const preferences = {
 		description: "Show a context menu when right-clicking on messages.",
 		category: "input",
 		allowedContexts: anyGlobalContext,
-		defaultValue: true,
+		defaultValue: !isMobileDevice,
 	}),
 	ctrl_enter_send: new Preference<boolean>({
 		displayName: "Use Ctrl+Enter to send",
@@ -312,7 +313,7 @@ export const preferences = {
 		description: "Disable sending on enter and use Ctrl+Enter for sending instead",
 		category: "input",
 		allowedContexts: anyGlobalContext,
-		defaultValue: false,
+		defaultValue: isMobileDevice,
 	}),
 	refocus_input_after_send: new Preference<boolean>({
 		displayName: "Re-focus composer after send",
@@ -349,6 +350,7 @@ export const preferences = {
 		category: "notifications",
 		allowedContexts: anyContext,
 		defaultValue: "sounds/bright.flac",
+		hidden: window.gomuksAndroid,
 	}),
 	notification_sound_volume: new Preference<number>({
 		displayName: "Notification sound volume",
@@ -359,6 +361,7 @@ export const preferences = {
 		minValue: 0,
 		maxValue: 100,
 		numberType: "range",
+		hidden: window.gomuksAndroid,
 	}),
 	room_window_title: new Preference<string>({
 		displayName: "In-room window title",
@@ -366,6 +369,7 @@ export const preferences = {
 		category: "advanced",
 		allowedContexts: anyContext,
 		defaultValue: "$room - gomuks web",
+		hidden: window.gomuksAndroid,
 	}),
 	window_title: new Preference<string>({
 		displayName: "Default window title",
@@ -373,6 +377,7 @@ export const preferences = {
 		category: "advanced",
 		allowedContexts: anyGlobalContext,
 		defaultValue: "gomuks web",
+		hidden: window.gomuksAndroid,
 	}),
 	favicon: new Preference<string>({
 		displayName: "Favicon",
@@ -380,6 +385,7 @@ export const preferences = {
 		category: "appearance",
 		allowedContexts: anyGlobalContext,
 		defaultValue: "gomuks.png",
+		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop),
 	}),
 	room_view_type: new Preference<RoomType | null>({
 		displayName: "Room type override",
@@ -396,7 +402,7 @@ export const preferences = {
 		category: "advanced",
 		allowedContexts: globalDeviceSpecific,
 		defaultValue: false,
-		hidden: window.gomuksDesktop || window.gomuksWebWasm,
+		hidden: Boolean(window.gomuksDesktop?.isEmbedded() || window.gomuksWebWasm),
 	}),
 	web_push: new Preference<boolean>({
 		displayName: "Web push notifications",
@@ -404,7 +410,7 @@ export const preferences = {
 		category: "notifications",
 		allowedContexts: globalDeviceSpecific,
 		defaultValue: false,
-		hidden: window.gomuksAndroid || window.gomuksDesktop || window.gomuksWebWasm,
+		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop || window.gomuksWebWasm),
 	}),
 } as const
 

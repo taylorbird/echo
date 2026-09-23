@@ -235,10 +235,12 @@ step "Building the frontend (tsc -b + vite build)"
 
 step "Building the gomuks sidecar"
 # -tags goolm selects the pure-Go olm implementation, so no libolm/CGO flags are needed.
+# sqlite_fts5 is required since gomuks v26.06 (local message search); without it the
+# backend does not compile.
 # The binary is gitignored, so on a fresh clone binaries/ holds only .gitkeep — and `go build -o`
 # errors rather than creating a missing parent directory.
 mkdir -p "$REPO_ROOT/web/src-tauri/binaries"
-(cd "$REPO_ROOT" && go build -tags goolm \
+(cd "$REPO_ROOT" && go build -tags goolm,sqlite_fts5 \
 	-o web/src-tauri/binaries/gomuks-aarch64-apple-darwin ./cmd/gomuks)
 
 # --------------------------------------------------------------------------------------------

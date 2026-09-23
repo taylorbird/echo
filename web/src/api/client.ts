@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import type { MouseEvent } from "react"
+import { CancellablePromise } from "@/util/promise.ts"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
 import { BACKEND_CREDENTIALS, BACKEND_URL } from "./backend.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
@@ -22,21 +23,27 @@ import {
 	ClientState,
 	ElementRecentEmoji,
 	EventID,
+	EventRowID,
 	EventType,
 	GomuksAndroidMessageToWeb,
 	ImagePackRooms,
+	LocalSearchParams,
+	MemDBEvent,
 	RPCEvent,
 	RawDBEvent,
 	RelationType,
 	RoomID,
 	RoomStateGUID,
+	ServerSearchParams,
 	SyncStatus,
 	UnreadType,
 	UserID,
+	UserProfile,
 } from "./types"
 
 export default class Client {
 	readonly state = new CachedEventDispatcher<ClientState>()
+	readonly profile = new NonNullCachedEventDispatcher<UserProfile>({})
 	readonly syncStatus = new NonNullCachedEventDispatcher<SyncStatus>({ type: "waiting", error_count: 0 })
 	readonly initComplete = new NonNullCachedEventDispatcher<boolean>(false)
 	readonly store = new StateStore()
@@ -53,6 +60,29 @@ export default class Client {
 			queueMicrotask(() => this.#handleEmoteRoomsChange(true)))
 		this.store.accountDataSubs.getSubscriber("m.image_pack.rooms")(() =>
 			queueMicrotask(() => this.#handleEmoteRoomsChange(false)))
+
+		const notifListener = window.gomuksDesktop?.setNotificationCount
+		if (notifListener) {
+			this.store.homeSpace.counts.listen(counts => {
+				if (this.initComplete.current) {
+					notifListener(counts.unread_highlights || counts.unread_notifications)
+				}
+			})
+			this.initComplete.listen(complete => {
+				if (complete) {
+					const counts = this.store.homeSpace.counts.current
+					notifListener(counts.unread_highlights || counts.unread_notifications)
+				}
+			})
+		}
+		this.state.listen(state => {
+			if (state.is_logged_in) {
+				this.profile.emit({
+					displayname: state.displayname,
+					avatar_url: state.avatar_url,
+				})
+			}
+		})
 	}
 
 	async #reallyStart(signal: AbortSignal, credentials?: { username: string; password: string }) {
@@ -321,7 +351,7 @@ export default class Client {
 		if (typeof room === "string") {
 			room = this.store.rooms.get(room)
 		}
-		if (!room || (!unredact && room.eventsByID.has(eventID)) ||room.requestedEvents.has(eventID)) {
+		if (!room || (!unredact && room.eventsByID.has(eventID)) || room.requestedEvents.has(eventID)) {
 			return
 		}
 		room.requestedEvents.add(eventID)
@@ -338,6 +368,21 @@ export default class Client {
 					room.requestedEvents.delete(eventID)
 					window.alert(`Failed to get unredacted content: ${err}`)
 				}
+			},
+		)
+	}
+
+	requestEventByRowID(room: RoomStateStore, rowID: EventRowID) {
+		if (room.eventsByRowID.has(rowID) || room.requestedEventRowIDs.has(rowID)) {
+			return
+		}
+		room.requestedEventRowIDs.add(rowID)
+		this.rpc.getEventByRowID(rowID).then(
+			evt => {
+				room.applyEvent(evt, false)
+			},
+			err => {
+				console.error(`Failed to fetch event ${rowID}`, err)
 			},
 		)
 	}
@@ -377,6 +422,25 @@ export default class Client {
 			output.push(room.getOrApplyEvent(evt))
 		}
 		return output
+	}
+
+	search(
+		local: boolean, params: LocalSearchParams | ServerSearchParams,
+	): CancellablePromise<[MemDBEvent[], string | undefined]> {
+		const promise = local ? this.rpc.searchLocal(params) : this.rpc.searchServer(params)
+		return new CancellablePromise((resolve, reject) => {
+			promise.then(resp => {
+				const output = []
+				for (const evt of resp.events ?? []) {
+					const room = this.store.rooms.get(evt.room_id)
+					if (!room) {
+						continue
+					}
+					output.push(room.getOrApplyEvent(evt))
+				}
+				resolve([output, resp.next_batch] as const)
+			}, reject)
+		}, promise.cancel)
 	}
 
 	async pinMessage(room: RoomStateStore, evtID: EventID, wantPinned: boolean) {

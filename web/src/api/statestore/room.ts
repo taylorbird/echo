@@ -19,7 +19,7 @@ import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
-import { getDisplayname, getRelatesTo, getServerName } from "@/util/validation.ts"
+import { getDisplayname, getRelatesTo, getServerName, getThreadRoot } from "@/util/validation.ts"
 import {
 	ContentURI,
 	DBReceipt,
@@ -99,8 +99,8 @@ function isInThread(evt: MemDBEvent, threadRoot?: EventID | null): boolean {
 	if (!threadRoot) {
 		return false
 	}
-	const rel = getRelatesTo(evt)
-	return rel?.rel_type === "m.thread" && rel?.event_id === threadRoot
+	const expectedRoot = getThreadRoot(getRelatesTo(evt))
+	return !!expectedRoot && expectedRoot === threadRoot
 }
 
 export const fakeGomuksSender: UserID = "@gomuks"
@@ -147,6 +147,7 @@ export class RoomStateStore {
 	readonly receiptsByUserID: Map<UserID, MemReceipt> = new Map()
 	readonly receiptSubs = new MultiSubscribable()
 	readonly requestedEvents: Set<EventID> = new Set()
+	readonly requestedEventRowIDs: Set<EventRowID> = new Set()
 	readonly requestedMembers: Set<UserID> = new Set()
 	readonly accountData: Map<string, UnknownEventContent> = new Map()
 	readonly accountDataSubs = new MultiSubscribable()
@@ -481,8 +482,8 @@ export class RoomStateStore {
 		if (viewRedacted) {
 			memEvt.viewing_redacted = true
 		}
-		if (evt.type === "m.room.encrypted" && evt.decrypted && evt.decrypted_type) {
-			memEvt.type = evt.decrypted_type
+		if (evt.type === "m.room.encrypted" && evt.decrypted) {
+			memEvt.type = evt.decrypted_type ?? ""
 			memEvt.encrypted = evt.content as EncryptedEventContent
 			memEvt.content = evt.decrypted
 		}
@@ -511,6 +512,7 @@ export class RoomStateStore {
 			}
 		}
 		this.requestedEvents.delete(memEvt.event_id)
+		this.requestedEventRowIDs.delete(memEvt.rowid)
 		if (!pending) {
 			const pendingIdx = this.pendingEvents.indexOf(memEvt.rowid)
 			if (pendingIdx !== -1) {
@@ -626,6 +628,14 @@ export class RoomStateStore {
 				evts?.forEach(listener.onTimelineEvent)
 				newState.forEach(listener.onStateEvent)
 			})
+		}
+	}
+
+	removeFailedEvent(evt: MemDBEvent) {
+		const evtIdx = this.pendingEvents.indexOf(evt.rowid)
+		if (evtIdx >= 0) {
+			this.pendingEvents.splice(evtIdx, 1)
+			this.notifyTimelineSubscribers()
 		}
 	}
 

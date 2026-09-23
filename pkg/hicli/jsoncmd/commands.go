@@ -48,8 +48,11 @@ const (
 	ReqTrackUserDevices         Name = "track_user_devices"
 	ReqGetProfileEncryptionInfo Name = "get_profile_encryption_info"
 	ReqGetEvent                 Name = "get_event"
+	ReqGetEventByRowID          Name = "get_event_by_rowid"
 	ReqGetEventContext          Name = "get_event_context"
 	ReqPaginateManual           Name = "paginate_manual"
+	ReqSearchLocal              Name = "search_local"
+	ReqSearchServer             Name = "search_server"
 	ReqGetMentions              Name = "get_mentions"
 	ReqGetRelatedEvents         Name = "get_related_events"
 	ReqGetStickyEvents          Name = "get_sticky_events"
@@ -64,6 +67,7 @@ const (
 	ReqLeaveRoom                Name = "leave_room"
 	ReqCreateRoom               Name = "create_room"
 	ReqMuteRoom                 Name = "mute_room"
+	ReqUpdatePushRule           Name = "update_push_rule"
 	ReqEnsureGroupSessionShared Name = "ensure_group_session_shared"
 	ReqSendToDevice             Name = "send_to_device"
 	ReqResolveAlias             Name = "resolve_alias"
@@ -156,6 +160,8 @@ var (
 	// GetEvent returns a single event in a room. This uses the database if possible,
 	// but will fetch from the homeserver if the event isn't found locally.
 	GetEvent = &CommandSpec[*GetEventParams, *database.Event]{Name: ReqGetEvent}
+	// GetEventByRowID returns a single event by its database row ID.
+	GetEventByRowID = &CommandSpec[*GetEventByRowIDParams, *database.Event]{Name: ReqGetEventByRowID}
 	// GetEventContext returns context around an event (before/after timeline slices) from the
 	// homeserver. This is used for jumping to a specific point on the timeline. Note that there is
 	// currently no safe way to merge back into the main timeline, so jumping has to be implemented
@@ -165,6 +171,10 @@ var (
 	// This is used to paginate after jumping to a specific event using `get_event_context` and
 	// for normal pagination in the thread view.
 	PaginateManual = &CommandSpec[*PaginateManualParams, *ManualPaginationResponse]{Name: ReqPaginateManual}
+	// SearchLocal searches for messages in the local database.
+	SearchLocal = &CommandSpec[*SearchParams, *ManualPaginationResponse]{Name: ReqSearchLocal}
+	// SearchServer searches for messages on the homeserver.
+	SearchServer = &CommandSpec[*SearchServerParams, *ManualPaginationResponse]{Name: ReqSearchServer}
 	// GetMentions returns recent events that mention the current user. This will not call the homeserver.
 	// The result is sorted by timestamp in descending order. Sorting by timestamp means the sender could
 	// have faked it, but there's no other cross-room event ordering in Matrix.
@@ -202,6 +212,8 @@ var (
 	CreateRoom = &CommandSpec[*mautrix.ReqCreateRoom, *mautrix.RespCreateRoom]{Name: ReqCreateRoom}
 	// MuteRoom mutes or unmutes a room by manipulating push rules. It returns the previous mute state.
 	MuteRoom = &CommandSpec[*MuteRoomParams, bool]{Name: ReqMuteRoom}
+	// UpdatePushRule is used to create, edit, delete, enable or disable push rules.
+	UpdatePushRule = &CommandSpecWithoutResponse[*UpdatePushRuleParams]{Name: ReqUpdatePushRule}
 	// EnsureGroupSessionShared ensures that the Megolm session for a room has been shared to all
 	// recipient devices. Calling this is not required, but it should be called when the user first
 	// starts typing to make sending faster.
@@ -259,26 +271,44 @@ var (
 
 // FFI-specific command specs
 var (
-	SpecGetAccountInfo = &CommandSpecWithoutRequest[*database.Account]{Name: ReqGetAccountInfo}
-	SpecUploadMedia    = &CommandSpec[*UploadMediaParams, *event.MessageEventContent]{Name: ReqUploadMedia}
-	SpecExportKeys     = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
+	// GetAccountInfo returns the homeserver URL and access token for the active login.
+	// This is only available in the C FFI. HTTP clients aren't allowed to read the client's access token.
+	GetAccountInfo = &CommandSpecWithoutRequest[*database.Account]{Name: ReqGetAccountInfo}
+	// UploadMedia uploads a file on the local disk to the server and returns the m.room.message to use in `send_message`.
+	// This is only available in the C FFI. HTTP clients must use the /upload API.
+	UploadMedia = &CommandSpec[*UploadMediaParams, *event.MessageEventContent]{Name: ReqUploadMedia}
+	// ExportKeys exports megolm room keys and returns the exported file as a string.
+	// This is only available in the C FFI. HTTP clients must use the /keys/export API.
+	ExportKeys = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
 )
 
 // Backend -> frontend event specs
 var (
-	SpecSyncComplete    = &EventSpec[*SyncComplete]{Name: EventSyncComplete}
-	SpecSyncStatus      = &EventSpec[*SyncStatus]{Name: EventSyncStatus}
+	// SpecSyncComplete is emitted after a /sync request has been fully processed and stored.
+	// This is also used for sending the room list to the client when first connecting.
+	SpecSyncComplete = &EventSpec[*SyncComplete]{Name: EventSyncComplete}
+	// SpecSyncStatus is emitted if the /sync loop starts or stops erroring.
+	SpecSyncStatus = &EventSpec[*SyncStatus]{Name: EventSyncStatus}
+	// SpecEventsDecrypted is emitted when one or more events were decrypted after initially failing to decrypt.
 	SpecEventsDecrypted = &EventSpec[*EventsDecrypted]{Name: EventEventsDecrypted}
-	SpecTyping          = &EventSpec[*Typing]{Name: EventTyping}
-	SpecSendComplete    = &EventSpec[*SendComplete]{Name: EventSendComplete}
-	SpecClientState     = &EventSpec[*ClientState]{Name: EventClientState}
+	// SpecTyping is emitted when new typing notifications are received in a room.
+	SpecTyping = &EventSpec[*Typing]{Name: EventTyping}
+	// SpecSendComplete is emitted when a previously started message send has completed.
+	// Both successes and failures can be reported this way.
+	SpecSendComplete = &EventSpec[*SendComplete]{Name: EventSendComplete}
+	// SpecClientState is emitted when the client login state or global profile changes.
+	SpecClientState = &EventSpec[*ClientState]{Name: EventClientState}
+	// SpecInitComplete is emitted after all post-connect payloads have been dispatched.
+	SpecInitComplete = &EventSpec[InitComplete]{Name: EventInitComplete}
 )
 
 // Websocket-specific backend -> frontend event specs
 var (
+	// SpecImageAuthToken is emitted in websocket mode every 30 minutes,
+	// containing a short-lived token for image/media requests.
 	SpecImageAuthToken = &EventSpec[ImageAuthToken]{Name: EventImageAuthToken}
-	SpecInitComplete   = &EventSpec[InitComplete]{Name: EventInitComplete}
-	SpecRunID          = &EventSpec[*RunData]{Name: EventRunID}
+	// SpecRunID is emitted to identify the current backend process and some additional metadata.
+	SpecRunID = &EventSpec[*RunData]{Name: EventRunID}
 )
 
 var AllNames = []Name{

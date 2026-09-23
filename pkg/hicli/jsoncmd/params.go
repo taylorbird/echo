@@ -13,6 +13,7 @@ import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/pushrules"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
@@ -135,6 +136,10 @@ type GetEventParams struct {
 	Unredact bool       `json:"unredact"`
 }
 
+type GetEventByRowIDParams struct {
+	RowID database.EventRowID `json:"event_rowid"`
+}
+
 type GetEventContextParams struct {
 	RoomID  id.RoomID  `json:"room_id"`
 	EventID id.EventID `json:"event_id"`
@@ -247,6 +252,42 @@ type PaginateManualParams struct {
 	Limit     int               `json:"limit"`
 }
 
+type SearchParams struct {
+	// The search term to search for. This is passed directly to an SQLite fts5 MATCH query.
+	SearchTerm string `json:"search_term"`
+	// An extra search term to match against the raw content JSON.
+	RawLike string `json:"raw_like,omitempty"`
+	// Maximum number of results to return.
+	Limit int `json:"limit"`
+	// Rooms in which to search. If empty, all rooms will be searched.
+	RoomIDs []id.RoomID `json:"room_ids,omitempty"`
+	// Users whose messages to search. If empty, messages from all users will be searched.
+	Senders      []id.UserID        `json:"senders,omitempty"`
+	MinTimestamp jsontime.UnixMilli `json:"min_timestamp,omitempty"`
+	MaxTimestamp jsontime.UnixMilli `json:"max_timestamp,omitempty"`
+	// Whether to also search redacted events.
+	IncludeRedacted bool `json:"include_redacted,omitempty"`
+	// Whether to sort results by timestamp instead of relevance.
+	SortByTime bool `json:"sort_by_time,omitempty"`
+	// The next batch value from a previous response. All other parameters must remain exactly the same.
+	NextBatch string `json:"next_batch,omitempty"`
+}
+
+type SearchServerParams struct {
+	// The search term to search for. The syntax is up to the homeserver.
+	SearchTerm string `json:"search_term"`
+	// Maximum number of results to return.
+	Limit int `json:"limit"`
+	// Rooms in which to search. If empty, all rooms will be searched.
+	RoomIDs []id.RoomID `json:"room_ids,omitempty"`
+	// Users whose messages to search. If empty, messages from all users will be searched.
+	Senders []id.UserID `json:"senders,omitempty"`
+	// Whether to sort results by timestamp instead of relevance.
+	SortByTime bool `json:"sort_by_time,omitempty"`
+	// The next batch value from a previous response. All other parameters must remain exactly the same.
+	NextBatch string `json:"next_batch,omitempty"`
+}
+
 type JoinRoomParams struct {
 	RoomIDOrAlias string `json:"room_id_or_alias"`
 	// Via servers to attempt to join through.
@@ -286,6 +327,38 @@ type GetReceiptsParams struct {
 type MuteRoomParams struct {
 	RoomID id.RoomID `json:"room_id"`
 	Muted  bool      `json:"muted"`
+}
+
+type UpdatePushRuleAction string
+
+const (
+	UpdatePushRuleActionEnable     UpdatePushRuleAction = "enable"
+	UpdatePushRuleActionDisable    UpdatePushRuleAction = "disable"
+	UpdatePushRuleActionPut        UpdatePushRuleAction = "put"
+	UpdatePushRuleActionDelete     UpdatePushRuleAction = "delete"
+	UpdatePushRuleActionPutActions UpdatePushRuleAction = "put_actions"
+)
+
+type PushRulePutContent struct {
+	Actions pushrules.PushActionArray `json:"actions"`
+	// The conditions to match in order to trigger this rule.
+	// Only applicable to generic underride/override rules.
+	Conditions []*pushrules.PushCondition `json:"conditions,omitempty"`
+	// Pattern for content-specific push rules
+	Pattern string `json:"pattern,omitempty"`
+}
+
+type UpdatePushRuleParams struct {
+	Kind   pushrules.PushRuleType `json:"kind"`
+	RuleID string                 `json:"rule_id"`
+	Action UpdatePushRuleAction   `json:"action"`
+
+	// When action is put, the new content for the push rule
+	NewContent *mautrix.ReqPutPushRule `json:"new_content,omitempty"`
+
+	// When action is put_actions, the new list of actions for the push rule.
+	// This is mostly for default rules that can't be edited otherwise.
+	Actions []*pushrules.PushAction `json:"actions,omitempty"`
 }
 
 type PingParams struct {

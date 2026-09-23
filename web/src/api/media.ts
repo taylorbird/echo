@@ -171,7 +171,7 @@ export const getAvatarURL = (
 	// room-aware sender colour so the letter tile matches the name beside it;
 	// everything else falls back to the per-user colour.
 	backgroundColor: string = getUserColor(userID),
-): string | undefined => {
+): string => {
 	const fallbackCharacter = getFallbackCharacter(content?.displayname, 0) || getFallbackCharacter(userID, 1)
 	const [server, mediaID] = parseMXC(content?.avatar_file?.url ?? content?.avatar_url)
 	if (!mediaID || forceFallback) {
@@ -188,7 +188,7 @@ export const getAvatarThumbnailURL = (
 	content?: UserProfile | null,
 	forceFallback = false,
 	backgroundColor?: string,
-): string | undefined => {
+): string => {
 	return getAvatarURL(userID, content, true, forceFallback, backgroundColor)
 }
 

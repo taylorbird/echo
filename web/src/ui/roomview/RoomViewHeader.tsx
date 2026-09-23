@@ -27,6 +27,7 @@ import CodeIcon from "@/icons/modern/code.svg?react"
 import WidgetIcon from "@/icons/modern/layout-grid.svg?react"
 import MoreIcon from "@/icons/modern/more-horizontal.svg?react"
 import PinIcon from "@/icons/modern/pin.svg?react"
+import SearchIcon from "@/icons/modern/search.svg?react"
 import SettingsIcon from "@/icons/modern/settings.svg?react"
 import PeopleIcon from "@/icons/modern/users.svg?react"
 import "./RoomViewHeader.css"
@@ -85,6 +86,14 @@ const RoomViewHeader = ({ room, activePanel }: RoomViewHeaderProps) => {
 				onClick={mainScreen.clickRightPanelOpener}
 				title="Notification Center"
 			><NotificationsIcon />{titles && "Notification Center"}</button>
+			<button
+				className={activeClass("search")}
+				aria-pressed={activePanel === "search"}
+				data-target-panel="search"
+				data-close-nestable-modal={titles}
+				onClick={mainScreen.clickRightPanelOpener}
+				title="Search"
+			><SearchIcon />{titles && "Search"}</button>
 			<button title="Open devtools" onClick={openRoomStateExplorer}>
 				<CodeIcon/>{titles && "Open devtools"}
 			</button>

@@ -24,7 +24,7 @@ import {
 	SubFilteredSpace,
 	usePreference,
 } from "@/api/statestore"
-import type { RoomID, UserProfile } from "@/api/types"
+import type { RoomID } from "@/api/types"
 import { getCheats, isCheatActive } from "@/util/cheats.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { prefersReducedMotion } from "@/util/reducedmotion.ts"
@@ -206,19 +206,9 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 	const markAllRead = useMarkAllRead(unreadRooms)
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
-	/*
-	 * Your own profile, fetched once, purely so the rail avatar has an avatar_url to
-	 * render. getAvatarThumbnailURL takes the profile as its second argument and falls
-	 * back to a generated letter tile without one, so passing only the user ID — which
-	 * is what this did — could never show a real picture. Same fetch UserInfo does.
-	 */
-	const [ownProfile, setOwnProfile] = useState<UserProfile | null>(null)
-	useEffect(() => {
-		client.rpc.getProfile(client.userID).then(
-			setOwnProfile,
-			err => console.error("Failed to fetch own profile for the rail avatar:", err),
-		)
-	}, [client])
+	// Your own profile, kept current by the client from the backend state, so the rail
+	// avatar shows your real picture rather than the generated letter tile.
+	const ownProfile = useEventAsState(client.profile)
 
 	const setQuery = (evt: React.ChangeEvent<HTMLInputElement>) => {
 		client.store.currentRoomListQuery = toSearchableString(evt.target.value)

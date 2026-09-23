@@ -25,7 +25,7 @@ const noop = (name: string) => () => {
 export class RoomContextData {
 	public readonly timelineBottomRef: RefObject<HTMLDivElement | null> = createRef()
 	public setReplyTo: (eventID: EventID | null) => void = noop("setReplyTo")
-	public setEditing: (evt: MemDBEvent | null) => void = noop("setEditing")
+	public setEditing: (evt: MemDBEvent | null, failed?: true) => void = noop("setEditing")
 	public insertText: (text: string) => void = noop("insertText")
 	public insertMention: (displayname: string, userID: UserID) => void = noop("insertMention")
 	public lastThreadEventID: EventID | null = null
@@ -33,6 +33,7 @@ export class RoomContextData {
 	public focusedEventRowID: EventRowID | null = null
 	public readonly isEditing = new NonNullCachedEventDispatcher<boolean>(false)
 	public scrolledToBottom = true
+	public isFake = false
 	public setForceViewType: (viewType: RoomType | null) => void = noop("setForceViewType")
 	public onFileDropped: (file: File) => void = noop("onFileDropped")
 
@@ -45,6 +46,10 @@ export class RoomContextData {
 		if (setForceViewType) {
 			this.setForceViewType = setForceViewType
 		}
+	}
+
+	get isThreadView() {
+		return !!this.threadRoot
 	}
 
 	scrollToBottom = () => {

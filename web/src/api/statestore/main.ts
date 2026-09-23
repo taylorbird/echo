@@ -43,6 +43,7 @@ import { RoomStateStore } from "./room.ts"
 import {
 	AllChatsSpace,
 	DirectChatSpace,
+	HomeSpace,
 	RoomListFilter,
 	Space,
 	SpaceEdgeStore,
@@ -127,6 +128,7 @@ export class StateStore {
 	readonly spaceEdges: Map<RoomID, SpaceEdgeStore> = new Map()
 	readonly allChatsSpace = new AllChatsSpace()
 	readonly spaceOrphans = new SpaceOrphansSpace(this)
+	readonly homeSpace = new HomeSpace()
 	readonly directChatsSpace = new DirectChatSpace()
 	readonly unreadsSpace = new UnreadsSpace(this)
 	/*
@@ -233,6 +235,7 @@ export class StateStore {
 		case "":
 		case "support.feline.policy.lists.msc.v1":
 		case "org.matrix.msc3417.call":
+		case "fi.mau.msc2545.image_pack":
 			return true
 		}
 	}
@@ -303,6 +306,7 @@ export class StateStore {
 		if (!someMeta) {
 			return
 		}
+		this.homeSpace.applyUnreads(meta, oldMeta)
 		if (this.directChatsSpace.include(someMeta)) {
 			this.directChatsSpace.applyUnreads(meta, oldMeta)
 		} else if (oldMeta && this.directChatsSpace.include(oldMeta)) {
@@ -575,6 +579,13 @@ export class StateStore {
 		if (!evt || typeof evt.content.body !== "string") {
 			return
 		}
+		if (sound) {
+			playSound(room.preferences.notification_sound, room.preferences.notification_sound_volume)
+		}
+		if (window.gomuksDesktop?.getDisableNotifications()) {
+			// Notifications are sent by the main process
+			return
+		}
 		let body = evt.content.body
 		if (body.length > 400) {
 			body = body.slice(0, 350) + " […]"
@@ -584,9 +595,6 @@ export class StateStore {
 		const roomName = room.meta.current.name ?? "Unnamed room"
 		const senderName = getDisplayname(evt.sender, memberEvt?.content)
 		const title = senderName === roomName ? senderName : `${senderName} (${roomName})`
-		if (sound) {
-			playSound(room.preferences.notification_sound, room.preferences.notification_sound_volume)
-		}
 		const notif = new Notification(title, {
 			body,
 			icon,
@@ -664,6 +672,7 @@ export class StateStore {
 		this.rooms.clear()
 		this.inviteRooms.clear()
 		this.spaceEdges.clear()
+		this.homeSpace.clearUnreads()
 		this.pseudoSpaces.forEach(space => space.clearUnreads())
 		this.roomList.emit([])
 		this.topLevelSpaces.emit([])

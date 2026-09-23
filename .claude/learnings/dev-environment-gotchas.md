@@ -42,6 +42,9 @@ Requires Rust. **No longer requires libolm or any CGO flags** — the sidecar bu
 `-tags goolm`, which selects mautrix-go's pure-Go olm implementation (available since
 mautrix v0.26.3). Without the tag the default is still the libolm cgo binding, so the tag is
 not optional: drop it and the Homebrew dependency comes back.
+Since the gomuks v26.06 merge the backend also needs `sqlite_fts5` (local message search);
+without it `pkg/hicli/nofts.go` makes the build fail on purpose. So the tags are
+`-tags goolm,sqlite_fts5` everywhere, including `go build`/`go vet` checks.
 
 ```bash
 # Frontend dist FIRST — the sidecar go:embeds web/dist (web/frontend.go), so the
@@ -49,7 +52,7 @@ not optional: drop it and the Homebrew dependency comes back.
 cd web && npm run build
 
 # Go backend sidecar (package is ./cmd/gomuks — `./...` does NOT work with -o)
-go build -tags goolm -o web/src-tauri/binaries/gomuks-aarch64-apple-darwin ./cmd/gomuks
+go build -tags goolm,sqlite_fts5 -o web/src-tauri/binaries/gomuks-aarch64-apple-darwin ./cmd/gomuks
 
 # Run Tauri dev (loads http://localhost:6173 via Vite proxy, no custom icon in dev)
 cd web && npx tauri dev

@@ -92,6 +92,10 @@ func (gr *GomuksRPC) GetEvent(ctx context.Context, params *jsoncmd.GetEventParam
 	return executeRequest(gr, ctx, jsoncmd.GetEvent, params)
 }
 
+func (gr *GomuksRPC) GetEventByRowID(ctx context.Context, params *jsoncmd.GetEventByRowIDParams) (*database.Event, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetEventByRowID, params)
+}
+
 func (gr *GomuksRPC) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetRelatedEvents, params)
 }
@@ -124,6 +128,14 @@ func (gr *GomuksRPC) PaginateManual(ctx context.Context, params *jsoncmd.Paginat
 	return executeRequest(gr, ctx, jsoncmd.PaginateManual, params)
 }
 
+func (gr *GomuksRPC) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.SearchLocal, params)
+}
+
+func (gr *GomuksRPC) SearchServer(ctx context.Context, params *jsoncmd.SearchServerParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.SearchServer, params)
+}
+
 func (gr *GomuksRPC) GetMentions(ctx context.Context, params *jsoncmd.GetMentionsParams) ([]*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetMentions, params)
 }
@@ -154,6 +166,10 @@ func (gr *GomuksRPC) CreateRoom(ctx context.Context, params *mautrix.ReqCreateRo
 
 func (gr *GomuksRPC) MuteRoom(ctx context.Context, params *jsoncmd.MuteRoomParams) (bool, error) {
 	return executeRequest(gr, ctx, jsoncmd.MuteRoom, params)
+}
+
+func (gr *GomuksRPC) UpdatePushRule(ctx context.Context, params *jsoncmd.UpdatePushRuleParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.UpdatePushRule, params)
 }
 
 func (gr *GomuksRPC) EnsureGroupSessionShared(ctx context.Context, params *jsoncmd.EnsureGroupSessionSharedParams) error {

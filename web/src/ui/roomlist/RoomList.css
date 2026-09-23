@@ -19,6 +19,45 @@ div.room-list {
 	grid-area: roomlist;
 }
 
+div.profile-switcher {
+	background-color: var(--space-list-background-overlay);
+	grid-area: profile;
+
+	> div.profile-switcher-item {
+		width: 2.5rem;
+		height: 2.5rem;
+		padding: .25rem;
+		cursor: var(--clickable-cursor);
+
+		&:hover, &:focus {
+			background-color: var(--room-list-entry-hover-color);
+		}
+	}
+}
+
+div.profile-switcher-menu {
+	> button {
+		justify-content: space-between;
+		height: 2.5rem;
+		padding: 0 .75rem;
+		gap: .25rem;
+
+		&.active {
+			background-color: var(--room-list-entry-selected-color);
+		}
+
+		> img.avatar {
+			height: 2rem;
+			width: 2rem;
+		}
+
+		> div.room-entry-unreads {
+			width: 2rem;
+			margin: 0;
+		}
+	}
+}
+
 div.space-bar {
 	background-color: var(--space-list-background-overlay);
 	grid-area: spacebar;
@@ -908,6 +947,22 @@ div.room-entry-unreads {
 	justify-content: center;
 	width: 3rem;
 	margin-right: .25rem;
+
+	&.floating {
+		z-index: 2;
+		height: 0;
+		width: 0;
+		margin-left: auto;
+		margin-bottom: auto;
+		position: relative;
+
+		> div.unread-count {
+			position: absolute;
+			/* This positioning doesn't feel very precise, but it looks correct enough */
+			margin-top: .75rem;
+			margin-right: .25rem;
+		}
+	}
 
 	> div.unread-count {
 		--unread-count-size: 1rem;

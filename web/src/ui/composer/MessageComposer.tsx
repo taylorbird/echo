@@ -48,7 +48,7 @@ import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { ComposerMention, addMention, applyMentions, escapeMarkdown, mentionLabel } from "@/util/markdown.ts"
 import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
-import { getRelatesTo, getServerName, isEventID } from "@/util/validation.ts"
+import { getRelatesTo, getServerName, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
@@ -220,7 +220,7 @@ const MessageComposer = () => {
 			setState(state => ({ startNewThread: !state.startNewThread }))
 		}
 	}, [])
-	roomCtx.setEditing = useCallback((evt: MemDBEvent | null) => {
+	roomCtx.setEditing = useCallback((evt: MemDBEvent | null, failed?: true) => {
 		if (evt === null) {
 			rawSetEditing(null)
 			setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
@@ -233,7 +233,23 @@ const MessageComposer = () => {
 		}
 		const isMedia = mediaMsgTypes.includes(evtContent.msgtype)
 			&& Boolean(evt.content?.url || evt.content?.file?.url)
-		rawSetEditing(evt)
+		let replyTo: EventID | null = null
+		let silentReply  = false
+		let explicitReplyInThread = false
+		if (!failed) {
+			rawSetEditing(evt)
+		} else if (evt.relation_type === "m.replace" && evt.relates_to) {
+			rawSetEditing(room.eventsByID.get(evt.relates_to) ?? null)
+		} else {
+			const rel = getRelatesTo(evt)
+			const replyToEvtID = !rel?.is_falling_back && rel?.["m.in_reply_to"]?.event_id
+			if (isEventID(replyToEvtID)) {
+				replyTo = replyToEvtID
+				// this isn't a proper detection
+				silentReply = evt.content?.["m.mentions"]?.user_ids?.length === 0
+				explicitReplyInThread = rel?.is_falling_back === false
+			}
+		}
 		const textIsEditable = (evt.content.filename && evt.content.filename !== evt.content.body)
 			|| evt.type === "m.sticker"
 			|| !isMedia
@@ -242,11 +258,11 @@ const MessageComposer = () => {
 			text: textIsEditable
 				? (evt.local_content?.edit_source ?? evtContent.body ?? "")
 				: "",
-			replyTo: null,
-			silentReply: false,
-			explicitReplyInThread: false,
+			replyTo,
+			silentReply,
+			explicitReplyInThread,
 			startNewThread: false,
-			command: null,
+			command: null, // TODO allow editing command invocations?
 			previews:
 				evt.content["m.url_previews"] ??
 				evt.content["com.beeper.linkpreviews"] ??
@@ -295,10 +311,8 @@ const MessageComposer = () => {
 			}
 		} else if (replyToEvt) {
 			const replyToEvtRelation = getRelatesTo(replyToEvt)
-			const isThread = !roomCtx.threadRoot
-				&& replyToEvtRelation?.rel_type === "m.thread"
-				&& isEventID(replyToEvtRelation?.event_id)
-			if (!state.silentReply && (!isThread || state.explicitReplyInThread)) {
+			const replyToThreadRoot = !roomCtx.threadRoot ? getThreadRoot(replyToEvtRelation) : undefined
+			if (!state.silentReply && (!replyToThreadRoot || state.explicitReplyInThread)) {
 				mentions.user_ids.push(replyToEvt.sender)
 			}
 			if (!relates_to) {
@@ -309,9 +323,9 @@ const MessageComposer = () => {
 			}
 			if (roomCtx.threadRoot) {
 				relates_to.is_falling_back = false
-			} else if (isThread) {
+			} else if (replyToThreadRoot) {
 				relates_to.rel_type = "m.thread"
-				relates_to.event_id = replyToEvtRelation.event_id
+				relates_to.event_id = replyToThreadRoot
 				relates_to.is_falling_back = !state.explicitReplyInThread
 			} else if (state.startNewThread) {
 				relates_to.rel_type = "m.thread"
@@ -561,7 +575,7 @@ const MessageComposer = () => {
 		filename: string,
 		encodingOpts?: MediaEncodingOptions,
 	) => {
-		const encryptUpload = Boolean(isEncrypted && !encodingOpts?._no_encrypt)
+		const encryptUpload = encodingOpts?._encrypt ?? isEncrypted
 		if (client.rpc.rpcMediaUpload) {
 			setLoadingMedia(0)
 			client.rpc.uploadMedia(file, filename, encryptUpload).then(
@@ -1024,7 +1038,7 @@ const MessageComposer = () => {
 				roomCtx={roomCtx}
 				event={replyToEvt}
 				onClose={closeReply}
-				isThread={!roomCtx.threadRoot && getRelatesTo(replyToEvt)?.rel_type === "m.thread"}
+				isThread={!roomCtx.threadRoot && isThread(getRelatesTo(replyToEvt))}
 				isSilent={state.silentReply}
 				onSetSilent={setSilentReply}
 				isExplicitInThread={state.explicitReplyInThread}

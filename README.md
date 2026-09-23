@@ -93,7 +93,7 @@ frontend must be built first:
 
 ```sh
 cd web && npm run build
-cd .. && go build -tags goolm -o web/src-tauri/binaries/gomuks-aarch64-apple-darwin ./cmd/gomuks
+cd .. && go build -tags goolm,sqlite_fts5 -o web/src-tauri/binaries/gomuks-aarch64-apple-darwin ./cmd/gomuks
 cd web && npx tauri build
 ```
 

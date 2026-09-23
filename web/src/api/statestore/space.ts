@@ -91,6 +91,18 @@ export class AllChatsSpace extends Space {
 	}
 }
 
+/*
+ * Every room, fed with unread counts so the desktop wrapper can show one total.
+ * Kept apart from AllChatsSpace, which the rail uses and which is never fed.
+ */
+export class HomeSpace extends Space {
+	id = "fi.mau.gomuks.home"
+
+	include(): boolean {
+		return true
+	}
+}
+
 export class DirectChatSpace extends Space {
 	id = "fi.mau.gomuks.direct_chats"
 

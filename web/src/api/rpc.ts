@@ -22,8 +22,10 @@ import {
 	Direction,
 	EventContextResponse,
 	EventID,
+	EventRowID,
 	EventType,
 	JSONValue,
+	LocalSearchParams,
 	LoginFlowsResponse,
 	LoginRequest,
 	ManualPaginationResponse,
@@ -34,6 +36,8 @@ import {
 	MutualRoomsResponse,
 	PaginationResponse,
 	ProfileEncryptionInfo,
+	PushRuleKind,
+	PutPushRuleRequest,
 	RPCCommand,
 	RPCEvent,
 	RawDBEvent,
@@ -53,6 +57,7 @@ import {
 	RoomID,
 	RoomStateGUID,
 	RoomSummary,
+	ServerSearchParams,
 	TimelineRowID,
 	URLPreview,
 	UnreadType,
@@ -321,6 +326,10 @@ export default abstract class RPCClient {
 		return this.request("get_event", { room_id, event_id, unredact })
 	}
 
+	getEventByRowID(event_rowid: EventRowID): Promise<RawDBEvent> {
+		return this.request("get_event_by_rowid", { event_rowid })
+	}
+
 	getRelatedEvents(room_id: RoomID, event_id: EventID, relation_type?: RelationType): Promise<RawDBEvent[]> {
 		return this.request("get_related_events", { room_id, event_id, relation_type })
 	}
@@ -349,6 +358,14 @@ export default abstract class RPCClient {
 		{ limit = 50, threadRoot }: { limit?: number, threadRoot?: EventID } = {},
 	): Promise<ManualPaginationResponse> {
 		return this.request("paginate_manual", { room_id, since, direction, limit, thread_root: threadRoot })
+	}
+
+	searchLocal(params: LocalSearchParams): CancellablePromise<ManualPaginationResponse> {
+		return this.request("search_local", params)
+	}
+
+	searchServer(params: ServerSearchParams): CancellablePromise<ManualPaginationResponse> {
+		return this.request("search_server", params)
 	}
 
 	paginate(
@@ -394,6 +411,21 @@ export default abstract class RPCClient {
 
 	muteRoom(room_id: RoomID, muted: boolean): Promise<boolean> {
 		return this.request("mute_room", { room_id, muted })
+	}
+
+	updatePushRule(kind: PushRuleKind, rule_id: string, action: "enable" | "disable" | "delete"): Promise<void>
+	updatePushRule(
+		kind: PushRuleKind, rule_id: string, action: "put" | "put_actions", new_content: PutPushRuleRequest,
+	): Promise<void>
+	updatePushRule(
+		kind: PushRuleKind,
+		rule_id: string,
+		action: "enable" | "disable" | "delete" | "put" | "put_actions",
+		new_content?: PutPushRuleRequest,
+	): Promise<void> {
+		const actions = action === "put_actions" ? new_content?.actions || [] : undefined
+		new_content = action === "put" ? new_content : undefined
+		return this.request("update_push_rule", { kind, rule_id, action, new_content, actions })
 	}
 
 	resolveAlias(alias: RoomAlias): Promise<ResolveAliasResponse> {
