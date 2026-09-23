@@ -850,3 +850,7 @@ html[data-tauri] {
 		animation: right-panel-fade-in .12s ease-out;
 	}
 }
+
+.bidi-isolate {
+	unicode-bidi: isolate;
+}

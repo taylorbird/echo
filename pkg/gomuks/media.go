@@ -143,11 +143,7 @@ func (gmx *Gomuks) downloadMediaFromCache(ctx context.Context, w http.ResponseWr
 		_ = cacheFile.Close()
 	}()
 	cacheEntryToHeaders(w, entry, useThumbnail)
-	w.WriteHeader(http.StatusOK)
-	_, err = io.Copy(w, cacheFile)
-	if err != nil {
-		log.Err(err).Msg("Failed to copy cache file to response")
-	}
+	http.ServeContent(w, r, "", time.Time{}, cacheFile)
 	return true
 }
 
@@ -465,8 +461,11 @@ func (gmx *Gomuks) DownloadMedia(w http.ResponseWriter, r *http.Request) {
 	cacheEntry.Size = resp.ContentLength
 	fileHasher := sha256.New()
 	wrappedReader := io.TeeReader(reader, fileHasher)
-	if cacheEntry.Size > 0 && cacheEntry.EncFile == nil && !useThumbnail {
+	if cacheEntry.Size > 0 && cacheEntry.EncFile == nil && !useThumbnail && r.Header.Get("Range") == "" {
 		cacheEntryToHeaders(w, cacheEntry, useThumbnail)
+		// These homeserver -> frontend streamed responses don't support ranges themselves,
+		// but the browser can still request ranges, it just won't be streamed from the homeserver then.
+		w.Header().Set("Accept-Ranges", "bytes")
 		w.WriteHeader(http.StatusOK)
 		wrappedReader = io.TeeReader(wrappedReader, &noErrorWriter{w})
 		w = nil
@@ -688,10 +687,12 @@ func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	encrypt, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
 	voiceMessage, _ := strconv.ParseBool(r.URL.Query().Get("voice_message"))
+	forceFile, _ := strconv.ParseBool(r.URL.Query().Get("force_file"))
 	params := jsoncmd.UploadMediaParams{
 		Filename:     query.Get("filename"),
 		Encrypt:      encrypt,
 		VoiceMessage: voiceMessage,
+		ForceFile:    forceFile,
 		EncodeTo:     query.Get("encode_to"),
 	}
 	resizeWidthVal := query.Get("resize_width")
@@ -890,7 +891,9 @@ func (gmx *Gomuks) CacheAndUploadMedia(
 		Info:     info,
 		FileName: params.Filename,
 	}
-	if params.VoiceMessage {
+	if params.ForceFile {
+		content.MsgType = event.MsgFile
+	} else if params.VoiceMessage {
 		samples := 80
 		if info.Duration != 0 {
 			samples = min(max(info.Duration/125, 30), 120)

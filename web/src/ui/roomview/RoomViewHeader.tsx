@@ -85,8 +85,8 @@ const RoomViewHeader = ({ room, activePanel }: RoomViewHeaderProps) => {
 				onClick={mainScreen.clickRightPanelOpener}
 				title="Notification Center"
 			><NotificationsIcon />{titles && "Notification Center"}</button>
-			<button title="Explore room state" onClick={openRoomStateExplorer}>
-				<CodeIcon/>{titles && "Explore room state"}
+			<button title="Open devtools" onClick={openRoomStateExplorer}>
+				<CodeIcon/>{titles && "Open devtools"}
 			</button>
 			<button title="Room Settings" onClick={openSettings}>
 				<SettingsIcon/>{titles && "Room Settings"}

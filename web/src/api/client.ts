@@ -50,7 +50,9 @@ export default class Client {
 		this.rpc.event.listen(this.#handleEvent)
 		this.rpc.connect.listen(() => this.initComplete.emit(false))
 		this.store.accountDataSubs.getSubscriber("im.ponies.emote_rooms")(() =>
-			queueMicrotask(() => this.#handleEmoteRoomsChange()))
+			queueMicrotask(() => this.#handleEmoteRoomsChange(true)))
+		this.store.accountDataSubs.getSubscriber("m.image_pack.rooms")(() =>
+			queueMicrotask(() => this.#handleEmoteRoomsChange(false)))
 	}
 
 	async #reallyStart(signal: AbortSignal, credentials?: { username: string; password: string }) {
@@ -438,7 +440,12 @@ export default class Client {
 	}
 
 	async subscribeToEmojiPack(pack: RoomStateGUID, subscribe: boolean = true) {
-		const emoteRooms = (this.store.accountData.get("im.ponies.emote_rooms") ?? {}) as ImagePackRooms
+		const hasNewAccountData = this.store.accountData.has("m.image_pack.rooms")
+		const emoteRooms = (
+			this.store.accountData.get("m.image_pack.rooms")
+			?? this.store.accountData.get("im.ponies.emote_rooms")
+			?? {}
+		) as ImagePackRooms
 		if (!emoteRooms.rooms) {
 			emoteRooms.rooms = {}
 		}
@@ -457,7 +464,10 @@ export default class Client {
 			emoteRooms.rooms[pack.room_id][pack.state_key] = {}
 		}
 		console.log("Changing subscription state for emoji pack", pack, "to", subscribe)
-		await this.rpc.setAccountData("im.ponies.emote_rooms", emoteRooms)
+		await Promise.all([
+			hasNewAccountData ? this.rpc.setAccountData("m.image_pack.rooms", emoteRooms) : Promise.resolve(),
+			this.rpc.setAccountData("im.ponies.emote_rooms", emoteRooms),
+		])
 	}
 
 	async incrementFrequentlyUsedEmoji(targetEmoji: string) {
@@ -484,7 +494,11 @@ export default class Client {
 		await this.rpc.setAccountData("io.element.recent_emoji", content)
 	}
 
-	#handleEmoteRoomsChange() {
+	#handleEmoteRoomsChange(oldEvent: boolean = false) {
+		if (oldEvent && this.store.accountData.has("m.image_pack.rooms")) {
+			// Ignore changes to the old account data event if the new one is set
+			return
+		}
 		this.store.invalidateEmojiPackKeyCache()
 		const keys = this.store.getEmojiPackKeys()
 		console.log("Loading subscribed emoji pack states", keys)
@@ -494,10 +508,17 @@ export default class Client {
 		)
 	}
 
-	async loadSpecificRoomState(keys: RoomStateGUID[]): Promise<void> {
+	async loadSpecificRoomState(keys: RoomStateGUID[], emojiPacks?: boolean): Promise<void> {
 		const missingKeys = keys.filter(key => {
 			const room = this.store.rooms.get(key.room_id)
+			const keyIsEmojiPack = emojiPacks &&
+				(key.type === "m.room.image_pack" || key.type === "im.ponies.room_emotes")
+			const altKey: RoomStateGUID | null = keyIsEmojiPack ? {
+				...key,
+				type: key.type === "m.room.image_pack" ? "im.ponies.emote_rooms" : "m.room.image_pack",
+			} : null
 			return room && room.getStateEvent(key.type, key.state_key) === undefined
+				&& (!altKey || room.getStateEvent(altKey.type, altKey.state_key) === undefined)
 		})
 		if (missingKeys.length === 0) {
 			return

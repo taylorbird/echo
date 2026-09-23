@@ -52,7 +52,7 @@ func (p *pushRoom) GetMemberCount() int {
 }
 
 func (p *pushRoom) GetEvent(id id.EventID) *event.Event {
-	evt, err := p.h.DB.Event.GetByID(p.ctx, id)
+	evt, err := p.h.DB.Event.GetByID(p.ctx, p.roomID, id)
 	if err != nil {
 		zerolog.Ctx(p.ctx).Err(err).
 			Stringer("event_id", id).

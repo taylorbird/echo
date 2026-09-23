@@ -56,13 +56,13 @@ function getPreviewText(
 			`${displayname}: ${evt.content.body}`,
 			<>
 				<span
-					className="sender-name"
+					className="sender-name bidi-isolate"
 					// The room-aware sender colour, so the name in the preview is the same
 					// colour it has over that person's messages inside the room. Safe to
 					// read during render even though Entry is memo'd: the allocator is a
 					// module-level cache backed by localStorage rather than React state, so
 					// a room/user pair resolves to the same colour without a subscription.
-					style={{ unicodeBidi: "isolate", color: getSenderColor(roomID, evt.sender) }}
+					style={{ color: getSenderColor(roomID, evt.sender) }}
 				>
 					{displayname.length > 16 ? displayname.slice(0, 12) + "…" : displayname}
 				</span>: {previewText}

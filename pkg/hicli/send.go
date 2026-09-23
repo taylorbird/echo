@@ -17,8 +17,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/tidwall/gjson"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
@@ -76,6 +78,35 @@ func init() {
 	}
 }
 
+var accountDataPerMessageProfiles = event.Type{
+	Type:  "fi.mau.msc4461.per_message_profiles",
+	Class: event.AccountDataEventType,
+}
+
+func (h *HiClient) getPerMessageProfile(ctx context.Context, name string) *event.BeeperPerMessageProfile {
+	var profiles map[string]*event.BeeperPerMessageProfile
+	profilesPtr := h.perMessageProfiles.Load()
+	if profilesPtr == nil {
+		evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataPerMessageProfiles)
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to get per-message profiles from account data")
+			return nil
+		}
+		defer h.perMessageProfiles.Store(&profiles)
+		if evt == nil {
+			return nil
+		} else if err = json.Unmarshal(evt.Content, &profiles); err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal per-message profiles from account data")
+			return nil
+		}
+	} else if *profilesPtr == nil {
+		return nil
+	} else {
+		profiles = *profilesPtr
+	}
+	return profiles[name]
+}
+
 func (h *HiClient) SendMessage(
 	ctx context.Context,
 	roomID id.RoomID,
@@ -91,38 +122,63 @@ func (h *HiClient) SendMessage(
 		return h.ProcessCommand(ctx, roomID, base.MSC4391BotCommand, base, relatesTo)
 	}
 	var unencrypted bool
-	if strings.HasPrefix(text, "/unencrypted ") {
-		text = strings.TrimPrefix(text, "/unencrypted ")
-		unencrypted = true
-	}
 	var ts int64
-	if strings.HasPrefix(text, "/timestamp ") {
-		parts := strings.SplitN(text, " ", 3)
-		if len(parts) != 3 {
-			return nil, fmt.Errorf("missing parameters for /timestamp")
-		}
-		var err error
-		ts, err = strconv.ParseInt(parts[1], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("malformed timestamp: %w", err)
-		}
-		text = parts[2]
-	}
 	var rawInputBody bool
-	if strings.HasPrefix(text, "/rawinputbody ") {
-		text = strings.TrimPrefix(text, "/rawinputbody ")
-		rawInputBody = true
-	}
-	var content event.MessageEventContent
+	var perMessageProfile *event.BeeperPerMessageProfile
 	msgType := event.MsgText
 	origText := text
-	if strings.HasPrefix(text, "/me ") {
-		msgType = event.MsgEmote
-		text = strings.TrimPrefix(text, "/me ")
-	} else if strings.HasPrefix(text, "/notice ") {
-		msgType = event.MsgNotice
-		text = strings.TrimPrefix(text, "/notice ")
+Loop:
+	for {
+		spaceIdx := strings.IndexByte(text, ' ')
+		if spaceIdx < 2 {
+			break
+		}
+		colonIdx := strings.IndexByte(text, ':')
+		if perMessageProfile == nil && colonIdx > 0 && colonIdx < spaceIdx {
+			perMessageProfile = h.getPerMessageProfile(ctx, text[:colonIdx])
+			if perMessageProfile != nil {
+				text = strings.TrimPrefix(text[colonIdx+1:], " ")
+				continue
+			}
+		}
+		switch strings.ToLower(text[:spaceIdx]) {
+		case "/timestamp":
+			parts := strings.SplitN(text, " ", 3)
+			if len(parts) != 3 {
+				return nil, fmt.Errorf("missing parameters for /timestamp")
+			}
+			var err error
+			ts, err = strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("malformed timestamp: %w", err)
+			}
+			text = parts[2]
+			continue
+		case "/pmp", "/profile":
+			parts := strings.SplitN(text, " ", 3)
+			if len(parts) != 3 {
+				return nil, fmt.Errorf("missing parameters for /profile")
+			}
+			perMessageProfile = h.getPerMessageProfile(ctx, parts[1])
+			if perMessageProfile == nil {
+				return nil, fmt.Errorf("unknown per-message profile: %s", parts[1])
+			}
+			text = parts[2]
+			continue
+		case "/unencrypted":
+			unencrypted = true
+		case "/rawinputbody":
+			rawInputBody = true
+		case "/me":
+			msgType = event.MsgEmote
+		case "/notice":
+			msgType = event.MsgNotice
+		default:
+			break Loop
+		}
+		text = text[spaceIdx+1:]
 	}
+	var content event.MessageEventContent
 	if strings.HasPrefix(text, "/rainbow ") {
 		text = strings.TrimPrefix(text, "/rainbow ")
 		content = format.RenderMarkdownCustom(text, rainbowWithHTML)
@@ -134,7 +190,8 @@ func (h *HiClient) SendMessage(
 		text = strings.TrimPrefix(text, "/html ")
 		content = format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1))
 	} else if text != "" {
-		hasUnstructuredCommand := unencrypted || rawInputBody || ts != 0 || msgType != event.MsgText
+		hasUnstructuredCommand := unencrypted || rawInputBody || ts != 0 || msgType != event.MsgText ||
+			content.BeeperPerMessageProfile != nil
 		if !hasCommand && strings.HasPrefix(text, "/") && !hasUnstructuredCommand {
 			if strings.HasPrefix(text, "//") {
 				text = text[1:]
@@ -157,6 +214,9 @@ func (h *HiClient) SendMessage(
 		}
 		content = *base
 	}
+	if perMessageProfile != nil {
+		content.BeeperPerMessageProfile = perMessageProfile
+	}
 	if content.Mentions == nil {
 		content.Mentions = &event.Mentions{}
 	}
@@ -177,7 +237,6 @@ func (h *HiClient) SendMessage(
 		// Hack to force an empty link previews array
 		extra["com.beeper.linkpreviews"] = []any{}
 	}
-	content.AddPerMessageProfileFallback()
 	if relatesTo != nil {
 		if relatesTo.Type == event.RelReplace {
 			contentCopy := content
@@ -395,6 +454,49 @@ func (h *HiClient) getSendLock(roomID id.RoomID) *sync.Mutex {
 	return l
 }
 
+var pmpPath = exgjson.Path("com.beeper.per_message_profile")
+var editPMPPath = exgjson.Path("m.new_content", "com.beeper.per_message_profile")
+
+func (h *HiClient) getCurrentDisplayName(ctx context.Context) string {
+	val := h.ownDisplayName.Load()
+	if val != nil {
+		return *val
+	}
+	profile, err := h.Client.GetProfile(ctx, h.Account.UserID)
+	if err != nil {
+		return ""
+	}
+	h.ownDisplayName.Store(&profile.DisplayName)
+	return profile.DisplayName
+}
+
+func (h *HiClient) addFallbacks(ctx context.Context, evtType string, content json.RawMessage) json.RawMessage {
+	if evtType != event.EventMessage.Type {
+		return content
+	}
+	if gjson.GetBytes(content, pmpPath).IsObject() || gjson.GetBytes(content, editPMPPath).IsObject() {
+		var parsedContent event.Content
+		if json.Unmarshal(content, &parsedContent) != nil || parsedContent.ParseRaw(event.EventMessage) != nil {
+			return content
+		}
+		msg, ok := parsedContent.Parsed.(*event.MessageEventContent)
+		if !ok {
+			return content
+		}
+		if msg.NewContent != nil {
+			msg = msg.NewContent
+		}
+		if msg.BeeperPerMessageProfile != nil && !msg.BeeperPerMessageProfile.HasFallback && msg.BeeperPerMessageProfile.Displayname != h.getCurrentDisplayName(ctx) {
+			msg.AddPerMessageProfileFallback()
+			updatedContent, _ := json.Marshal(&parsedContent)
+			if updatedContent != nil {
+				content = updatedContent
+			}
+		}
+	}
+	return content
+}
+
 func (h *HiClient) actuallySend(
 	ctx context.Context,
 	room *database.Room,
@@ -424,9 +526,10 @@ func (h *HiClient) actuallySend(
 			})
 		}
 	}()
+	var sendContent json.RawMessage
 	if dbEvt.Decrypted != nil && len(dbEvt.Content) <= 2 {
 		var encryptedContent *event.EncryptedEventContent
-		encryptedContent, err = h.Encrypt(ctx, room, evtType, dbEvt.Decrypted)
+		encryptedContent, err = h.Encrypt(ctx, room, evtType, h.addFallbacks(ctx, dbEvt.DecryptedType, dbEvt.Decrypted))
 		if err != nil {
 			dbEvt.SendError = fmt.Sprintf("failed to encrypt: %v", err)
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to encrypt event")
@@ -440,12 +543,15 @@ func (h *HiClient) actuallySend(
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to marshal encrypted content")
 			return
 		}
+		sendContent = dbEvt.Content
 		err = h.DB.Event.UpdateEncryptedContent(ctx, dbEvt)
 		if err != nil {
 			dbEvt.SendError = fmt.Sprintf("failed to save event after encryption: %v", err)
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to save event after encryption")
 			return
 		}
+	} else {
+		sendContent = h.addFallbacks(ctx, dbEvt.Type, dbEvt.Content)
 	}
 	var resp *mautrix.RespSendEvent
 	req := mautrix.ReqSendEvent{
@@ -455,7 +561,7 @@ func (h *HiClient) actuallySend(
 	if overrideTimestamp {
 		req.Timestamp = dbEvt.Timestamp.UnixMilli()
 	}
-	resp, err = h.Client.SendMessageEvent(ctx, room.ID, evtType, dbEvt.Content, req)
+	resp, err = h.Client.SendMessageEvent(ctx, room.ID, evtType, sendContent, req)
 	if err != nil {
 		dbEvt.SendError = err.Error()
 		err = fmt.Errorf("failed to send event: %w", err)

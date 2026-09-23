@@ -97,6 +97,7 @@ interface PreferenceFields<T extends PreferenceValueType = PreferenceValueType> 
 	hidden?: boolean
 	minValue?: T extends number ? number : never
 	maxValue?: T extends number ? number : never
+	numberType?: T extends number ? "number" | "range" : never
 }
 
 export class Preference<T extends PreferenceValueType = PreferenceValueType> {
@@ -110,6 +111,7 @@ export class Preference<T extends PreferenceValueType = PreferenceValueType> {
 	public readonly hidden: boolean
 	public readonly minValue?: T extends number ? number : never
 	public readonly maxValue?: T extends number ? number : never
+	public readonly numberType?: T extends number ? "number" | "range" : never
 
 	constructor(fields: PreferenceFields<T>) {
 		this.displayName = fields.displayName
@@ -122,5 +124,6 @@ export class Preference<T extends PreferenceValueType = PreferenceValueType> {
 		this.hidden = fields.hidden ?? false
 		this.minValue = fields.minValue
 		this.maxValue = fields.maxValue
+		this.numberType = fields.numberType
 	}
 }
