@@ -15,9 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { RefObject, createContext, createRef, use } from "react"
 import { RoomStateStore } from "@/api/statestore"
-import { EventID, EventRowID, MemDBEvent, RoomType } from "@/api/types"
+import { EventID, EventRowID, MemDBEvent, RoomType, UserID } from "@/api/types"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
-import { makeMentionMarkdown } from "@/util/markdown.ts"
 
 const noop = (name: string) => () => {
 	console.warn(`${name} called before initialization`)
@@ -28,6 +27,7 @@ export class RoomContextData {
 	public setReplyTo: (eventID: EventID | null) => void = noop("setReplyTo")
 	public setEditing: (evt: MemDBEvent | null) => void = noop("setEditing")
 	public insertText: (text: string) => void = noop("insertText")
+	public insertMention: (displayname: string, userID: UserID) => void = noop("insertMention")
 	public lastThreadEventID: EventID | null = null
 	public directSetFocusedEventRowID: (eventRowID: EventRowID | null) => void = noop("setFocusedEventRowID")
 	public focusedEventRowID: EventRowID | null = null
@@ -64,7 +64,7 @@ export class RoomContextData {
 			return
 		}
 		const targetUserName = evt.currentTarget.innerText
-		this.insertText(makeMentionMarkdown(targetUserName, targetUser))
+		this.insertMention(targetUserName, targetUser)
 	}
 }
 

@@ -44,7 +44,7 @@ import ChevronDownIcon from "@/icons/modern/chevron-down.svg?react"
 import ClockIcon from "@/icons/modern/clock.svg?react"
 import GamepadIcon from "@/icons/modern/gamepad-2.svg?react"
 import HashIcon from "@/icons/modern/hash.svg?react"
-import LayoutGridIcon from "@/icons/modern/layout-grid.svg?react"
+import LayersIcon from "@/icons/modern/layers.svg?react"
 import SettingsIcon from "@/icons/modern/settings.svg?react"
 import UserIcon from "@/icons/modern/user.svg?react"
 import UsersIcon from "@/icons/modern/users.svg?react"
@@ -72,7 +72,7 @@ function readCollapsedSections(): Set<string> {
  * SpaceSubFilterID.
  */
 const spaceSubFilters = [
-	{ id: "all", name: "All chats", icon: LayoutGridIcon },
+	{ id: "all", name: "All chats", icon: LayersIcon },
 	{ id: "rooms", name: "Rooms", icon: HashIcon },
 	{ id: "dms", name: "Direct messages", icon: UserIcon },
 	// Recent narrows nothing; it is here because it answers the same question the
@@ -290,10 +290,11 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 	const onClickSubFilter = useCallback((evt: React.MouseEvent<HTMLButtonElement>) => {
 		const sub = evt.currentTarget.getAttribute("data-sub-filter") as SpaceSubFilterID | "all"
 		const current = client.store.currentRoomListFilter
-		const parent = current instanceof SubFilteredSpace ? current.parent : current
-		if (!parent) {
-			return
-		}
+		// No filter at all is the boot state, and the rail already shows it as All
+		// chats with its band open, so the band's buttons have to treat it as that.
+		const parent = current instanceof SubFilteredSpace
+			? current.parent
+			: current ?? client.store.allChatsSpace
 		// pushState is skipped deliberately: the history entry's space_id doesn't
 		// change, and the push path closes the open room when the new filter
 		// excludes it — narrowing the rail shouldn't shut the conversation.
@@ -347,6 +348,7 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 	// Declared here rather than beside the rail's other space lookups below: the
 	// sections depend on it, and a const read before its initialiser is a TDZ error.
 	const activeSubFilter: SpaceSubFilterID | "all" = space instanceof SubFilteredSpace ? space.sub : "all"
+	const collapsible = activeSubFilter === "all"
 	const sections = useMemo(() => {
 		if (unreadPin.current.forRoom !== activeRoomID) {
 			unreadPin.current = {
@@ -697,6 +699,8 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 			</div>
 		</div>
 		<div className={`room-list ${skeletonRows > 0 ? "skeleton" : ""}`}>
+			{/* Collapsing is for choosing between groups, which only All chats has. The
+			    Rooms and Direct messages views keep their headers as fixed titles. */}
 			{sections.map(section => {
 				// A header with nothing under it is noise, so drop the whole group
 				// once the search query filters out every room in it.
@@ -706,12 +710,15 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 				if (!hasVisibleEntries) {
 					return null
 				}
-				const isCollapsed = !section.headerless && collapsedSections.has(section.id)
+				const isCollapsed = collapsible && !section.headerless && collapsedSections.has(section.id)
 				return <div
 					key={section.id}
 					className={`room-list-section ${section.headerless ? "headerless" : ""}`}
 				>
-					{section.headerless ? null : <button
+					{section.headerless ? null : !collapsible ? <div className="room-list-section-header static">
+						<section.icon className="section-icon" />
+						<span className="section-name">{section.name}</span>
+					</div> : <button
 						type="button"
 						className={`room-list-section-header ${isCollapsed ? "collapsed" : ""}`}
 						data-section-id={section.id}

@@ -287,8 +287,9 @@ div.event-reactions {
 
 		background-color: var(--background-color);
 		border: 1px solid var(--border-color);
-		border-radius: 2rem;
-		padding: 0 .5rem;
+		border-radius: .5rem;
+		padding: .125rem .5rem;
+		min-height: 2rem;
 
 		user-select: none;
 		cursor: var(--clickable-cursor);
@@ -326,7 +327,7 @@ div.event-reactions {
 		> div.reaction-inner {
 			display: flex;
 			align-items: center;
-			gap: .25rem;
+			gap: .375rem;
 
 			white-space: nowrap;
 			text-overflow: ellipsis;

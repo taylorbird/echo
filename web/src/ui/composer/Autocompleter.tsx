@@ -32,7 +32,7 @@ import {
 } from "@/api/types"
 import { isFakeCommand } from "@/api/types/fakecommands.ts"
 import { Emoji, emojiToMarkdown, useSortedAndFilteredEmojis } from "@/util/emoji"
-import { makeMentionMarkdown, makeRoomMentionMarkdown } from "@/util/markdown.ts"
+import { addMention, makeRoomMentionMarkdown, mentionLabel } from "@/util/markdown.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
 import { RoomContext } from "../roomview/roomcontext.ts"
@@ -67,12 +67,13 @@ interface InnerAutocompleterProps<T> extends AutocompleterProps {
 	getText: (item: T, state: ComposerState) => string
 	getKey: (item: T) => string
 	getNewState?: (item: T, params: AutocompleteQuery) => readonly [Partial<ComposerState>, number]
+	getExtraState?: (item: T, state: ComposerState) => Partial<ComposerState>
 	render: (item: T) => JSX.Element
 }
 
 function useAutocompleter<T>({
 	params, state, setState, setAutocomplete, textInput,
-	items, getText, getKey, getNewState, render,
+	items, getText, getKey, getNewState, getExtraState, render,
 }: InnerAutocompleterProps<T>) {
 	const prevItems = useRef<T[]>(null)
 	const onSelect = useEvent((index: number, clearAutocomplete = false) => {
@@ -91,6 +92,7 @@ function useAutocompleter<T>({
 			endPos = params.startPos + replacementText.length
 			newState = {
 				text: newText,
+				...getExtraState?.(item, state),
 			}
 		}
 		if (textInput.current && newState.text) {
@@ -192,7 +194,9 @@ export const EmojiAutocompleter = ({ params, room, ...rest }: AutocompleterProps
 
 const userFuncs = {
 	getText: (user: AutocompleteMemberEntry, state: ComposerState) => state.command
-		? user.userID : makeMentionMarkdown(user.displayName, user.userID),
+		? user.userID : mentionLabel(user.displayName) + " ",
+	getExtraState: (user: AutocompleteMemberEntry, state: ComposerState) => state.command
+		? {} : { mentions: addMention(state.mentions, { label: mentionLabel(user.displayName), userID: user.userID }) },
 	getKey: (user: AutocompleteMemberEntry) => user.userID,
 	render: (user: AutocompleteMemberEntry) => <>
 		<img
@@ -202,7 +206,7 @@ const userFuncs = {
 			alt=""
 		/>
 		{user.event.content.membership === "invite" ? <span className="invited-indicator">(invited) </span> : null}
-		{user.displayName}
+		<span className="ac-name">{user.displayName}</span>
 	</>,
 }
 

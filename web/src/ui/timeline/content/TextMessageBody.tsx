@@ -13,6 +13,8 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { useLayoutEffect, useRef } from "react"
+import { getSenderColor } from "@/api/media.ts"
 import { MessageEventContent } from "@/api/types"
 import { ensureString, getDisplayname, parseMatrixURI } from "@/util/validation.ts"
 import EventContentProps from "./props.ts"
@@ -103,6 +105,22 @@ function fallbackBodyForMedia(msgtype: string): string {
 
 const TextMessageBody = ({ event, sender }: EventContentProps) => {
 	const content = event.content as MessageEventContent
+	const htmlRef = useRef<HTMLDivElement>(null)
+	const sanitizedHTML = event.local_content?.sanitized_html
+	// User pills come from the backend as plain HTML, so React never sees who they point at. Give
+	// each one the colour that person's name has in this room; the CSS tints the pill with it.
+	// Pills naming you are skipped: they keep the red highlight from StylePreferences.
+	useLayoutEffect(() => {
+		for (const pill of htmlRef.current?.querySelectorAll<HTMLAnchorElement>("a.hicli-matrix-uri-user") ?? []) {
+			const userID = parseMatrixURI(pill.href)?.identifier
+			// The link text is usually a bare display name. When the sender's client already
+			// wrote an "@" (or used the raw user ID), don't add a second one.
+			pill.classList.toggle("mention-at", !pill.textContent?.trimStart().startsWith("@"))
+			if (userID?.startsWith("@") && userID !== window.client.userID) {
+				pill.style.setProperty("--mention-color", getSenderColor(event.room_id, userID))
+			}
+		}
+	}, [sanitizedHTML, event.room_id])
 	const classNames = ["message-text"]
 	let eventSenderName: string | undefined
 	if (content.msgtype === "m.notice") {
@@ -124,6 +142,7 @@ const TextMessageBody = ({ event, sender }: EventContentProps) => {
 	if (event.local_content?.sanitized_html) {
 		classNames.push("html-body")
 		return <div
+			ref={htmlRef}
 			onClick={onClickHTML}
 			className={classNames.join(" ")}
 			data-event-sender={eventSenderName}

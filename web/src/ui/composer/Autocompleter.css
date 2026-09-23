@@ -11,9 +11,9 @@ div.autocompletions, div.command-arguments {
 	border-radius: 0.5rem;
 	box-shadow: 0 0 1rem var(--modal-box-shadow-color);
 	background-color: var(--background-color);
-	padding: .5rem;
-	max-height: 20rem;
-	max-width: 30rem;
+	padding: .375rem;
+	max-height: 24rem;
+	max-width: min(36rem, calc(100% - 2 * var(--timeline-horizontal-padding)));
 	overflow: auto;
 
 	&.ac-command {
@@ -22,15 +22,15 @@ div.autocompletions, div.command-arguments {
 	}
 
 	> .autocompletion-item {
-		padding: .25rem;
-		border-radius: .25rem;
+		padding: .25rem .5rem;
+		border-radius: .375rem;
 		display: flex;
 		align-items: center;
-		gap: .25rem;
+		gap: .5rem;
 		cursor: var(--clickable-cursor);
 		overflow: hidden;
-		height: 2rem;
-		contain-intrinsic-height: 2rem;
+		height: 2.5rem;
+		contain-intrinsic-height: 2.5rem;
 		content-visibility: auto;
 
 		&.selected, &:hover {
@@ -39,6 +39,20 @@ div.autocompletions, div.command-arguments {
 
 		&.ac-user {
 			text-wrap: nowrap;
+
+			/* Long display names end in an ellipsis inside the row's padding
+			   instead of running into the popup's edge. */
+			> span.ac-name {
+				min-width: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+
+			> img {
+				width: 1.75rem;
+				height: 1.75rem;
+				flex-shrink: 0;
+			}
 		}
 
 		&.ac-command {

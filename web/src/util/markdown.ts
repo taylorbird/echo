@@ -34,6 +34,30 @@ export const escapeMarkdownAndURI = (input: string) => {
 export const makeMentionMarkdown = (displayname: string, userID: UserID) =>
 	`[${escapeMarkdown(displayname).replace("\n", " ")}](https://matrix.to/#/${escapeMarkdownAndURI(userID)}) `
 
+// A mention as the composer shows it: "@Name" in the textarea, with the user it points at kept
+// alongside. The Markdown link only replaces it at send time, so nobody has to read a matrix.to URL
+// while they're typing.
+export interface ComposerMention {
+	label: string
+	userID: UserID
+}
+
+export const mentionLabel = (displayname: string) => "@" + displayname.replace(/\n/g, " ")
+
+export const addMention = (mentions: ComposerMention[] | undefined, mention: ComposerMention) =>
+	[...(mentions ?? []).filter(m => m.label !== mention.label), mention]
+
+// Longest label first, so "@Ann" can't take the front off "@Anna". A replaced label leaves no "@"
+// behind (the link text drops it and the URL encodes it), so a shorter label can't match inside it.
+// A label that is no longer in the text (deleted, or passed over while arrowing through the
+// autocompleter) simply matches nothing.
+export function applyMentions(text: string, mentions: ComposerMention[] | undefined): string {
+	for (const { label, userID } of [...(mentions ?? [])].sort((a, b) => b.label.length - a.label.length)) {
+		text = text.replaceAll(label, makeMentionMarkdown(label.slice(1), userID).trimEnd())
+	}
+	return text
+}
+
 export const makeRoomMentionMarkdown = (roomName: string, roomIDOrAlias: RoomID | RoomAlias, via?: string[]) => {
 	let query = ""
 	if (via?.length && roomIDOrAlias.startsWith("!")) {

@@ -64,8 +64,9 @@ div.html-body {
 	a.hicli-matrix-uri-user:not(.hicli-matrix-uri-plaintext),
 	a.hicli-matrix-uri-room-alias:not(.hicli-matrix-uri-plaintext) {
 		background-color: var(--pill-background-color);
-		border-radius: 1rem;
-		padding: 0 .25rem;
+		/* Same rounded square as the reaction chips. */
+		border-radius: .5rem;
+		padding: 0 .5rem;
 		color: inherit;
 		text-decoration: none !important;
 		text-wrap: nowrap;
@@ -78,6 +79,18 @@ div.html-body {
 		display: inline-block;
 		/* Required to not mess up the rest of the text's vertical alignment when using inline-block */
 		vertical-align: bottom;
+	}
+
+	/* --mention-color is set per pill by TextMessageBody: the mentioned person's colour in this
+	   room. Pills without it (not yet coloured, or a room alias) keep the neutral look above. */
+	a.hicli-matrix-uri-user:not(.hicli-matrix-uri-plaintext)[style*="--mention-color"] {
+		color: var(--mention-color);
+		background-color: color-mix(in oklab, var(--mention-color) 18%, transparent);
+	}
+
+	a.hicli-matrix-uri-user.mention-at:not(.hicli-matrix-uri-plaintext)::before {
+		content: "@";
+		opacity: .7;
 	}
 
 	img.hicli-custom-emoji {

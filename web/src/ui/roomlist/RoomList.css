@@ -759,7 +759,7 @@ div.room-list-section {
 	}
 }
 
-button.room-list-section-header {
+button.room-list-section-header, div.room-list-section-header {
 	display: flex;
 	align-items: center;
 	gap: .5rem;
@@ -819,6 +819,15 @@ button.room-list-section-header {
 
 	&.collapsed svg.section-chevron {
 		rotate: -90deg;
+	}
+}
+
+/* The Rooms and Direct messages views: the header is a title, not a control. */
+div.room-list-section-header.static {
+	cursor: default;
+
+	&:hover {
+		background: none;
 	}
 }
 

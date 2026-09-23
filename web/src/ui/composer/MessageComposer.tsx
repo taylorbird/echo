@@ -38,6 +38,7 @@ import {
 	RelatesTo,
 	RoomID,
 	URLPreview as URLPreviewType,
+	UserID,
 	WrappedBotCommand,
 	stringToCommandArgs,
 } from "@/api/types"
@@ -45,7 +46,7 @@ import { isFakeCommand } from "@/api/types/fakecommands.ts"
 import { PartialEmoji, emojiToMarkdown } from "@/util/emoji"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
-import { escapeMarkdown } from "@/util/markdown.ts"
+import { ComposerMention, addMention, applyMentions, escapeMarkdown, mentionLabel } from "@/util/markdown.ts"
 import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
 import { getRelatesTo, getServerName, isEventID } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
@@ -99,6 +100,8 @@ export interface ComposerState {
 	silentReply: boolean
 	explicitReplyInThread: boolean
 	startNewThread: boolean
+	// Optional because drafts saved before this field existed are restored as-is.
+	mentions?: ComposerMention[]
 	uninited?: boolean
 }
 
@@ -117,6 +120,7 @@ const emptyComposer: ComposerState = {
 	silentReply: false,
 	explicitReplyInThread: false,
 	startNewThread: false,
+	mentions: [],
 }
 const uninitedComposer: ComposerState = { ...emptyComposer, uninited: true }
 const composerReducer = (
@@ -183,6 +187,11 @@ const MessageComposer = () => {
 		textInput.current?.focus()
 		document.execCommand("insertText", false, text)
 	}, [])
+	roomCtx.insertMention = useCallback((displayname: string, userID: UserID) => {
+		const label = mentionLabel(displayname)
+		roomCtx.insertText(label + " ")
+		setState(state => ({ mentions: addMention(state.mentions, { label, userID }) }))
+	}, [roomCtx])
 	roomCtx.setReplyTo = useCallback((evt: EventID | null) => {
 		setState({ replyTo: evt, silentReply: false, explicitReplyInThread: false, startNewThread: false })
 		textInput.current?.focus()
@@ -309,7 +318,7 @@ const MessageComposer = () => {
 		}
 		let base_content: MessageEventContent | undefined
 		let extra: Record<string, unknown> | undefined
-		let text = state.text
+		let text = applyMentions(state.text, state.mentions)
 		if (state.media) {
 			base_content = state.media
 		} else if (state.location) {
