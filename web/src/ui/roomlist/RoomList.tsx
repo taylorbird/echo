@@ -676,12 +676,9 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 				<button
 					className="rail-settings"
 					title="Settings"
-					disabled={!activeRoomID}
 					onClick={() => {
-						const room = activeRoomID ? client.store.rooms.get(activeRoomID) : null
-						if (room) {
-							window.openNestableModal(modals.settings(room))
-						}
+						const room = activeRoomID ? client.store.rooms.get(activeRoomID) : undefined
+						window.openNestableModal(modals.settings(room))
 					}}
 				>
 					<SettingsIcon/>

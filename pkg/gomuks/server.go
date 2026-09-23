@@ -53,8 +53,6 @@ func (gmx *Gomuks) CreateAPIRouter() http.Handler {
 	api.HandleFunc("GET /websocket", gmx.HandleWebsocket)
 	api.HandleFunc("POST /auth", gmx.Authenticate)
 	api.HandleFunc("POST /upload", gmx.UploadMedia)
-	api.HandleFunc("GET /sso", gmx.HandleSSOComplete)
-	api.HandleFunc("POST /sso", gmx.PrepareSSO)
 	api.HandleFunc("GET /media/{server}/{media_id}", gmx.DownloadMedia)
 	api.HandleFunc("POST /exec/{command}", gmx.ExecCommand)
 	api.HandleFunc("POST /keys/export", gmx.ExportKeys)
@@ -295,6 +293,9 @@ func (gmx *Gomuks) Authenticate(w http.ResponseWriter, r *http.Request) {
 }
 
 func ctEqualString(expected, got string) bool {
+	if expected == "" || got == "" {
+		return false
+	}
 	gotHash := sha256.Sum256([]byte(got))
 	expectedHash := sha256.Sum256([]byte(expected))
 	return hmac.Equal(gotHash[:], expectedHash[:])

@@ -3,7 +3,7 @@
 	"private": true,
 	"license": "AGPL-3.0-or-later",
 	"productName": "gomuks-desktop",
-	"version": "26.06.0",
+	"version": "26.07.0",
 	"description": "Electron wrapper for gomuks web and backend",
 	"main": ".vite/build/main.js",
 	"scripts": {
@@ -29,7 +29,7 @@
 		"@electron-forge/plugin-vite": "^7.11.1",
 		"@electron/fuses": "^1.8.0",
 		"@types/electron-squirrel-startup": "^1.0.2",
-		"electron": "42.4.0",
+		"electron": "42.6.1",
 		"typescript": "^6.0.2",
 		"vite": "^8.0.5"
 	},
@@ -40,6 +40,6 @@
 		"update-electron-app": "^3.2.0"
 	},
 	"overrides": {
-		"yauzl": "3.3.2"
+		"extract-zip": "npm:@electron-internal/extract-zip@1.0.3"
 	}
 }

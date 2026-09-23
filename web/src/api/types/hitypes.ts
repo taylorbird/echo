@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import {
+import type {
 	ContentURI,
 	CreateEventContent,
 	DeviceID,
@@ -31,6 +31,7 @@ import {
 	UnknownEventContent,
 	UserID,
 } from "./mxtypes.ts"
+import type { OAuthServerMetadata } from "./oauth.ts"
 
 export type EventRowID = number
 export type TimelineRowID = number
@@ -214,9 +215,10 @@ export interface ResolveAliasResponse {
 }
 
 export interface LoginFlowsResponse {
-	flows: {
+	flows?: {
 		type: string
 	}[]
+	oauth?: OAuthServerMetadata
 }
 
 export interface EventUnsigned {
@@ -245,7 +247,7 @@ export function stringToRoomStateGUID(str?: string | null): RoomStateGUID | unde
 		return
 	}
 	const [roomID, type, stateKey] = str.split("/")
-	if (!roomID || !type || !stateKey) {
+	if (!roomID || !type || stateKey === undefined) {
 		return
 	}
 	return {
@@ -302,6 +304,19 @@ export interface ProfileEncryptionInfo {
 	first_master_key: string
 	user_trusted: boolean
 	errors: string[]
+}
+
+export interface OwnDevice {
+	device_id: DeviceID
+	display_name: string
+	last_seen_ip: string
+	last_seen_ts: number
+}
+
+export interface GetOwnDevicesResponse {
+	encryption: ProfileEncryptionInfo
+	devices: OwnDevice[]
+	current_device: ProfileDevice
 }
 
 export interface DBPushRegistration {

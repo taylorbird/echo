@@ -42,7 +42,13 @@ export default class Keybindings {
 	constructor(private store: StateStore, private context: MainScreenContextFields) {}
 
 	private keyDownMap: KeyMap = {
-		"Escape": () => this.context.clearActiveRoom(),
+		"Escape": () => {
+			if (this.context.currentRightPanel) {
+				this.context.closeRightPanel()
+			} else {
+				this.context.clearActiveRoom()
+			}
+		},
 		"Ctrl+k": () => document.getElementById("room-search")?.focus(),
 		// Cmd+K on macOS: Slack-style quick switcher for jumping between rooms/DMs
 		"Super+k": () => window.openModal(modals.quickSwitcher(this.store, this.context)),
@@ -94,10 +100,7 @@ export default class Keybindings {
 	}
 
 	private openSettings() {
-		if (!this.activeRoom) {
-			return
-		}
-		window.openNestableModal(modals.settings(this.activeRoom))
+		window.openNestableModal(modals.settings(this.activeRoom ?? undefined))
 	}
 
 	listen(): () => void {

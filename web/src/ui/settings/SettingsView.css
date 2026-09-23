@@ -838,6 +838,198 @@ div.settings-view {
 		}
 	}
 
+	/* ── Shared field vocabulary ──────────────────────────────────────── */
+
+	/* The small caps label over a field, matching the section headers' voice. */
+	.field-label {
+		display: block;
+		padding: 0;
+		margin-bottom: .25rem;
+		font-size: .6875rem;
+		font-weight: 700;
+		letter-spacing: .08em;
+		text-transform: uppercase;
+		color: var(--section-label-color);
+	}
+
+	p.section-note.error {
+		color: var(--error-color);
+	}
+
+	/* ── This room ────────────────────────────────────────────────────── */
+
+	section.room-details {
+		> header > code.room-id {
+			font-size: .75rem;
+			color: var(--secondary-text-color);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			min-width: 0;
+		}
+
+		> div.room-fields {
+			display: flex;
+			flex-direction: column;
+
+			> label.field-label:not(:first-child) {
+				margin-top: .75rem;
+			}
+
+			> input, > textarea {
+				box-sizing: border-box;
+				width: 100%;
+				border: 1px solid var(--border-color);
+				border-radius: var(--sidebar-item-radius);
+				background-color: var(--settings-inset-surface);
+				color: inherit;
+				padding: .4375rem .5rem;
+				outline: none;
+
+				&:focus-visible {
+					border-color: var(--accent-glow-color);
+				}
+
+				&:disabled {
+					opacity: .6;
+				}
+			}
+
+			> textarea {
+				resize: vertical;
+				height: 5rem;
+				min-height: 2.5rem;
+				line-height: 1.45;
+			}
+		}
+
+		> div.room-choice-groups {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 1rem 2rem;
+
+			> fieldset {
+				border: none;
+				margin: 0;
+				padding: 0;
+				display: flex;
+				flex-direction: column;
+				gap: .25rem;
+
+				> label {
+					display: flex;
+					align-items: center;
+					gap: .5rem;
+					font-size: .875rem;
+					cursor: var(--clickable-cursor);
+
+					> input {
+						margin: 0;
+						accent-color: var(--primary-color);
+					}
+				}
+
+				&:disabled > label {
+					opacity: .6;
+					cursor: default;
+				}
+			}
+
+			> div.join-rule-spaces {
+				display: flex;
+				flex-direction: column;
+				gap: .25rem;
+				font-size: .8125rem;
+			}
+		}
+
+		> div.save-buttons {
+			justify-content: flex-end;
+		}
+
+		> hr {
+			width: 100%;
+			border: none;
+			border-top: 1px solid var(--border-color);
+			margin: 0;
+		}
+	}
+
+	/* ── Your devices ─────────────────────────────────────────────────── */
+
+	section.encryption-devices {
+		> div.cross-signing-key {
+			display: flex;
+			flex-direction: column;
+
+			> code {
+				font-size: .8125rem;
+				word-break: break-all;
+				color: var(--secondary-text-color);
+			}
+		}
+
+		div.device-list {
+			display: flex;
+			flex-direction: column;
+			border: 1px solid var(--border-color);
+			border-radius: var(--sidebar-item-radius);
+			background-color: var(--settings-inset-surface);
+		}
+
+		div.device-info {
+			display: grid;
+			grid-template:
+				"icon name" auto
+				"icon metadata" auto
+				/ 2rem minmax(0, 1fr);
+			column-gap: .5rem;
+			row-gap: .125rem;
+			padding: .5rem .75rem;
+
+			&:not(:first-child) {
+				border-top: 1px solid var(--border-color);
+			}
+
+			> span.device-shield, > div.sk-avatar {
+				grid-area: icon;
+				align-self: center;
+				justify-self: center;
+				display: flex;
+
+				> svg {
+					width: 1.25rem;
+					height: 1.25rem;
+				}
+			}
+
+			> div.device-name, > div.sk-name {
+				grid-area: name;
+				font-weight: 600;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+
+			> div.metadata, > div.sk-line {
+				grid-area: metadata;
+			}
+
+			> div.metadata {
+				display: flex;
+				flex-wrap: wrap;
+				gap: .125rem .5rem;
+				font-size: .75rem;
+				color: var(--secondary-text-color);
+			}
+
+			&.current > div.metadata > span.last-seen {
+				color: var(--primary-color);
+				font-weight: 600;
+			}
+		}
+	}
+
 	/* ── Narrow windows ───────────────────────────────────────────────── */
 
 	@media screen and (max-width: 60rem) {

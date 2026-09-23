@@ -5,6 +5,7 @@ import (
 
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/oauth"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
@@ -27,6 +28,7 @@ type GomuksAPI interface {
 	GetMutualRooms(ctx context.Context, params *GetMutualRoomsParams) (*mautrix.RespMutualRooms, error)
 	TrackUserDevices(ctx context.Context, params *GetProfileParams) (*ProfileEncryptionInfo, error)
 	GetProfileEncryptionInfo(ctx context.Context, params *GetProfileParams) (*ProfileEncryptionInfo, error)
+	GetOwnDevices(ctx context.Context) (*GetOwnDevicesResponse, error)
 	GetEvent(ctx context.Context, params *GetEventParams) (*database.Event, error)
 	GetEventByRowID(ctx context.Context, params *GetEventByRowIDParams) (*database.Event, error)
 	GetRelatedEvents(ctx context.Context, params *GetRelatedEventsParams) ([]*database.Event, error)
@@ -56,7 +58,12 @@ type GomuksAPI interface {
 	LoginCustom(ctx context.Context, params *LoginCustomParams) error
 	Verify(ctx context.Context, params *VerifyParams) error
 	DiscoverHomeserver(ctx context.Context, params *DiscoverHomeserverParams) (*mautrix.ClientWellKnown, error)
-	GetLoginFlows(ctx context.Context, params *GetLoginFlowsParams) (*mautrix.RespLoginFlows, error)
+	GetLoginFlows(ctx context.Context, params *GetLoginFlowsParams) (*LoginFlowsResponse, error)
+	OAuthRegisterClient(ctx context.Context, params *OAuthRegisterClientParams) (*oauth.ClientMetadata, error)
+	OAuthGetAuthorizationURL(ctx context.Context, params *OAuthGetAuthorizationURLParams) (*oauth.AuthorizationCodeResponse, error)
+	OAuthExchangeToken(ctx context.Context, params *OAuthExchangeTokenParams) error
+	OAuthGenerateDeviceCode(ctx context.Context, params *OAuthGenerateDeviceCodeParams) (*oauth.DeviceCodeResponse, error)
+	OAuthPollDeviceCode(ctx context.Context, params *OAuthPollDeviceCodeParams) error
 	RegisterPush(ctx context.Context, params *database.PushRegistration) error
 	ListenToDevice(ctx context.Context, listen bool) (bool, error)
 	GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, error)

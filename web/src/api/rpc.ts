@@ -24,6 +24,7 @@ import {
 	EventID,
 	EventRowID,
 	EventType,
+	GetOwnDevicesResponse,
 	JSONValue,
 	LocalSearchParams,
 	LoginFlowsResponse,
@@ -34,6 +35,13 @@ import {
 	Mentions,
 	MessageEventContent,
 	MutualRoomsResponse,
+	OAuthAuthorizationState,
+	OAuthClientMetadata,
+	OAuthClientMetadataRequest,
+	OAuthDeviceCodeResponse,
+	OAuthExchangeTokenParams,
+	OAuthGenerateDeviceCodeParams,
+	OAuthGetAuthorizationURLParams,
 	PaginationResponse,
 	ProfileEncryptionInfo,
 	PushRuleKind,
@@ -296,6 +304,10 @@ export default abstract class RPCClient {
 		return this.request("get_profile_encryption_info", { user_id })
 	}
 
+	getOwnDevices(): Promise<GetOwnDevicesResponse> {
+		return this.request("get_own_devices", {})
+	}
+
 	trackUserDevices(user_id: UserID): Promise<ProfileEncryptionInfo> {
 		return this.request("track_user_devices", { user_id })
 	}
@@ -330,8 +342,10 @@ export default abstract class RPCClient {
 		return this.request("get_event_by_rowid", { event_rowid })
 	}
 
-	getRelatedEvents(room_id: RoomID, event_id: EventID, relation_type?: RelationType): Promise<RawDBEvent[]> {
-		return this.request("get_related_events", { room_id, event_id, relation_type })
+	getRelatedEvents(
+		room_id: RoomID, event_id: EventID, relation_type?: RelationType, event_type?: EventType,
+	): Promise<RawDBEvent[]> {
+		return this.request("get_related_events", { room_id, event_id, relation_type, event_type })
 	}
 
 	getStickyEvents(room_id: RoomID): Promise<RawDBEvent[]> {
@@ -438,6 +452,28 @@ export default abstract class RPCClient {
 
 	getLoginFlows(homeserver_url: string): Promise<LoginFlowsResponse> {
 		return this.request("get_login_flows", { homeserver_url })
+	}
+
+	oauthRegisterClient(
+		homeserver_url: string, metadata: OAuthClientMetadataRequest,
+	): Promise<OAuthClientMetadata> {
+		return this.request("oauth_register_client", { homeserver_url, ...metadata })
+	}
+
+	oauthGetAuthorizationURL(params: OAuthGetAuthorizationURLParams): Promise<OAuthAuthorizationState> {
+		return this.request("oauth_get_authorization_url", params)
+	}
+
+	oauthExchangeToken(params: OAuthExchangeTokenParams): Promise<void> {
+		return this.request("oauth_exchange_token", params)
+	}
+
+	oauthGenerateDeviceCode(params: OAuthGenerateDeviceCodeParams): Promise<OAuthDeviceCodeResponse> {
+		return this.request("oauth_generate_device_code", params)
+	}
+
+	oauthPollDeviceCode(homeserver_url: string, device_code: string, client_id?: string): Promise<void> {
+		return this.request("oauth_poll_device_code", { homeserver_url, device_code, client_id })
 	}
 
 	login(homeserver_url: string, username: string, password: string): Promise<void> {

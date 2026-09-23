@@ -33,4 +33,95 @@ div.pre-main.signed-out {
 		border: none;
 		border-top: 1px solid var(--hairline-color);
 	}
+
+
+	/*
+	 * Device code sign-in. The code is the one thing on this screen the user has to read
+	 * and compare against their browser, so it gets display size and a monospace face
+	 * with room between characters. The copy button sits beside it, not inside it, so
+	 * the code itself can still be selected by hand.
+	 */
+	.signin-device-code {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.signin-code-row {
+		display: flex;
+		align-items: center;
+		gap: .75rem;
+		padding: .9rem 1rem;
+		border-radius: .375rem;
+		background: var(--field-fill);
+		box-shadow: inset 0 0 0 1px var(--field-ring);
+	}
+
+	code.signin-code {
+		flex: 1;
+		min-width: 0;
+		font-family: var(--monospace-font-stack);
+		font-size: 2rem;
+		font-weight: 600;
+		letter-spacing: .12em;
+		line-height: 1.2;
+		color: var(--text-color);
+		overflow-wrap: anywhere;
+		user-select: all;
+	}
+
+	button.signin-copy {
+		flex: none;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		padding: 0;
+		border: 0;
+		border-radius: .375rem;
+		background: none;
+		color: var(--secondary-text-color);
+		cursor: var(--clickable-cursor);
+
+		> svg {
+			width: 1.25rem;
+			height: 1.25rem;
+		}
+
+		&:hover, &:focus-visible {
+			background: var(--light-hover-color);
+			color: var(--text-color);
+		}
+	}
+
+	/* The primary action is a link, so the system browser takes it, but it has to read
+	   as the same button the password form uses. */
+	.signin-buttons > a.signin-link-button {
+		flex: 1;
+		min-width: 8rem;
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1rem;
+		font-weight: 600;
+		padding: .8rem 1.25rem;
+		border-radius: .375rem;
+		text-decoration: none;
+		cursor: var(--clickable-cursor);
+
+		&.signin-primary {
+			background: var(--primary-color);
+			color: var(--inverted-text-color);
+
+			&:hover, &:focus {
+				background: var(--primary-color-dark);
+			}
+		}
+	}
+
+	.signin-disclose > a {
+		color: #9fb6d6;
+		overflow-wrap: anywhere;
+	}
 }

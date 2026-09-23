@@ -10,6 +10,7 @@ import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/oauth"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
@@ -47,6 +48,7 @@ const (
 	ReqGetMutualRooms           Name = "get_mutual_rooms"
 	ReqTrackUserDevices         Name = "track_user_devices"
 	ReqGetProfileEncryptionInfo Name = "get_profile_encryption_info"
+	ReqGetOwnDevices            Name = "get_own_devices"
 	ReqGetEvent                 Name = "get_event"
 	ReqGetEventByRowID          Name = "get_event_by_rowid"
 	ReqGetEventContext          Name = "get_event_context"
@@ -75,6 +77,11 @@ const (
 	ReqLogout                   Name = "logout"
 	ReqLogin                    Name = "login"
 	ReqLoginCustom              Name = "login_custom"
+	ReqOAuthRegisterClient      Name = "oauth_register_client"
+	ReqOAuthGetAuthorizationURL Name = "oauth_get_authorization_url"
+	ReqOAuthExchangeToken       Name = "oauth_exchange_token"
+	ReqOAuthGenerateDeviceCode  Name = "oauth_generate_device_code"
+	ReqOAuthPollDeviceCode      Name = "oauth_poll_device_code"
 	ReqVerify                   Name = "verify"
 	ReqGenerateRecoveryKey      Name = "generate_recovery_key"
 	ReqResetEncryption          Name = "reset_encryption"
@@ -157,6 +164,8 @@ var (
 	TrackUserDevices = &CommandSpec[*GetProfileParams, *ProfileEncryptionInfo]{Name: ReqTrackUserDevices}
 	// GetProfileEncryptionInfo returns the device list and trust state information for a user.
 	GetProfileEncryptionInfo = &CommandSpec[*GetProfileParams, *ProfileEncryptionInfo]{Name: ReqGetProfileEncryptionInfo}
+	// GetOwnDevices returns the current user's full device list and other details.
+	GetOwnDevices = &CommandSpecWithoutRequest[*GetOwnDevicesResponse]{Name: ReqGetOwnDevices}
 	// GetEvent returns a single event in a room. This uses the database if possible,
 	// but will fetch from the homeserver if the event isn't found locally.
 	GetEvent = &CommandSpec[*GetEventParams, *database.Event]{Name: ReqGetEvent}
@@ -237,6 +246,26 @@ var (
 	// LoginCustom sends a custom login request. Like the `login` request, this will also dispatch
 	// a `client_state` event after a successful login.
 	LoginCustom = &CommandSpecWithoutResponse[*LoginCustomParams]{Name: ReqLoginCustom}
+	// OAuthRegisterClient registers a new OAuth2 client with the homeserver.
+	// The frontend must persist the returned client ID for the following `oauth_*` calls,
+	// but can forget it after a successful login.
+	OAuthRegisterClient = &CommandSpec[*OAuthRegisterClientParams, *oauth.ClientMetadata]{Name: ReqOAuthRegisterClient}
+	// OAuthGetAuthorizationURL gets the authorization URL for logging into a homeserver with OAuth2.
+	// The frontend must persist the response to pass it into `oauth_exchange_token` after receiving the callback redirect.
+	OAuthGetAuthorizationURL = &CommandSpec[*OAuthGetAuthorizationURLParams, *oauth.AuthorizationCodeResponse]{Name: ReqOAuthGetAuthorizationURL}
+	// OAuthExchangeToken uses an OAuth2 authorization code from a redirect callback to log into the homeserver.
+	// After a successful login, the `client_state` event will be dispatched.
+	// The frontend should use the event rather than the response to this method to update its state.
+	OAuthExchangeToken = &CommandSpecWithoutResponse[*OAuthExchangeTokenParams]{Name: ReqOAuthExchangeToken}
+	// OAuthGenerateDeviceCode generates a device code for logging into a homeserver with OAuth2
+	// in a way that doesn't depend on being able to receive callback redirects over HTTP.
+	// After showing the URL to the user, the frontend should call `oauth_poll_device_code`,
+	// which will block until the login succeeds or times out.
+	OAuthGenerateDeviceCode = &CommandSpec[*OAuthGenerateDeviceCodeParams, *oauth.DeviceCodeResponse]{Name: ReqOAuthGenerateDeviceCode}
+	// OAuthPollDeviceCode polls the homeserver for a device code login.
+	// After a successful login, the `client_state` event will be dispatched.
+	// The frontend should use the event rather than the response to this method to update its state.
+	OAuthPollDeviceCode = &CommandSpecWithoutResponse[*OAuthPollDeviceCodeParams]{Name: ReqOAuthPollDeviceCode}
 	// Verify verifies the session using a recovery key or recovery phrase. Like the `login`
 	// request, this will also dispatch a `client_state` event after successfully verifying.
 	Verify = &CommandSpecWithoutResponse[*VerifyParams]{Name: ReqVerify}
@@ -249,7 +278,7 @@ var (
 	// returns the results.
 	DiscoverHomeserver = &CommandSpec[*DiscoverHomeserverParams, *mautrix.ClientWellKnown]{Name: ReqDiscoverHomeserver}
 	// GetLoginFlows returns the available login flows on the given homeserver.
-	GetLoginFlows = &CommandSpec[*GetLoginFlowsParams, *mautrix.RespLoginFlows]{Name: ReqGetLoginFlows}
+	GetLoginFlows = &CommandSpec[*GetLoginFlowsParams, *LoginFlowsResponse]{Name: ReqGetLoginFlows}
 	// RegisterPush stores a gomuks-specific pusher in the database. This will not register a
 	// pusher on the homeserver. Push notifications will not work without the gomuks backend
 	// being online.

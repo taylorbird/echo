@@ -11,10 +11,13 @@ import (
 
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/oauth"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )
+
+var _ jsoncmd.GomuksAPI = (*GomuksRPC)(nil)
 
 func (gr *GomuksRPC) GetState(ctx context.Context) (*jsoncmd.ClientState, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetState, nil)
@@ -86,6 +89,10 @@ func (gr *GomuksRPC) TrackUserDevices(ctx context.Context, params *jsoncmd.GetPr
 
 func (gr *GomuksRPC) GetProfileEncryptionInfo(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.ProfileEncryptionInfo, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetProfileEncryptionInfo, params)
+}
+
+func (gr *GomuksRPC) GetOwnDevices(ctx context.Context) (*jsoncmd.GetOwnDevicesResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetOwnDevices, nil)
 }
 
 func (gr *GomuksRPC) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) (*database.Event, error) {
@@ -208,8 +215,28 @@ func (gr *GomuksRPC) DiscoverHomeserver(ctx context.Context, params *jsoncmd.Dis
 	return executeRequest(gr, ctx, jsoncmd.DiscoverHomeserver, params)
 }
 
-func (gr *GomuksRPC) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLoginFlowsParams) (*mautrix.RespLoginFlows, error) {
+func (gr *GomuksRPC) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLoginFlowsParams) (*jsoncmd.LoginFlowsResponse, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetLoginFlows, params)
+}
+
+func (gr *GomuksRPC) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuthRegisterClientParams) (*oauth.ClientMetadata, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthRegisterClient, params)
+}
+
+func (gr *GomuksRPC) OAuthGetAuthorizationURL(ctx context.Context, params *jsoncmd.OAuthGetAuthorizationURLParams) (*oauth.AuthorizationCodeResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthGetAuthorizationURL, params)
+}
+
+func (gr *GomuksRPC) OAuthExchangeToken(ctx context.Context, params *jsoncmd.OAuthExchangeTokenParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.OAuthExchangeToken, params)
+}
+
+func (gr *GomuksRPC) OAuthGenerateDeviceCode(ctx context.Context, params *jsoncmd.OAuthGenerateDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthGenerateDeviceCode, params)
+}
+
+func (gr *GomuksRPC) OAuthPollDeviceCode(ctx context.Context, params *jsoncmd.OAuthPollDeviceCodeParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.OAuthPollDeviceCode, params)
 }
 
 func (gr *GomuksRPC) RegisterPush(ctx context.Context, params *database.PushRegistration) error {

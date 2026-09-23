@@ -79,9 +79,10 @@ class ContextFields implements MainScreenContextFields {
 			this.directSetRightPanel(props)
 			for (let i = this.rightPanelStack.length - 1; i >= 0; i--) {
 				if (equal(this.rightPanelStack[i], props)) {
+					const length = this.rightPanelStack.length
 					this.rightPanelStack = this.rightPanelStack.slice(0, i + 1)
 					if (pushState) {
-						history.go(i - this.rightPanelStack.length)
+						history.go(i + 1 - length)
 					}
 					return
 				}
@@ -493,11 +494,11 @@ const MainScreen = () => {
 	// The storage key is versioned because the old default was already persisted on first
 	// run, so a plain default change would never reach anyone who has opened the app.
 	const [roomListWidth, resizeHandle1] = useResizeHandle(
-		440, 240, Math.min(900, window.innerWidth * 0.4),
+		440, 240, Math.min(900, Math.max(window.innerWidth * 0.4, 440)),
 		"roomListWidth3", { className: "room-list-resizer" },
 	)
 	const [rightPanelWidth, resizeHandle2] = useResizeHandle(
-		300, 100, Math.min(900, window.innerWidth * 0.4),
+		300, 100, Math.min(900, Math.max(window.innerWidth * 0.4, 300)),
 		"rightPanelWidth", { className: "right-panel-resizer", inverted: true },
 	)
 	const extraStyle = {

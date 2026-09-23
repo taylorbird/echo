@@ -84,16 +84,14 @@ const QuickSwitcher = ({ store, mainScreen }: {
 	const actions = useMemo(() => {
 		const activeRoom = store.activeRoomID ? store.rooms.get(store.activeRoomID) : null
 		const all: QuickAction[] = []
-		if (activeRoom) {
-			all.push({
-				label: "Settings",
-				icon: <SettingsIcon/>,
-				run: () => {
-					closeModal()
-					window.openNestableModal(modals.settings(activeRoom))
-				},
-			})
-		}
+		all.push({
+			label: "Settings",
+			icon: <SettingsIcon/>,
+			run: () => {
+				closeModal()
+				window.openNestableModal(modals.settings(activeRoom ?? undefined))
+			},
+		})
 		all.push({
 			label: "New room",
 			icon: <AddIcon/>,

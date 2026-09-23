@@ -380,7 +380,10 @@ const MessageComposer = () => {
 			url_previews: state.previews,
 		}).catch(err => window.alert("Failed to send message: " + err))
 	}
-	const onComposerCaretChange = (evt: CaretEvent<HTMLTextAreaElement>, newText?: string) => {
+	const onComposerCaretChange = (
+		evt: CaretEvent<HTMLTextAreaElement>, newText?: string, newCommand?: CommandState | null,
+	) => {
+		const command = newCommand !== undefined ? newCommand : state.command
 		const area = evt.currentTarget
 		if (area.selectionStart <= (autocomplete?.startPos ?? 0)) {
 			if (
@@ -410,7 +413,7 @@ const MessageComposer = () => {
 				setAutocomplete({ ...autocomplete, query: newQuery, endPos: newEndPos })
 			}
 		} else if (area.selectionStart === area.selectionEnd) {
-			if (newText && !state.command && canAutocompleteCommand(newText)) {
+			if (newText && !command && canAutocompleteCommand(newText)) {
 				setAutocomplete({
 					type: "command",
 					query: newText,
@@ -512,19 +515,22 @@ const MessageComposer = () => {
 				roomCtx.setReplyTo(newReplyEvt.event_id)
 				evt.preventDefault()
 			}
-		} else if (
-			!editing && fullKey === "Ctrl+ArrowDown" && replyToEvt !== null && room.preferences.ctrl_arrow_reply
-		) {
-			const replyToIdx = room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid)
-			if (replyToIdx >= room.timeline.length - 1) {
-				roomCtx.setReplyTo(null)
-				evt.preventDefault()
-			} else if (replyToIdx >= 0) {
-				const newReplyEvt = room.eventsByRowID.get(room.timeline[replyToIdx + 1].event_rowid)
-				if (newReplyEvt) {
-					roomCtx.setReplyTo(newReplyEvt.event_id)
+		} else if (!editing && replyToEvt !== null) {
+			if (fullKey === "Ctrl+ArrowDown" && room.preferences.ctrl_arrow_reply) {
+				const replyToIdx = room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid)
+				if (replyToIdx >= room.timeline.length - 1) {
+					roomCtx.setReplyTo(null)
 					evt.preventDefault()
+				} else if (replyToIdx >= 0) {
+					const newReplyEvt = room.eventsByRowID.get(room.timeline[replyToIdx + 1].event_rowid)
+					if (newReplyEvt) {
+						roomCtx.setReplyTo(newReplyEvt.event_id)
+						evt.preventDefault()
+					}
 				}
+			} else if (fullKey === "Escape") {
+				evt.stopPropagation()
+				roomCtx.setReplyTo(null)
 			}
 		}
 	}
@@ -545,6 +551,11 @@ const MessageComposer = () => {
 				newState.command = null
 			} else {
 				newState.command = { ...state.command, inputArgs }
+			}
+		} else if (canAutocompleteCommand(newText) && newText === (evt.nativeEvent as InputEvent).data) {
+			const command = findCommandForPaste(newText)
+			if (command) {
+				newState.command = command
 			}
 		}
 		setState(newState)
@@ -568,7 +579,7 @@ const MessageComposer = () => {
 					.catch(err => console.error("Failed to send stop typing notification:", err))
 			}
 		}
-		onComposerCaretChange(evt, evt.target.value)
+		onComposerCaretChange(evt, newState.text, newState.command)
 	}
 	const doUploadFile = useCallback((
 		file: Blob,
@@ -651,6 +662,22 @@ const MessageComposer = () => {
 	}
 	// Register file drop handler for RoomView drag/drop
 	roomCtx.onFileDropped = openFileUploadModal
+	const findCommandForPaste = (text: string): CommandState | undefined => {
+		let matches: CommandState[] = []
+		let longestMatch = 0
+		for (const spec of room.getAllBotCommands()) {
+			const inputArgs = stringToCommandArgs(spec, text)
+			if (inputArgs !== null) {
+				if (spec.command.length > longestMatch) {
+					longestMatch = spec.command.length
+					matches = [{ spec, inputArgs }]
+				} else {
+					matches.push({ spec, inputArgs })
+				}
+			}
+		}
+		return matches[0]
+	}
 	const onPaste = (evt: React.ClipboardEvent<HTMLTextAreaElement>) => {
 		const file = evt.clipboardData?.files?.[0]
 		const text = evt.clipboardData.getData("text/plain")
@@ -668,24 +695,9 @@ const MessageComposer = () => {
 		} else if (
 			input.selectionStart === 0 && input.selectionEnd === state.text.length && canAutocompleteCommand(text)
 		) {
-			let matches: CommandState[] = []
-			let longestMatch = 0
-			for (const spec of room.getAllBotCommands()) {
-				const inputArgs = stringToCommandArgs(spec, text)
-				if (inputArgs !== null) {
-					if (spec.command.length > longestMatch) {
-						longestMatch = spec.command.length
-						matches = [{ spec, inputArgs }]
-					} else {
-						matches.push({ spec, inputArgs })
-					}
-				}
-			}
-			if (matches.length) {
-				setState({
-					text,
-					command: matches[0],
-				})
+			const command = findCommandForPaste(text)
+			if (command) {
+				setState({ text, command })
 				evt.preventDefault()
 			}
 			return

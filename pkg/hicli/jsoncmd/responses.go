@@ -7,8 +7,10 @@
 package jsoncmd
 
 import (
+	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/oauth"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
@@ -29,6 +31,12 @@ type ProfileEncryptionInfo struct {
 	FirstMasterKey string           `json:"first_master_key"`
 	UserTrusted    bool             `json:"user_trusted"`
 	Errors         []string         `json:"errors"`
+}
+
+type GetOwnDevicesResponse struct {
+	Encryption    *ProfileEncryptionInfo   `json:"encryption"`
+	Devices       []mautrix.RespDeviceInfo `json:"devices"`
+	CurrentDevice *ProfileDevice           `json:"current_device"`
 }
 
 type PaginationResponse struct {
@@ -55,4 +63,9 @@ type ManualPaginationResponse struct {
 type RecoveryKeyResponse struct {
 	RecoveryKey    string                   `json:"recovery_key"`
 	PassphraseMeta *ssss.PassphraseMetadata `json:"passphrase_meta,omitempty"`
+}
+
+type LoginFlowsResponse struct {
+	*mautrix.RespLoginFlows
+	OAuth *oauth.ServerMetadata `json:"oauth,omitempty"`
 }
