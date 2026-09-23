@@ -117,3 +117,7 @@ verified serving 0.5.1 with the new notes. Wall time about 30 minutes.
 GH_TOKEN="$(gh auth token --user taylorbird)" && git push
 ```
 This pins both `git push` (via the credential helper) and any subsequent `gh` CLI commands to the taylorbird account, independent of what `gh auth` reports as active.
+
+## Wrapped bullets broke the notes parser (fixed 2026-09-23)
+
+`parseReleaseNotes` in `web/src/util/releasenotes.ts` used to close the list on any line not starting with `- `. Every hard-wrapped bullet from 0.4.0 to 0.6.1 therefore rendered in the "What's new" panel as a one-line bullet followed by the rest of the sentence as a separate paragraph. Now a plain line straight after a bullet continues that bullet (covered by a test). Installed builds up to 0.6.1 still have the old parser, which is why notes are written with one line per bullet. Editing past notes without cutting a release is covered in constraints.md (2026-09-23).

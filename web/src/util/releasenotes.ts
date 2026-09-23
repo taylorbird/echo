@@ -80,7 +80,9 @@ export function parseReleaseNotes(source: string): ReleaseNoteBlock[] {
 	// Paragraph lines accumulate until something ends them, so a hard-wrapped paragraph in the
 	// source still renders as one flowing paragraph rather than one line per source line.
 	let paragraph: string[] = []
-	let list: InlineNode[][] | null = null
+	// Items are kept as source text until the list ends, so a wrapped bullet's continuation lines
+	// can be joined onto it before the inline runs are parsed.
+	let list: string[] | null = null
 
 	const flushParagraph = () => {
 		if (paragraph.length) {
@@ -90,7 +92,7 @@ export function parseReleaseNotes(source: string): ReleaseNoteBlock[] {
 	}
 	const flushList = () => {
 		if (list) {
-			blocks.push({ kind: "list", items: list })
+			blocks.push({ kind: "list", items: list.map(parseInline) })
 			list = null
 		}
 	}
@@ -117,10 +119,15 @@ export function parseReleaseNotes(source: string): ReleaseNoteBlock[] {
 		if (item) {
 			flushParagraph()
 			list ??= []
-			list.push(parseInline(item[1]))
+			list.push(item[1])
 			continue
 		}
-		flushList()
+		if (list) {
+			// A plain line straight after a bullet continues it. Without this, a hard-wrapped
+			// bullet renders as a one-line item followed by the rest of its sentence as a paragraph.
+			list[list.length - 1] += " " + line
+			continue
+		}
 		paragraph.push(line)
 	}
 	flushAll()

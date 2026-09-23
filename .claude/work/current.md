@@ -14,6 +14,7 @@ Two releases shipped: 0.6.0 (0.5.1 + batch-1 fixes + redesign in one minor bump;
 
 ## Constraints
 See `.claude/work/constraints.md` for full ledger. One-liner summary of durable constraints (new 2026-09-21 marked with ★):
+- ★ Release notes (2026-09-23): plain, non-AI voice; one line per bullet, never wrapped; rules are in the RELEASE_NOTES.md header comment, and release-notes/0.6.1.md is the model to follow
 - ★ Skeleton animation is ONE thing app-wide: `sk-sweep` in `web/src/ui/loading/Loading.css`; new shapes take `.sk` class; legacy pseudo-element skeletons named in Loading.css selector list; never re-add per-file shimmer
 - ★ Two loading idioms only: skeleton (shape known) or HairlineWait (shape unknown: text over 2px `--hairline-color`); no spinners; react-spinners gone — do not re-add
 - ★ Disconnected screen replaces the app (opaque skeleton), never blurs live content; box uses quick-switcher radius/shadow; blur via `filter` on skeleton layer not `backdrop-filter`

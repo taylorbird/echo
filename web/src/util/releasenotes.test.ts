@@ -10,6 +10,16 @@ describe("parseReleaseNotes", () => {
 		})
 		expect(blocks[2]).toMatchObject({ content: [{ kind: "text", text: "A wrapped paragraph." }]})
 	})
+	it("joins a hard-wrapped bullet's continuation lines onto the bullet", () => {
+		const blocks = parseReleaseNotes("- one that\n  wraps **here**\n- two\n\nAfter.")
+		expect(blocks.map(b => b.kind)).toEqual(["list", "paragraph"])
+		expect(blocks[0]).toMatchObject({
+			items: [
+				[{ kind: "text", text: "one that wraps " }, { kind: "strong", text: "here" }],
+				[{ kind: "text", text: "two" }],
+			],
+		})
+	})
 	it("parses inline runs", () => {
 		expect(parseInline("a **b** `c` [d](https://e.com)")).toEqual([
 			{ kind: "text", text: "a " },

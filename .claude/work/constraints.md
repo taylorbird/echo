@@ -421,3 +421,11 @@ nohup scripts/release.sh minor > <scratch>/release-<version>.log 2>&1 &
 
 ### Space membership comes from m.space.child edges; DMs structurally never children
 **Fact:** `SpaceEdgeStore.include()` checks `this.#flattenedRooms.has(room.room_id)` where `#flattenedRooms` is built from `m.space.child` edges (the space membership source). DMs are essentially never added as `m.space.child` events (users don't join DMs to spaces). **Consequence:** any per-space filter over DMs is permanently empty (except `DirectChatSpace`, which ignores parent membership and uses `Boolean(room.dm_user_id)` only). Inside a real space, "Direct messages" and "Rooms" sub-filters may be dead weight — they are populated only in Home and the orphans pseudo-space. This was identified during the 2026-09-17 tester session as a structural design problem (options A–D recorded in questions.md).
+
+## 2026-09-23 (release notes voice and format)
+
+### Release notes: plain voice, one line per bullet
+**Rule (user, 2026-09-23):** release notes must not read as AI-written. The user found the 0.4.0–0.6.1 notes over-explained and full of AI tells, and all eight were rewritten. The style rules live in the header comment of `RELEASE_NOTES.md`, and `release-notes/0.6.1.md` is the model to follow: plain area headings, short "what changed" bullets, no rationale or internals, no em dashes, no punchy closers, no "X, not Y" framing.
+**Format:** one source line per bullet, never hard-wrapped. GitHub release bodies show wraps as line breaks. App versions up to 0.6.1 split a wrapped bullet into a one-line bullet plus a stray paragraph (parser fixed 2026-09-23, but old installs render the feed with the old parser).
+**Between releases** `RELEASE_NOTES.md` holds only the header comment, so `release.sh` refuses to run until the notes are written.
+**Past notes can be fixed without a release:** `gh release edit vX --notes-file` for the GitHub body (keep the "---\n\nDownload the DMG below…" footer), and for the Latest release only, download `latest.json`, replace `.notes` with jq, check that nothing else differs, and `gh release upload --clobber`. The updater signature covers the tarball, not latest.json.
