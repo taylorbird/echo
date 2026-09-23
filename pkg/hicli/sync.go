@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Tulir Asokan
+// Copyright (c) 2026 Tulir Asokan
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -41,6 +41,7 @@ type syncContext struct {
 	evt *jsoncmd.SyncComplete
 
 	changedSpaces []id.RoomID
+	changedDMs    map[id.RoomID]id.UserID
 }
 
 func (h *HiClient) markSyncErrored(err error, permanent bool) {
@@ -117,7 +118,10 @@ func (h *HiClient) preProcessSyncResponse(ctx context.Context, resp *mautrix.Res
 	}
 	resp.ToDevice.Events = postponedToDevices
 	if len(syncTD) > 0 {
-		ctx.Value(syncContextKey).(*syncContext).evt.ToDevice = syncTD
+		syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
+		if ok {
+			syncCtx.evt.ToDevice = syncTD
+		}
 	}
 	h.Crypto.MarkOlmHashSavePoint(ctx)
 
@@ -165,8 +169,8 @@ func (h *HiClient) maybeDiscardOutboundSession(ctx context.Context, newMembershi
 func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.RespSync, since string) {
 	h.Crypto.HandleOTKCounts(ctx, &resp.DeviceOTKCount)
 	go h.asyncPostProcessSyncResponse(ctx, resp, since)
-	syncCtx := ctx.Value(syncContextKey).(*syncContext)
-	if syncCtx.shouldWakeupRequestQueue {
+	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
+	if !ok || syncCtx.shouldWakeupRequestQueue {
 		h.WakeupRequestQueue()
 	}
 	if !h.firstSyncReceived {
@@ -176,6 +180,19 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 		}
 		h.Client.Client.Timeout = 180 * time.Second
 	}
+	if since == "" {
+		zerolog.Ctx(ctx).Info().Msg("Init sync complete, dispatching chunked room list to clients")
+		for payload := range h.GetInitialSync(ctx, 100) {
+			payload.Since = &since
+			h.EventHandler(payload)
+		}
+		zerolog.Ctx(ctx).Debug().Msg("Finished sending chunked room list to clients after init sync")
+		h.EventHandler(&jsoncmd.InitComplete{})
+
+		// Don't dispatch the normal sync event
+		return
+	}
+
 	for _, space := range syncCtx.changedSpaces {
 		edges, err := h.DB.SpaceEdge.GetAll(ctx, space)
 		if err != nil {
@@ -208,6 +225,7 @@ func (h *HiClient) asyncPostProcessSyncResponse(ctx context.Context, resp *mautr
 }
 
 func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSync, since string) error {
+	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	if len(resp.DeviceLists.Changed) > 0 {
 		zerolog.Ctx(ctx).Debug().
 			Array("users", exzerolog.ArrayOfStringers(resp.DeviceLists.Changed)).
@@ -216,7 +234,9 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 		if err != nil {
 			return fmt.Errorf("failed to mark changed device lists as outdated: %w", err)
 		}
-		ctx.Value(syncContextKey).(*syncContext).shouldWakeupRequestQueue = true
+		if syncCtx != nil {
+			syncCtx.shouldWakeupRequestQueue = true
+		}
 	}
 
 	accountData := make(map[event.Type]*database.AccountData, len(resp.AccountData.Events))
@@ -227,7 +247,8 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 		if err != nil {
 			return fmt.Errorf("failed to save account data event %s: %w", evt.Type.Type, err)
 		}
-		if evt.Type == event.AccountDataPushRules {
+		switch evt.Type {
+		case event.AccountDataPushRules:
 			err = evt.Content.ParseRaw(evt.Type)
 			if err != nil && !errors.Is(err, event.ErrContentAlreadyParsed) {
 				zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to parse push rules in sync")
@@ -235,9 +256,16 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 				h.receiveNewPushRules(ctx, pushRules.Ruleset)
 				zerolog.Ctx(ctx).Debug().Msg("Updated push rules from sync")
 			}
+		case event.AccountDataDirectChats:
+			changes := h.handleSyncDirectChats(ctx, evt, syncCtx != nil)
+			if syncCtx != nil {
+				syncCtx.changedDMs = changes
+			}
 		}
 	}
-	ctx.Value(syncContextKey).(*syncContext).evt.AccountData = accountData
+	if syncCtx != nil {
+		syncCtx.evt.AccountData = accountData
+	}
 	for roomID, room := range resp.Rooms.Invite {
 		err = h.processSyncInvitedRoom(ctx, roomID, room)
 		if err != nil {
@@ -254,6 +282,26 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 		err = h.processSyncLeftRoom(ctx, roomID, room)
 		if err != nil {
 			return fmt.Errorf("failed to process left room %s: %w", roomID, err)
+		}
+	}
+	if syncCtx != nil && len(syncCtx.changedDMs) > 0 {
+		for roomID, newDMUserID := range syncCtx.changedDMs {
+			existingRoomData, err := h.DB.Room.Get(ctx, roomID)
+			if err != nil {
+				return fmt.Errorf("failed to get room data for %s to update DM user ID: %w", roomID, err)
+			} else if existingRoomData == nil || ptr.Val(existingRoomData.DMUserID) == newDMUserID {
+				continue
+			}
+			existingRoomData.DMUserID = &newDMUserID
+			err = h.DB.Room.Upsert(ctx, existingRoomData)
+			if err != nil {
+				return fmt.Errorf("failed to update DM user ID for room %s: %w", roomID, err)
+			}
+			_, exists := syncCtx.evt.Rooms[roomID]
+			if exists {
+				panic(fmt.Errorf("sync invariant error: changedDMs wasn't cleared, but room %s was added to response", roomID))
+			}
+			syncCtx.evt.Rooms[roomID] = &jsoncmd.SyncRoom{Meta: existingRoomData}
 		}
 	}
 	h.Account.NextBatch = resp.NextBatch
@@ -309,8 +357,10 @@ func (h *HiClient) processSyncInvitedRoom(ctx context.Context, roomID id.RoomID,
 	if err != nil {
 		return fmt.Errorf("failed to save invited room: %w", err)
 	}
-	syncEvt := ctx.Value(syncContextKey).(*syncContext).evt
-	syncEvt.InvitedRooms = append(syncEvt.InvitedRooms, ir)
+	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
+	if ok {
+		syncCtx.evt.InvitedRooms = append(syncCtx.evt.InvitedRooms, ir)
+	}
 	return nil
 }
 
@@ -391,8 +441,10 @@ func (h *HiClient) processSyncLeftRoom(ctx context.Context, roomID id.RoomID, ro
 	if err != nil {
 		return fmt.Errorf("failed to remove outbound group session: %w", err)
 	}
-	payload := ctx.Value(syncContextKey).(*syncContext).evt
-	payload.LeftRooms = append(payload.LeftRooms, roomID)
+	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
+	if ok {
+		syncCtx.evt.LeftRooms = append(syncCtx.evt.LeftRooms, roomID)
+	}
 	return nil
 }
 
@@ -772,6 +824,7 @@ func (h *HiClient) processStateAndTimeline(
 	newOwnReceipts []id.EventID,
 	accountData map[event.Type]*database.AccountData,
 ) error {
+	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	updatedRoom := &database.Room{
 		ID: room.ID,
 
@@ -788,6 +841,18 @@ func (h *HiClient) processStateAndTimeline(
 		!intPtrEqual(summary.InvitedMemberCount, room.LazyLoadSummary.InvitedMemberCount) {
 		updatedRoom.LazyLoadSummary = summary
 		heroesChanged = true
+	}
+	if syncCtx != nil && syncCtx.changedDMs != nil {
+		dmUserID := syncCtx.changedDMs[room.ID]
+		updatedRoom.DMUserID = &dmUserID
+	} else {
+		dmUserID, err := h.GetDMUserID(ctx, room.ID)
+		if err == nil && dmUserID != ptr.Val(room.DMUserID) {
+			updatedRoom.DMUserID = &dmUserID
+			if syncCtx != nil {
+				delete(syncCtx.changedDMs, room.ID)
+			}
+		}
 	}
 	sdc := &spaceDataCollector{}
 	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
@@ -991,8 +1056,8 @@ func (h *HiClient) processStateAndTimeline(
 				return fmt.Errorf("failed to save session request for %s: %w", entry.SessionID, err)
 			}
 		}
-		if len(decryptionQueue) > 0 {
-			ctx.Value(syncContextKey).(*syncContext).shouldWakeupRequestQueue = true
+		if len(decryptionQueue) > 0 && syncCtx != nil {
+			syncCtx.shouldWakeupRequestQueue = true
 		}
 		if timeline.Limited {
 			err = h.DB.Timeline.Clear(ctx, room.ID)
@@ -1024,19 +1089,14 @@ func (h *HiClient) processStateAndTimeline(
 			}
 		}
 	}
-	if heroesChanged || updatedRoom.NameQuality == database.NameQualityNil {
-		dmRoomName, dmAvatarURL, dmUserID, err := h.calculateRoomParticipantName(ctx, room.ID, summary, updatedRoom.NameQuality)
+	if (heroesChanged && updatedRoom.NameQuality <= database.NameQualityParticipants) || updatedRoom.NameQuality == database.NameQualityNil {
+		dmRoomName, dmAvatarURL, err := h.calculateRoomParticipantName(ctx, room.ID, summary)
 		if err != nil {
 			return fmt.Errorf("failed to calculate room name: %w", err)
 		}
-		if dmUserID != "" {
-			updatedRoom.DMUserID = &dmUserID
-		}
-		if updatedRoom.NameQuality <= database.NameQualityParticipants {
-			updatedRoom.Name = &dmRoomName
-			updatedRoom.NameQuality = database.NameQualityParticipants
-		}
-		if !dmAvatarURL.IsEmpty() && !room.ExplicitAvatar {
+		updatedRoom.Name = &dmRoomName
+		updatedRoom.NameQuality = database.NameQualityParticipants
+		if !room.ExplicitAvatar {
 			updatedRoom.Avatar = &dmAvatarURL
 		}
 	}
@@ -1075,11 +1135,11 @@ func (h *HiClient) processStateAndTimeline(
 		return err
 	}
 	// TODO why is *old* unread count sometimes zero when processing the read receipt that is making it zero?
-	if roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0 {
+	if syncCtx != nil && (roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0) {
 		for _, receipt := range receipts {
 			receipt.RoomID = ""
 		}
-		ctx.Value(syncContextKey).(*syncContext).evt.Rooms[room.ID] = &jsoncmd.SyncRoom{
+		syncCtx.evt.Rooms[room.ID] = &jsoncmd.SyncRoom{
 			Meta:        room,
 			Timeline:    timelineRowTuples,
 			AccountData: accountData,
@@ -1109,19 +1169,15 @@ func (h *HiClient) calculateRoomParticipantName(
 	ctx context.Context,
 	roomID id.RoomID,
 	summary *mautrix.LazyLoadSummary,
-	currentNameQuality database.NameQuality,
-) (string, id.ContentURI, id.UserID, error) {
+) (string, id.ContentURI, error) {
 	var primaryAvatarURL id.ContentURI
 	if summary == nil || len(summary.Heroes) == 0 {
-		return "Empty room", primaryAvatarURL, "", nil
-	} else if currentNameQuality > database.NameQualityParticipants && summary.MemberCount() > 10 {
-		// Short-circuit for large rooms
-		return "", primaryAvatarURL, "", nil
+		return "Empty room", primaryAvatarURL, nil
 	}
 	var functionalMembers []id.UserID
 	functionalMembersEvt, err := h.DB.CurrentState.Get(ctx, roomID, event.StateElementFunctionalMembers, "")
 	if err != nil {
-		return "", primaryAvatarURL, "", fmt.Errorf("failed to get %s event: %w", event.StateElementFunctionalMembers.Type, err)
+		return "", primaryAvatarURL, fmt.Errorf("failed to get %s event: %w", event.StateElementFunctionalMembers.Type, err)
 	} else if functionalMembersEvt != nil {
 		mautrixEvt := functionalMembersEvt.AsRawMautrix()
 		_ = mautrixEvt.Content.ParseRaw(mautrixEvt.Type)
@@ -1137,7 +1193,6 @@ func (h *HiClient) calculateRoomParticipantName(
 	} else if summary.InvitedMemberCount != nil {
 		memberCount = *summary.InvitedMemberCount
 	}
-	var dmUserID id.UserID
 	for _, hero := range summary.Heroes {
 		if slices.Contains(functionalMembers, hero) {
 			// TODO save member count so push rule evaluation would use the subtracted one?
@@ -1146,12 +1201,9 @@ func (h *HiClient) calculateRoomParticipantName(
 		} else if len(members) >= 5 {
 			break
 		}
-		if dmUserID == "" {
-			dmUserID = hero
-		}
 		heroEvt, err := h.DB.CurrentState.Get(ctx, roomID, event.StateMember, hero.String())
 		if err != nil {
-			return "", primaryAvatarURL, "", fmt.Errorf("failed to get %s's member event: %w", hero, err)
+			return "", primaryAvatarURL, fmt.Errorf("failed to get %s's member event: %w", hero, err)
 		} else if heroEvt == nil {
 			leftMembers = append(leftMembers, hero.String())
 			continue
@@ -1167,7 +1219,6 @@ func (h *HiClient) calculateRoomParticipantName(
 		}
 		if membership == "join" || membership == "invite" {
 			members = append(members, name)
-			dmUserID = hero
 		} else {
 			leftMembers = append(leftMembers, name)
 		}
@@ -1178,17 +1229,15 @@ func (h *HiClient) calculateRoomParticipantName(
 	if len(members) > 0 {
 		if len(members) > 1 {
 			primaryAvatarURL = id.ContentURI{}
-			dmUserID = ""
 		}
-		return joinMemberNames(members, memberCount), primaryAvatarURL, dmUserID, nil
+		return joinMemberNames(members, memberCount), primaryAvatarURL, nil
 	} else if len(leftMembers) > 0 {
 		if len(leftMembers) > 1 {
 			primaryAvatarURL = id.ContentURI{}
-			dmUserID = ""
 		}
-		return fmt.Sprintf("Empty room (was %s)", joinMemberNames(leftMembers, memberCount)), primaryAvatarURL, dmUserID, nil
+		return fmt.Sprintf("Empty room (was %s)", joinMemberNames(leftMembers, memberCount)), primaryAvatarURL, nil
 	} else {
-		return "Empty room", primaryAvatarURL, "", nil
+		return "Empty room", primaryAvatarURL, nil
 	}
 }
 

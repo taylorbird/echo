@@ -27,6 +27,7 @@ import { getPending, getPowerLevels } from "./util.ts"
 import ViewSourceIcon from "@/icons/code.svg?react"
 import DeleteIcon from "@/icons/delete.svg?react"
 import PinIcon from "@/icons/pin.svg?react"
+import RefreshIcon from "@/icons/refresh.svg?react"
 import ReportIcon from "@/icons/report.svg?react"
 import RestoreTrashIcon from "@/icons/restore-trash.svg?react"
 import ShareIcon from "@/icons/share.svg?react"
@@ -113,6 +114,13 @@ export const useSecondaryItems = (
 	const onClickShareEvent = () => {
 		openModal(modals.shareEvent(roomCtx, evt))
 	}
+	const onClickRerequestSession = () => {
+		closeModal()
+		client.rpc.rerequestSession(evt.room_id, evt.content.session_id, evt.sender).then(
+			() => window.alert("Key re-requested successfully"),
+			err => window.alert(`Failed to re-request key: ${err}`),
+		)
+	}
 
 	const showMediaPreviews = roomCtx.store.preferences.show_media_previews
 	const onClickToggleImages = () => {
@@ -140,6 +148,8 @@ export const useSecondaryItems = (
 
 	return <>
 		<button onClick={onClickViewSource}><ViewSourceIcon/>{names && "View source"}</button>
+		{evt.decryption_error && evt.content.session_id &&
+			<button onClick={onClickRerequestSession}><RefreshIcon/>{names && "Request key"}</button>}
 		<button onClick={onClickShareEvent}><ShareIcon/>{names && "Share"}</button>
 		<button onClick={onClickToggleImages}>
 			<ViewSourceIcon/>{names && (showMediaPreviews ? "Hide images" : "Show images")}

@@ -48,8 +48,8 @@ func (gr *GomuksRPC) UpdateDelayedEvent(ctx context.Context, params *jsoncmd.Upd
 	return executeRequest(gr, ctx, jsoncmd.UpdateDelayedEvent, params)
 }
 
-func (gr *GomuksRPC) SetMembership(ctx context.Context, params *jsoncmd.SetMembershipParams) (any, error) {
-	return executeRequest(gr, ctx, jsoncmd.SetMembership, params)
+func (gr *GomuksRPC) SetMembership(ctx context.Context, params *jsoncmd.SetMembershipParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.SetMembership, params)
 }
 
 func (gr *GomuksRPC) SetAccountData(ctx context.Context, params *jsoncmd.SetAccountDataParams) error {
@@ -72,7 +72,7 @@ func (gr *GomuksRPC) SetProfileField(ctx context.Context, params *jsoncmd.SetPro
 	return executeRequestNoResponse(gr, ctx, jsoncmd.SetProfileField, params)
 }
 
-func (gr *GomuksRPC) GetMutualRooms(ctx context.Context, params *jsoncmd.GetProfileParams) ([]id.RoomID, error) {
+func (gr *GomuksRPC) GetMutualRooms(ctx context.Context, params *jsoncmd.GetMutualRoomsParams) (*mautrix.RespMutualRooms, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetMutualRooms, params)
 }
 
@@ -90,6 +90,10 @@ func (gr *GomuksRPC) GetEvent(ctx context.Context, params *jsoncmd.GetEventParam
 
 func (gr *GomuksRPC) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetRelatedEvents, params)
+}
+
+func (gr *GomuksRPC) GetEventContext(ctx context.Context, params *jsoncmd.GetEventContextParams) (*jsoncmd.EventContextResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetEventContext, params)
 }
 
 func (gr *GomuksRPC) GetRoomState(ctx context.Context, params *jsoncmd.GetRoomStateParams) ([]*database.Event, error) {
@@ -202,4 +206,8 @@ func (gr *GomuksRPC) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConf
 
 func (gr *GomuksRPC) CalculateRoomID(ctx context.Context, params *jsoncmd.CalculateRoomIDParams) (id.RoomID, error) {
 	return executeRequest(gr, ctx, jsoncmd.CalculateRoomID, params)
+}
+
+func (gr *GomuksRPC) RerequestSession(ctx context.Context, params *jsoncmd.RerequestSessionParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.RerequestSession, params)
 }

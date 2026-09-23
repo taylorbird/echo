@@ -107,7 +107,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 	mediaReferenceEntries := make([]*database.MediaReference, len(evts))
 	mediaCacheEntries := make([]*database.PlainMedia, 0, len(evts))
 	var joinedMembers, invitedMembers int
-	var joinedMemberIDs, invitedMemberIDs, leftMemberIDs []id.UserID
+	var joinedOrInvitedMemberIDs, leftMemberIDs []id.UserID
 	for i, evt := range evts {
 		if err := h.fillPrevContent(ctx, evt); err != nil {
 			return err
@@ -123,11 +123,11 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 			userID := id.UserID(*evt.StateKey)
 			if userID != h.Account.UserID {
 				if membership == event.MembershipJoin {
-					joinedMemberIDs = append(joinedMemberIDs, userID)
+					joinedOrInvitedMemberIDs = append(joinedOrInvitedMemberIDs, userID)
 					joinedMembers++
 				} else if membership == event.MembershipInvite {
 					invitedMembers++
-					invitedMemberIDs = append(invitedMemberIDs, userID)
+					joinedOrInvitedMemberIDs = append(joinedOrInvitedMemberIDs, userID)
 				} else {
 					leftMemberIDs = append(leftMemberIDs, userID)
 				}
@@ -150,11 +150,8 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		JoinedMemberCount:  &joinedMembers,
 		InvitedMemberCount: &invitedMembers,
 	}
-	if len(joinedMemberIDs) > 0 {
-		llSummary.Heroes = joinedMemberIDs
-		if len(joinedMemberIDs) < 5 {
-			llSummary.Heroes = append(llSummary.Heroes, invitedMemberIDs...)
-		}
+	if len(joinedOrInvitedMemberIDs) > 0 {
+		llSummary.Heroes = joinedOrInvitedMemberIDs
 	} else {
 		llSummary.Heroes = leftMemberIDs
 	}
@@ -172,6 +169,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		updatedRoom := &database.Room{
 			ID:            room.ID,
 			HasMemberList: true,
+			NameQuality:   room.NameQuality,
 		}
 		if room.LazyLoadSummary != nil && room.LazyLoadSummary.Heroes != nil {
 			allFound := true
@@ -215,21 +213,16 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		if err != nil {
 			return fmt.Errorf("failed to save current state entries: %w", err)
 		}
-		dmRoomName, dmAvatarURL, dmUserID, err := h.calculateRoomParticipantName(ctx, room.ID, llSummary, room.NameQuality)
-		if err != nil {
-			return fmt.Errorf("failed to calculate room name: %w", err)
-		}
-		if dmUserID != "" {
-			updatedRoom.DMUserID = &dmUserID
-		}
-		if room.NameQuality <= database.NameQualityParticipants {
+		if updatedRoom.NameQuality <= database.NameQualityParticipants {
+			dmRoomName, dmAvatarURL, err := h.calculateRoomParticipantName(ctx, room.ID, llSummary)
+			if err != nil {
+				return fmt.Errorf("failed to calculate room name: %w", err)
+			}
 			updatedRoom.Name = &dmRoomName
 			updatedRoom.NameQuality = database.NameQualityParticipants
-		} else if dmUserID == "" {
-			llSummary.Heroes = nil
-		}
-		if !dmAvatarURL.IsEmpty() && !room.ExplicitAvatar && ptr.Val(updatedRoom.Avatar) != dmAvatarURL {
-			updatedRoom.Avatar = &dmAvatarURL
+			if !room.ExplicitAvatar && ptr.Val(updatedRoom.Avatar) != dmAvatarURL {
+				updatedRoom.Avatar = &dmAvatarURL
+			}
 		}
 		roomChanged := updatedRoom.CheckChangesAndCopyInto(room)
 		// TODO dispatch space edge changes if something changed? (fairly unlikely though)
@@ -268,7 +261,7 @@ func (h *HiClient) GetRoomState(ctx context.Context, roomID id.RoomID, includeMe
 				}
 			}(context.WithoutCancel(ctx))
 		} else {
-			err := h.processGetRoomState(ctx, roomID, fetchMembers, refetch, false)
+			err := h.processGetRoomState(ctx, roomID, fetchMembers, refetch, true)
 			if err != nil {
 				return nil, err
 			}

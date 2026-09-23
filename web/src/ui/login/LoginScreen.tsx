@@ -147,6 +147,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 					placeholder="@you:example.com"
 					value={username}
 					onChange={evt => setUsername(evt.target.value)}
+					autoComplete="username"
 					autoFocus
 				/>
 			</div>
@@ -161,6 +162,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 					placeholder="Fills in from your Matrix ID"
 					value={homeserverURL}
 					onChange={onChangeHomeserverURL}
+					autoComplete="url"
 				/>
 			</div>
 			{supportsPassword && <div>
@@ -171,6 +173,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 					placeholder="Your Matrix password"
 					value={password}
 					onChange={evt => setPassword(evt.target.value)}
+					autoComplete="current-password"
 					aria-invalid={error ? "true" : undefined}
 				/>
 				{errorBlock}

@@ -77,6 +77,7 @@ const (
 	ReqGetTurnServers           Name = "get_turn_servers"
 	ReqGetMediaConfig           Name = "get_media_config"
 	ReqCalculateRoomID          Name = "calculate_room_id"
+	ReqRerequestSession         Name = "rerequest_session"
 
 	ReqGetAccountInfo Name = "get_account_info"
 	ReqUploadMedia    Name = "upload_media"
@@ -139,7 +140,7 @@ var (
 	SetProfileField = &CommandSpecWithoutResponse[*SetProfileFieldParams]{Name: ReqSetProfileField}
 	// GetMutualRooms returns the list of rooms shared between the current user and another user
 	// from the homeserver.
-	GetMutualRooms = &CommandSpec[*GetProfileParams, []id.RoomID]{Name: ReqGetMutualRooms}
+	GetMutualRooms = &CommandSpec[*GetMutualRoomsParams, *mautrix.RespMutualRooms]{Name: ReqGetMutualRooms}
 	// TrackUserDevices start tracking a user’s e2ee device list if it's not already tracked, then returns
 	// encryption info (same result as `get_profile_encryption_info`).
 	TrackUserDevices = &CommandSpec[*GetProfileParams, *ProfileEncryptionInfo]{Name: ReqTrackUserDevices}
@@ -238,6 +239,8 @@ var (
 	// only relevant when creating v12+ rooms with the `fi.mau.origin_server_ts` extension that
 	// allows the client to pre-calculate the room ID.
 	CalculateRoomID = &CommandSpec[*CalculateRoomIDParams, id.RoomID]{Name: ReqCalculateRoomID}
+	// RerequestSession re-requests a given Megolm session from the key backup and from other devices.
+	RerequestSession = &CommandSpecWithoutResponse[*RerequestSessionParams]{Name: ReqRerequestSession}
 )
 
 // FFI-specific command specs
@@ -260,7 +263,7 @@ var (
 // Websocket-specific backend -> frontend event specs
 var (
 	SpecImageAuthToken = &EventSpec[ImageAuthToken]{Name: EventImageAuthToken}
-	SpecInitComplete   = &EventSpec[Empty]{Name: EventInitComplete}
+	SpecInitComplete   = &EventSpec[InitComplete]{Name: EventInitComplete}
 	SpecRunID          = &EventSpec[*RunData]{Name: EventRunID}
 )
 
@@ -314,6 +317,7 @@ var AllNames = []Name{
 	ReqGetTurnServers,
 	ReqGetMediaConfig,
 	ReqCalculateRoomID,
+	ReqRerequestSession,
 	ReqGetAccountInfo,
 	ReqUploadMedia,
 	RespError,

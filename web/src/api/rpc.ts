@@ -31,6 +31,7 @@ import {
 	MembershipAction,
 	Mentions,
 	MessageEventContent,
+	MutualRoomsResponse,
 	PaginationResponse,
 	ProfileEncryptionInfo,
 	RPCCommand,
@@ -195,7 +196,7 @@ export default abstract class RPCClient {
 		}, this.cancelRequest.bind(this, request_id))
 	}
 
-	logout(): Promise<boolean> {
+	logout(): Promise<void> {
 		return this.request("logout", {})
 	}
 
@@ -217,11 +218,11 @@ export default abstract class RPCClient {
 		return this.request("resend_event", { transaction_id })
 	}
 
-	reportEvent(room_id: RoomID, event_id: EventID, reason: string): Promise<boolean> {
+	reportEvent(room_id: RoomID, event_id: EventID, reason: string): Promise<void> {
 		return this.request("report_event", { room_id, event_id, reason })
 	}
 
-	redactEvent(room_id: RoomID, event_id: EventID, reason: string): Promise<boolean> {
+	redactEvent(room_id: RoomID, event_id: EventID, reason: string): Promise<void> {
 		return this.request("redact_event", { room_id, event_id, reason })
 	}
 
@@ -246,15 +247,15 @@ export default abstract class RPCClient {
 		return this.request("set_membership", { room_id, user_id, action, reason, msc4293_redact_events })
 	}
 
-	setAccountData(type: EventType, content: unknown, room_id?: RoomID): Promise<boolean> {
+	setAccountData(type: EventType, content: unknown, room_id?: RoomID): Promise<void> {
 		return this.request("set_account_data", { type, content, room_id })
 	}
 
-	markRead(room_id: RoomID, event_id: EventID, receipt_type: ReceiptType = "m.read"): Promise<boolean> {
+	markRead(room_id: RoomID, event_id: EventID, receipt_type: ReceiptType = "m.read"): Promise<void> {
 		return this.request("mark_read", { room_id, event_id, receipt_type })
 	}
 
-	setTyping(room_id: RoomID, timeout: number): Promise<boolean> {
+	setTyping(room_id: RoomID, timeout: number): Promise<void> {
 		return this.request("set_typing", { room_id, timeout })
 	}
 
@@ -262,11 +263,11 @@ export default abstract class RPCClient {
 		return this.request("get_profile", { user_id })
 	}
 
-	setProfileField(field: string, value: JSONValue): Promise<boolean> {
+	setProfileField(field: string, value: JSONValue): Promise<void> {
 		return this.request("set_profile_field", { field, value })
 	}
 
-	getMutualRooms(user_id: UserID): Promise<RoomID[]> {
+	getMutualRooms(user_id: UserID): Promise<MutualRoomsResponse> {
 		return this.request("get_mutual_rooms", { user_id })
 	}
 
@@ -278,7 +279,7 @@ export default abstract class RPCClient {
 		return this.request("track_user_devices", { user_id })
 	}
 
-	ensureGroupSessionShared(room_id: RoomID): Promise<boolean> {
+	ensureGroupSessionShared(room_id: RoomID): Promise<void> {
 		return this.request("ensure_group_session_shared", { room_id })
 	}
 
@@ -350,8 +351,13 @@ export default abstract class RPCClient {
 		return this.request("get_space_hierarchy", { room_id, ...params })
 	}
 
-	joinRoom(room_id_or_alias: RoomID | RoomAlias, via?: string[], reason?: string): Promise<RespRoomJoin> {
-		return this.request("join_room", { room_id_or_alias, via, reason })
+	joinRoom(
+		room_id_or_alias: RoomID | RoomAlias,
+		via?: string[],
+		reason?: string,
+		from_invite?: boolean,
+	): Promise<RespRoomJoin> {
+		return this.request("join_room", { room_id_or_alias, via, reason, from_invite })
 	}
 
 	knockRoom(room_id_or_alias: RoomID | RoomAlias, via?: string[], reason?: string): Promise<RespRoomJoin> {
@@ -382,15 +388,15 @@ export default abstract class RPCClient {
 		return this.request("get_login_flows", { homeserver_url })
 	}
 
-	login(homeserver_url: string, username: string, password: string): Promise<boolean> {
+	login(homeserver_url: string, username: string, password: string): Promise<void> {
 		return this.request("login", { homeserver_url, username, password })
 	}
 
-	loginCustom(homeserver_url: string, request: LoginRequest): Promise<boolean> {
+	loginCustom(homeserver_url: string, request: LoginRequest): Promise<void> {
 		return this.request("login_custom", { homeserver_url, request })
 	}
 
-	verify(recovery_key: string): Promise<boolean> {
+	verify(recovery_key: string): Promise<void> {
 		return this.request("verify", { recovery_key })
 	}
 
@@ -398,7 +404,7 @@ export default abstract class RPCClient {
 		return this.request("request_openid_token", {})
 	}
 
-	registerPush(reg: DBPushRegistration): Promise<boolean> {
+	registerPush(reg: DBPushRegistration): Promise<void> {
 		return this.request("register_push", reg)
 	}
 
@@ -410,11 +416,15 @@ export default abstract class RPCClient {
 		return this.request("get_media_config", {})
 	}
 
-	setListenToDevice(listen: boolean): Promise<void> {
+	setListenToDevice(listen: boolean): Promise<boolean> {
 		return this.request("listen_to_device", listen)
 	}
 
 	calculateRoomID(timestamp: number, content: Record<string, unknown>): Promise<RoomID> {
 		return this.request("calculate_room_id", { timestamp, content })
+	}
+
+	rerequestSession(room_id: RoomID, session_id: string, sender: UserID): Promise<void> {
+		return this.request("rerequest_session", { room_id, session_id, sender })
 	}
 }

@@ -247,7 +247,7 @@ func (gmx *Gomuks) writeTokenCookie(w http.ResponseWriter, created, jsonOutput, 
 
 func (gmx *Gomuks) Authenticate(w http.ResponseWriter, r *http.Request) {
 	if gmx.DisableAuth || gmx.Config.Web.DisableAuthBecauseIWantMyAccountToBeHacked {
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	jsonOutput := r.URL.Query().Get("output") == "json"
@@ -302,7 +302,7 @@ func (gmx *Gomuks) AuthMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if r.URL.Path != "/auth" {
+		if r.URL.Path != "/auth" && !gmx.Config.Web.DisableAuthBecauseIWantMyAccountToBeHacked {
 			authCookie, err := r.Cookie("gomuks_auth")
 			if err != nil {
 				ErrMissingCookie.Write(w)

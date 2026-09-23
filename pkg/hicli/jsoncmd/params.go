@@ -111,6 +111,11 @@ type GetProfileParams struct {
 	UserID id.UserID `json:"user_id"`
 }
 
+type GetMutualRoomsParams struct {
+	UserID    id.UserID `json:"user_id"`
+	NextBatch string    `json:"next_batch,omitempty"`
+}
+
 type SetProfileFieldParams struct {
 	Field string `json:"field"`
 	Value any    `json:"value"`
@@ -227,6 +232,9 @@ type JoinRoomParams struct {
 	// This is required when using a room ID to join a server that the homeserver isn't participating in.
 	Via    []string `json:"via,omitempty"`
 	Reason string   `json:"reason,omitempty"`
+	// FromInvite indicates whether this join was initiated from accepting an invite.
+	// RoomIDOrAlias must be a room ID when using this flag.
+	FromInvite bool `json:"from_invite,omitempty"`
 }
 
 type GetRoomSummaryParams struct {
@@ -291,4 +299,10 @@ type UploadMediaParams struct {
 type ExportKeysParams struct {
 	Passphrase string    `json:"passphrase"`
 	RoomID     id.RoomID `json:"room_id,omitempty"`
+}
+
+type RerequestSessionParams struct {
+	RoomID    id.RoomID    `json:"room_id"`
+	SessionID id.SessionID `json:"session_id"`
+	Sender    id.UserID    `json:"sender"`
 }
