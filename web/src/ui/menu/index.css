@@ -84,7 +84,7 @@ div.context-menu {
 		}
 	}
 
-	&.event-context-menu, &.room-list-menu {
+	&.room-list-menu {
 		width: auto;
 	}
 
@@ -216,5 +216,21 @@ div.context-menu {
 				}
 			}
 		}
+	}
+
+	&.event-context-menu {
+		width: 10rem;
+	}
+}
+
+/* The touch menu's open animation. MenuPositioner only applies it when reduced motion
+   is not in effect (prefersReducedMotion), so it needs no media query of its own. */
+@keyframes modal-grow {
+	from {
+		transform: scale(0.5);
+	}
+
+	to {
+		transform: scale(1);
 	}
 }

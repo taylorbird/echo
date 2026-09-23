@@ -17,6 +17,7 @@ import { isCheatActive } from "@/util/cheats.ts"
 import { parseMXC } from "@/util/validation.ts"
 import { BACKEND_URL } from "./backend.ts"
 import { createSenderColorAllocator, localSenderColorStorage } from "./sendercolor.ts"
+import { fakeGomuksMember } from "./statestore"
 import { ContentURI, RoomID, UserID, UserProfile } from "./types"
 
 export const getMediaURL = (mxc?: string, encrypted: boolean = false): string | undefined => {
@@ -174,6 +175,9 @@ export const getAvatarURL = (
 	// everything else falls back to the per-user colour.
 	backgroundColor: string = getUserColor(userID),
 ): string => {
+	if (userID === fakeGomuksMember.sender && content == fakeGomuksMember.content) {
+		return "gomuks.png"
+	}
 	const fallbackCharacter = getFallbackCharacter(content?.displayname, 0) || getFallbackCharacter(userID, 1)
 	const [server, mediaID] = parseMXC(content?.avatar_file?.url ?? content?.avatar_url)
 	if (!mediaID || forceFallback) {

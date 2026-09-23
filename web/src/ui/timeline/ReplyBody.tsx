@@ -118,6 +118,7 @@ export const ReplyBody = ({
 		classNames.push("timeline-thread-msg")
 	}
 	const onClick = (evt: MouseEvent<HTMLQuoteElement>) => {
+		evt.stopPropagation()
 		if (isThread && threadRoot) {
 			mainScreen.setRightPanel({
 				type: "thread",

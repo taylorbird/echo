@@ -97,6 +97,8 @@ class ContextFields implements MainScreenContextFields {
 	setPendingShare = (share: File | null) => {
 		if (share !== null) {
 			this.setActiveRoom(null)
+			window.closeModal()
+			window.closeNestableModal()
 		}
 		this.pendingShareRef.current = share
 		this.markPendingShareChanged()
@@ -238,6 +240,7 @@ class ContextFields implements MainScreenContextFields {
 
 	clickRightPanelOpener = (evt: React.MouseEvent) => {
 		evt.preventDefault()
+		evt.stopPropagation()
 		const type = evt.currentTarget.getAttribute("data-target-panel")
 		const targetUser = evt.currentTarget.getAttribute("data-target-user")
 		const closeModal = evt.currentTarget.getAttribute("data-close-nestable-modal") === "true"

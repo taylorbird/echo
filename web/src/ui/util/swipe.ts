@@ -1,0 +1,156 @@
+// gomuks - A Matrix client written in Go.
+// Copyright (C) 2026 Tulir Asokan
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import React, { useRef } from "react"
+import prefersReducedMotion from "@/util/reducedmotion.ts"
+
+interface SwipeState {
+	startX: number
+	startY: number
+	triggered: boolean
+	feedback: boolean
+}
+
+const hasHorizontalScroller = (target: HTMLElement | null, parent: HTMLDivElement) => {
+	if (target === parent || !target) {
+		return false
+	}
+	if (target.classList.contains("leaflet-container") || target.nodeName === "IFRAME") {
+		return true
+	}
+	if (target.scrollWidth > target.clientWidth) {
+		const style = window.getComputedStyle(target)
+		if (style.overflowX === "scroll" || style.overflowX === "auto") {
+			return true
+		}
+	}
+	return hasHorizontalScroller(target.parentElement, parent)
+}
+
+export interface UseSwipeParams {
+	startThreshold: number
+	verticalLimit: number
+	maxDistance: number
+	minTriggerDistance: number
+	left: boolean
+	enabled: boolean
+	onTrigger: () => void
+}
+
+type HapticFeedbackType = "LONG_PRESS" |
+	"TEXT_HANDLE_MOVE" |
+	"GESTURE_START" |
+	"GESTURE_END" |
+	"CONFIRM" |
+	"REJECT" |
+	"TOGGLE_ON" |
+	"TOGGLE_OFF" |
+	"GESTURE_THRESHOLD_ACTIVATE" |
+	"GESTURE_THRESHOLD_DEACTIVATE" |
+	"DRAG_START" |
+	"SEGMENT_TICK" |
+	"SEGMENT_FREQUENT_TICK"
+
+function hapticFeedback(name: HapticFeedbackType) {
+	if (!window.gomuksAndroid) {
+		return
+	}
+	window.dispatchEvent(new CustomEvent("GomuksWebMessageToAndroid", {
+		detail: { event: "haptic_feedback", name },
+	}))
+}
+
+const noopFunc = () => {}
+
+export const useHorizontalSwipe = ({
+	startThreshold, verticalLimit, minTriggerDistance, maxDistance, left, onTrigger, enabled,
+}: UseSwipeParams) => {
+	const swipeState = useRef<SwipeState | null>(null)
+	if (!enabled || window.ontouchstart === undefined) {
+		return [noopFunc, noopFunc, noopFunc, noopFunc] as const
+	}
+	const onEndSwipe = (target: HTMLDivElement) => {
+		if (swipeState.current) {
+			target.style.transition = swipeState.current.triggered && !prefersReducedMotion()
+				? "translate 0.1s linear"
+				: "none"
+			target.style.translate = ""
+			target.style.willChange = ""
+			target.classList.remove("swipe-active")
+			swipeState.current = null
+		}
+	}
+	const onTouchStart = (evt: React.TouchEvent<HTMLDivElement>) => {
+		if (evt.touches.length === 1 && !hasHorizontalScroller(evt.target as HTMLElement, evt.currentTarget)) {
+			swipeState.current = {
+				startX: evt.touches[0].clientX,
+				startY: evt.touches[0].clientY,
+				triggered: false,
+				feedback: false,
+			}
+			evt.currentTarget.style.transition = "none"
+			evt.currentTarget.style.willChange = "translate"
+			evt.currentTarget.classList.add("swipe-active")
+		} else {
+			onEndSwipe(evt.currentTarget)
+		}
+	}
+	const onTouchMove = (evt: React.TouchEvent<HTMLDivElement>) => {
+		if (!swipeState.current) {
+			return
+		}
+		const deltaX = (evt.touches[0].clientX - swipeState.current.startX) * (left ? -1 : 1)
+		const deltaY = Math.abs(evt.touches[0].clientY - swipeState.current.startY)
+		if (!swipeState.current.triggered) {
+			if (deltaX > startThreshold) {
+				swipeState.current.triggered = true
+			} else if (deltaY > verticalLimit) {
+				onEndSwipe(evt.currentTarget)
+				return
+			} else {
+				return
+			}
+		}
+		const translate = Math.min(Math.max(deltaX - startThreshold, 0), maxDistance)
+		const percentageActivated = Math.min(translate / minTriggerDistance, 1)
+		evt.currentTarget.style.translate = `${left ? "-" : ""}${translate}px 0`
+		evt.currentTarget.style.setProperty("--swipe-activation", percentageActivated.toString())
+		if (percentageActivated === 1 && !swipeState.current.feedback) {
+			swipeState.current.feedback = true
+			hapticFeedback("GESTURE_THRESHOLD_ACTIVATE")
+		} else if (percentageActivated < 1 && swipeState.current.feedback) {
+			swipeState.current.feedback = false
+			hapticFeedback("GESTURE_THRESHOLD_DEACTIVATE")
+		}
+	}
+	const onTouchEnd = (evt: React.TouchEvent<HTMLDivElement>) => {
+		if (swipeState.current?.triggered) {
+			const deltaX = (evt.changedTouches[0].clientX - swipeState.current.startX) * (left ? -1 : 1)
+			if (deltaX > minTriggerDistance + startThreshold) {
+				onTrigger()
+			}
+		}
+		onEndSwipe(evt.currentTarget)
+	}
+	const onTouchCancel = (evt: React.TouchEvent<HTMLDivElement>) => {
+		onEndSwipe(evt.currentTarget)
+	}
+	return  [
+		onTouchStart,
+		onTouchMove,
+		onTouchEnd,
+		onTouchCancel,
+	] as const
+}

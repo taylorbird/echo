@@ -765,6 +765,8 @@ div.settings-view {
 			height: 10rem;
 			min-height: 3rem;
 			font-family: var(--monospace-font-stack);
+			font-feature-settings: var(--monospace-font-feature-settings);
+			letter-spacing: var(--monospace-letter-spacing);
 
 			&:focus-visible {
 				border-color: var(--accent-glow-color);

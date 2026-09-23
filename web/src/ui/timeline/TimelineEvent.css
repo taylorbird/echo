@@ -2,7 +2,9 @@ div.timeline-event {
 	width: 100%;
 	max-width: 100%;
 	box-sizing: border-box;
-	padding: var(--timeline-vertical-padding) var(--timeline-horizontal-padding);
+	--actual-vertical-padding: var(--timeline-vertical-padding);
+	--sender-space-reservation: var(--timeline-avatar-size-half);
+	padding: var(--actual-vertical-padding) var(--timeline-horizontal-padding);
 	display: grid;
 	grid-template:
 		"cmc                          cmc                        cmc      empty"  0
@@ -11,6 +13,21 @@ div.timeline-event {
 		/ var(--timeline-avatar-size) var(--timeline-avatar-gap) 1fr      var(--timeline-status-size);
 	contain: layout;
 	margin-top: var(--timeline-message-gap);
+	touch-action: pan-y;
+
+	--swipe-activation: 0;
+
+	&.swipe-active::after {
+		position: absolute;
+		left: 100%;
+		width: 2rem;
+		height: 2rem;
+		content: "";
+		background-color: var(--text-color);
+		mask: url("@/icons/reply.svg") center / contain no-repeat;
+		opacity: pow(var(--swipe-activation), 2);
+		align-self: center;
+	}
 
 	&.highlight {
 		background-color: var(--timeline-highlight-bg-color);
@@ -49,7 +66,7 @@ div.timeline-event {
 
 		width: var(--timeline-avatar-size);
 		height: var(--timeline-avatar-size);
-		margin-top: 2px;
+		margin-top: var(--timeline-avatar-margin);
 
 		> img.avatar:not(.small) {
 			width: 100%;
@@ -121,8 +138,12 @@ div.timeline-event {
 		font-size: .7rem;
 		color: var(--secondary-text-color);
 		opacity: 0.5;
-		max-height: 1.25rem;
+		max-height: calc(1.25rem + 1px);
 		margin-left: .25rem;
+	}
+
+	&.squishable-content > div.event-content {
+		margin-top: -1px;
 	}
 
 	> div.event-content {
@@ -136,6 +157,14 @@ div.timeline-event {
 			color: var(--secondary-text-color);
 			user-select: none;
 			cursor: var(--clickable-cursor);
+		}
+
+		> div.event-send-error {
+			color: var(--error-text-color);
+			font-weight: bold;
+			font-family: var(--monospace-font-stack);
+			font-feature-settings: var(--monospace-font-feature-settings);
+			letter-spacing: var(--monospace-letter-spacing);
 		}
 	}
 
@@ -171,11 +200,16 @@ div.timeline-event {
 	}
 
 	&.same-sender {
+		--actual-vertical-padding: var(--timeline-vertical-padding-same-sender);
+
 		grid-template:
 			"cmc                                cmc     empty"    0
 			"timestamp                          content status" auto
 			/ var(--timeline-avatar-total-size) 1fr     var(--timeline-status-size);
-		margin-top: var(--timeline-message-gap-same-sender);
+
+		&:not(.small-thread-message) {
+			margin-top: var(--timeline-message-gap-same-sender);
+		}
 
 		> div.sender-avatar, > div.event-sender-and-time {
 			display: none;
@@ -187,6 +221,8 @@ div.timeline-event {
 	}
 
 	&.small-event {
+		--actual-vertical-padding: var(--timeline-vertical-padding-small-event);
+
 		grid-template:
 			"cmc                                cmc    cmc     empty"    0
 			"timestamp                          avatar content status" auto
@@ -208,6 +244,11 @@ div.timeline-event {
 		+ div.timeline-event.small-event {
 			margin-top: var(--timeline-message-gap-small-event);
 		}
+	}
+
+	&.small-thread-message {
+		--sender-space-reservation: 0;
+		--actual-vertical-padding: var(--timeline-vertical-padding-small-thread);
 	}
 
 	&.same-thread {

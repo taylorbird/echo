@@ -102,6 +102,7 @@ export enum UnreadType {
 
 export interface LocalContent {
 	sanitized_html?: string
+	preview_text?: string
 	edit_source?: string
 	html_version?: number
 	was_plaintext?: boolean
@@ -293,7 +294,7 @@ export interface JWTLoginRequest {
 
 export type LoginRequest = PasswordLoginRequest | SSOLoginRequest | JWTLoginRequest
 
-export type TrustState = "blacklisted" | "unverified" | "verified"
+export type TrustState = "blacklisted" | "device-key-mismatch" | "unverified" | "verified"
 	| "cross-signed-untrusted" | "cross-signed-tofu" | "cross-signed-verified"
 	| "unknown-device" | "forwarded" | "invalid"
 

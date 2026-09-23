@@ -39,16 +39,19 @@ typedef uintptr_t GomuksHandle;
 typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksOwnedBuffer data);
 typedef void (*ProgressCallback)(double progress);
 typedef void (*StreamCallback)(GomuksBorrowedBuffer data);
+typedef void (*ResponseCallback)(GomuksResponse response);
 
 // GomuksInit initializes a new gomuks instance and returns a handle.
 // The handle can't be used before GomuksStart is called nor after GomuksDestroy is called.
 // If root is non-NULL, it is used as the root directory for all gomuks data
 // (config, cache, data, logs), bypassing environment variable lookups.
 // Pass NULL to use the default directory resolution.
+// The caller is responsible for memory management of the root path string.
 GomuksHandle GomuksInit(char* root);
 // GomuksStart starts the gomuks instance and Matrix sync loop.
 // If the return value is non-zero, the call failed and the handle isn't ready for use.
 // The callback will be called to provide the initial room list as well as any new events.
+// This must be called before SubmitCommand or the media upload/download methods.
 int GomuksStart(GomuksHandle handle, EventCallback callback);
 // GomuksDestroy stops the given gomuks instance and removes references to it.
 void GomuksDestroy(GomuksHandle handle);
@@ -57,6 +60,10 @@ void GomuksDestroy(GomuksHandle handle);
 // The caller is responsible for memory management of the command string.
 // A good approach is creating one string for each command and reusing them forever.
 GomuksResponse GomuksSubmitCommand(GomuksHandle handle, char* command, GomuksBorrowedBuffer data);
+// GomuksHandlePush handles a push notification received from the server
+// and returns the event that the notification is about (if any).
+// This can be called without GomuksStart.
+GomuksResponse GomuksHandlePush(GomuksHandle handle, GomuksBorrowedBuffer payload);
 
 // GomuksUploadMediaPath is equivalent to GomuksSubmitCommand with the upload_media command
 // with an additional progress callback that will be called to report upload progress as a float64 between 0 and 100.
@@ -72,6 +79,15 @@ GomuksResponse GomuksUploadMediaBytes(GomuksHandle handle, GomuksBorrowedBuffer 
 // with length 0. The callback is not used for encrypted files nor if the file is already downloaded.
 // The callback is optional, though without it this is equivalent to the download_media command.
 GomuksResponse GomuksDownloadMediaPath(GomuksHandle handle, GomuksBorrowedBuffer params, StreamCallback cb);
+
+// The following functions are async equivalents of the functions above.
+// They run the handler in a goroutine and call the provided callback with the response.
+
+void GomuksSubmitCommandAsync(GomuksHandle handle, char* command, GomuksOwnedBuffer data, ResponseCallback cb);
+void GomuksHandlePushAsync(GomuksHandle handle, GomuksOwnedBuffer payload, ResponseCallback cb);
+void GomuksUploadMediaPathAsync(GomuksHandle handle, GomuksOwnedBuffer params, ProgressCallback pcb, ResponseCallback rcb);
+void GomuksUploadMediaBytesAsync(GomuksHandle handle, GomuksOwnedBuffer params, GomuksOwnedBuffer mediaBytes, ProgressCallback pcb, ResponseCallback rcb);
+void GomuksDownloadMediaPathAsync(GomuksHandle handle, GomuksOwnedBuffer params, StreamCallback scb, ResponseCallback rcb);
 
 // GomuksFreeBuffer frees an owned buffer returned from gomuks.
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);

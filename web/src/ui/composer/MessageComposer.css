@@ -42,6 +42,8 @@ div.message-composer {
 			width: 100%;
 			resize: none;
 			font-family: var(--font-stack);
+			font-feature-settings: var(--font-feature-settings);
+			letter-spacing: var(--letter-spacing);
 			height: auto;
 			min-height: 1.5rem;
 			padding: .5rem 0 .25rem .5rem;

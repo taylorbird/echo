@@ -17,6 +17,7 @@ import React, { useEffect, useInsertionEffect } from "react"
 import { BACKEND_URL } from "@/api/backend.ts"
 import type Client from "@/api/client.ts"
 import { RoomStateStore, usePreferences } from "@/api/statestore"
+import { isPWA } from "@/util/ismobile.ts"
 
 interface StylePreferencesProps {
 	client: Client
@@ -112,6 +113,42 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 			display: none;
 		}
 	`, [preferences.show_inline_images])
+	// Echo's rows are a fixed 4rem with a 3.5rem avatar lane, so upstream's compact rule
+	// (which only shrinks --room-list-entry-height) has nothing to act on here. This
+	// restates the same idea against echo's geometry: one line per room, smaller avatar,
+	// no preview, and the glow bar shortened to fit the lower row.
+	useStyle(() => preferences.compact_room_list && css`
+		div.room-entry {
+			box-sizing: border-box;
+			height: 2.75rem;
+			padding-top: .375rem;
+			padding-bottom: .375rem;
+
+			> div.room-entry-left {
+				height: 2rem;
+				width: 2rem;
+
+				> img.room-avatar {
+					width: 1.75rem;
+					height: 1.75rem;
+					margin: .125rem;
+				}
+			}
+
+			> div.room-entry-right > div.room-name {
+				font-size: 1rem;
+			}
+
+			> div.room-entry-right > div.message-preview {
+				display: none;
+			}
+
+			&.active::before,
+			&:not(.active):has(> div.room-entry-unreads)::before {
+				height: 1.5rem;
+			}
+		}
+	`, [preferences.compact_room_list])
 	useAsyncStyle(() => preferences.code_block_theme === "auto" ? `
 		@import url("${BACKEND_URL}_gomuks/codeblock/github.css") (prefers-color-scheme: light);
 		@import url("${BACKEND_URL}_gomuks/codeblock/github-dark.css") (prefers-color-scheme: dark);
@@ -138,9 +175,21 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 	useEffect(() => {
 		document.documentElement.style.setProperty("--room-list-color", preferences.room_list_color)
 	}, [preferences.room_list_color])
+	useEffect(() => {
+		if (isPWA) {
+			themeColorLight.content = preferences.theme_color_light
+		}
+	}, [preferences.theme_color_light])
+	useEffect(() => {
+		if (isPWA) {
+			themeColorDark.content = preferences.theme_color_dark
+		}
+	}, [preferences.theme_color_dark])
 	return null
 }
 
 const favicon = document.getElementById("favicon") as HTMLLinkElement
+const themeColorLight = document.getElementById("theme-color-light") as HTMLMetaElement
+const themeColorDark = document.getElementById("theme-color-dark") as HTMLMetaElement
 
 export default React.memo(StylePreferences)

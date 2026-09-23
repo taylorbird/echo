@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { CSSProperties } from "react"
+import { CSSProperties } from "react"
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { MemDBEvent, PowerLevelEventContent } from "@/api/types"
@@ -38,22 +38,6 @@ export const getPowerLevels = (room: RoomStateStore, client: Client): [
 export const getEncryption = (room: RoomStateStore): boolean =>{
 	const encryptionEvent = room.getStateEvent("m.room.encryption", "")
 	return encryptionEvent?.content?.algorithm === "m.megolm.v1.aes-sha2"
-}
-
-export function getModalStyleFromMouse(
-	evt: React.MouseEvent, modalHeight: number, modalWidth = 10 * 16,
-): CSSProperties {
-	const style: CSSProperties = { left: evt.clientX }
-	if (evt.clientX + modalWidth > window.innerWidth) {
-		delete style.left
-		style.right = "4px"
-	}
-	if (evt.clientY + modalHeight > window.innerHeight) {
-		style.bottom = window.innerHeight - evt.clientY
-	} else {
-		style.top = evt.clientY
-	}
-	return style
 }
 
 export function getModalStyleFromButton(button: HTMLElement, modalHeight: number): CSSProperties {

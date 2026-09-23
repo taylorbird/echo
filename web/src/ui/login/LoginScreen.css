@@ -60,6 +60,7 @@ div.pre-main.signed-out {
 		flex: 1;
 		min-width: 0;
 		font-family: var(--monospace-font-stack);
+		font-feature-settings: var(--monospace-font-feature-settings);
 		font-size: 2rem;
 		font-weight: 600;
 		letter-spacing: .12em;

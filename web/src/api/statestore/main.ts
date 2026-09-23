@@ -216,10 +216,13 @@ export class StateStore {
 		return StateCache.delete()
 	}
 
-	loadCache() {
+	loadCache(signal?: AbortSignal) {
 		const cache = new StateCache()
 		this.tmpStateCache = cache
 		return cache.load().then(data => {
+			if (signal?.aborted) {
+				return
+			}
 			if (!data) {
 				console.info("No state cache found")
 				this.stateCacheStatus = "no data"
@@ -350,7 +353,8 @@ export class StateStore {
 		if (hidden) {
 			return null
 		}
-		const preview_event = room?.eventsByRowID.get(meta.preview_event_rowid)
+		const preview_event = room?.preferences.room_list_preview
+			? room?.eventsByRowID.get(meta.preview_event_rowid) : undefined
 		const name = meta.name ?? "Unnamed room"
 		const tags = room?.accountData.get("m.tag")?.tags
 		const favoriteTag = tags?.["m.favourite"]
@@ -394,6 +398,20 @@ export class StateStore {
 				space.applyUnreads(meta, oldMeta)
 			}
 		}
+	}
+
+	get #sortFunc(): SortFunc {
+		let sortFunc: SortFunc = timestampSort
+		if (this.preferences.alphabetical_order) {
+			sortFunc = alphabeticalSort
+		}
+		if (this.preferences.pin_favorites) {
+			sortFunc = chainedSort(favoriteSort, sortFunc)
+		}
+		if (this.preferences.pin_low_priority) {
+			sortFunc = chainedSort(lowPrioritySort, sortFunc)
+		}
+		return sortFunc
 	}
 
 	applySync(sync: SyncCompleteData) {
@@ -507,17 +525,6 @@ export class StateStore {
 			this.stateCache?.deleteInvitedRoom(roomID)
 		}
 
-		let sortFunc: SortFunc = timestampSort
-		if (this.preferences.alphabetical_order) {
-			sortFunc = alphabeticalSort
-		}
-		if (this.preferences.pin_favorites) {
-			sortFunc = chainedSort(favoriteSort, sortFunc)
-		}
-		if (this.preferences.pin_low_priority) {
-			sortFunc = chainedSort(lowPrioritySort, sortFunc)
-		}
-
 		if (sync.space_edges) {
 			// Ensure all space stores exist first
 			for (const spaceID of Object.keys(sync.space_edges)) {
@@ -534,6 +541,7 @@ export class StateStore {
 			this.stateCache?.setTopLevelSpaces(sync.top_level_spaces)
 		}
 
+		const sortFunc = this.#sortFunc
 		let updatedRoomList: RoomListEntry[] | undefined
 		if (resyncRoomList) {
 			updatedRoomList = this.inviteRooms.values().toArray()
@@ -674,7 +682,7 @@ export class StateStore {
 
 	showNotification(room: RoomStateStore, rowid: EventRowID, sound: boolean) {
 		const evt = room.eventsByRowID.get(rowid)
-		if (!evt || typeof evt.content.body !== "string") {
+		if (!evt || !evt.local_content?.preview_text) {
 			return
 		}
 		if (sound) {
@@ -684,17 +692,13 @@ export class StateStore {
 			// Notifications are sent by the main process
 			return
 		}
-		let body = evt.content.body
-		if (body.length > 400) {
-			body = body.slice(0, 350) + " […]"
-		}
 		const memberEvt = room.getStateEvent("m.room.member", evt.sender)
 		const icon = `${getAvatarThumbnailURL(evt.sender, memberEvt?.content)}&image_auth=${this.imageAuthToken}`
 		const roomName = room.meta.current.name ?? "Unnamed room"
 		const senderName = getDisplayname(evt.sender, memberEvt?.content)
 		const title = senderName === roomName ? senderName : `${senderName} (${roomName})`
 		const notif = new Notification(title, {
-			body,
+			body: evt.local_content?.preview_text,
 			icon,
 			badge: "gomuks.png",
 			// timestamp: evt.timestamp,
@@ -729,14 +733,20 @@ export class StateStore {
 			return
 		}
 		room.applyDecrypted(decrypted)
-		if (decrypted.preview_event_rowid) {
+		if (decrypted.preview_event_rowid || decrypted.sorting_timestamp) {
 			const idx = this.roomList.current.findIndex(entry => entry.room_id === decrypted.room_id)
 			if (idx !== -1) {
-				const updatedRoomList = [...this.roomList.current]
-				updatedRoomList[idx] = {
-					...updatedRoomList[idx],
-					preview_event: room.eventsByRowID.get(decrypted.preview_event_rowid),
+				const updatedEntry = { ...this.roomList.current[idx] }
+				if (decrypted.preview_event_rowid && room.preferences.room_list_preview) {
+					updatedEntry.preview_event = room.eventsByRowID.get(decrypted.preview_event_rowid)
 				}
+				if (decrypted.sorting_timestamp) {
+					updatedEntry.sorting_timestamp = decrypted.sorting_timestamp
+				}
+				const updatedRoomList = this.roomList.current.filter(entry => entry.room_id !== decrypted.room_id)
+				const sortFunc = this.#sortFunc
+				const indexToPushAt = updatedRoomList.findLastIndex(val => sortFunc(val, updatedEntry) <= 0)
+				updatedRoomList.splice(indexToPushAt + 1, 0, updatedEntry)
 				this.roomList.emit(updatedRoomList)
 			}
 		}

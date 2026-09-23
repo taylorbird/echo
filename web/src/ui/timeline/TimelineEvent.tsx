@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, use, useCallback, useEffect, useRef, useState } from "react"
 import { HexColorPicker } from "react-colorful"
-import { createPortal } from "react-dom"
 import type Client from "@/api/client.ts"
 import {
 	getAvatarThumbnailURL, getCustomUserColor, getMediaURL, getSenderColor, setCustomUserColor,
@@ -42,12 +41,13 @@ import { isMobileDevice } from "@/util/ismobile.ts"
 import { getDisplayname, getRelatesTo, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
-import { EventFixedMenu, EventFullMenu, EventHoverMenu, getModalStyleFromMouse } from "../menu"
+import { EventFullMenu, EventHoverMenu, MenuPositioner } from "../menu"
 import { ModalCloseContext, ModalContext, NestableModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import FetchedURLPreview, { extractPreviewableURLs } from "../urlpreview/FetchedURLPreview.tsx"
 import URLPreview from "../urlpreview/URLPreview.tsx"
 import { jumpToEventInView } from "../util/jumpToEvent.tsx"
+import { useHorizontalSwipe } from "../util/swipe.ts"
 import ReadReceipts from "./ReadReceipts.tsx"
 import { ReplyBody, ReplyIDBody } from "./ReplyBody.tsx"
 import { ContentErrorBoundary, HiddenEvent, getBodyType, getPerMessageProfile, isSmallEvent } from "./content"
@@ -65,7 +65,6 @@ export interface TimelineEventProps {
 	disableMenu?: boolean
 	smallReplies?: boolean
 	smallThreads?: boolean
-	isFocused?: boolean
 	viewType: TimelineEventViewType
 }
 
@@ -298,10 +297,12 @@ interface UserColorCardProps {
 	displayName: string
 	avatarUrl?: string
 	style: React.CSSProperties
+	ref: React.Ref<HTMLDivElement>
 	onColorChange: () => void
 }
 
-const UserColorCard = ({ userID, displayName, avatarUrl, style, onColorChange }: UserColorCardProps) => {
+// Positioned by MenuPositioner like the event menu, which measures it through ref.
+const UserColorCard = ({ userID, displayName, avatarUrl, style, ref, onColorChange }: UserColorCardProps) => {
 	const closeModal = use(ModalCloseContext)
 	const [currentColor, setCurrentColor] = useState(getCustomUserColor(userID) || "#fecdb2")
 	const [showPicker, setShowPicker] = useState(false)
@@ -327,7 +328,7 @@ const UserColorCard = ({ userID, displayName, avatarUrl, style, onColorChange }:
 	const savedColor = getCustomUserColor(userID)
 	const isCustomColor = savedColor && !presetColors.some(c => c.value === savedColor)
 
-	return <div className="context-menu user-color-card" style={style}>
+	return <div className="context-menu user-color-card" style={style} ref={ref}>
 		<div className="user-card-header">
 			<img className="avatar" src={avatarUrl} alt="" />
 			<div className="user-card-info">
@@ -413,7 +414,7 @@ const EventURLPreviews = ({ event, room }: {
 }
 
 const TimelineEvent = ({
-	evt, prevEvt, disableMenu, smallReplies, smallThreads, isFocused, viewType,
+	evt, prevEvt, disableMenu, smallReplies, smallThreads, viewType,
 }: TimelineEventProps) => {
 	const roomCtx = useRoomContext()
 	const client = use(ClientContext)!
@@ -421,8 +422,10 @@ const TimelineEvent = ({
 	const openModal = use(ModalContext)
 	const openNestableModal = use(NestableModalContext)
 	const [forceContextMenuOpen, setForceContextMenuOpen] = useState(false)
+	const isFocused = useRef(false)
+	const eventRef = useRef<HTMLDivElement>(null)
 	const onContextMenu = (mouseEvt: React.MouseEvent) => {
-		if (mouseEvt.shiftKey) {
+		if (mouseEvt.shiftKey || disableMenu) {
 			return
 		}
 		const targetElem = mouseEvt.target as HTMLElement
@@ -437,10 +440,13 @@ const TimelineEvent = ({
 		}
 		mouseEvt.preventDefault()
 		openModal({
-			content: <EventFullMenu
+			content: <MenuPositioner
+				x={mouseEvt.clientX}
+				y={mouseEvt.clientY}
+				anchor="click"
+				Child={EventFullMenu}
 				evt={evt}
 				roomCtx={roomCtx}
-				style={getModalStyleFromMouse(mouseEvt, EventFullMenu.height)}
 			/>,
 		})
 	}
@@ -466,24 +472,12 @@ const TimelineEvent = ({
 			throw err
 		})
 	}, [client, evt])
-	const onClick = (mouseEvt: React.MouseEvent) => {
-		const targetElem = mouseEvt.target as HTMLElement
-		if (
-			targetElem.tagName === "A"
-			|| targetElem.tagName === "IMG"
-			|| targetElem.tagName === "VIDEO"
-			|| targetElem.tagName === "SUMMARY"
-		) {
-			return
-		}
-		mouseEvt.preventDefault()
-		mouseEvt.stopPropagation()
-		roomCtx.setFocusedEventRowID(roomCtx.focusedEventRowID === evt.rowid ? null : evt.rowid)
-	}
-	const onClickTimestamp = () => {
+	const onClickTimestamp = (mouseEvt: React.MouseEvent) => {
 		if (viewType === "pinned" || (viewType === "notifications" && evt.room_id === roomCtx.store.roomID)) {
+			mouseEvt.stopPropagation()
 			jumpToEventInView(roomCtx, evt.event_id, document.querySelector("div.room-view"))
 		} else if (viewType === "notifications") {
+			mouseEvt.stopPropagation()
 			mainScreen.setActiveRoom(evt.room_id, { openEventID: evt.event_id })
 		}
 	}
@@ -502,18 +496,21 @@ const TimelineEvent = ({
 			getSenderColor(roomCtx.store.roomID, userID),
 		)
 
-		const style = getModalStyleFromMouse(mouseEvt, 280)
 		openModal({
-			content: <UserColorCard
+			content: <MenuPositioner
+				x={mouseEvt.clientX}
+				y={mouseEvt.clientY}
+				anchor="click"
+				Child={UserColorCard}
 				userID={userID}
 				displayName={displayName}
 				avatarUrl={avatarUrl}
-				style={style}
 				onColorChange={() => forceUpdate(n => n + 1)}
 			/>,
 		})
 	}, [openModal, roomCtx.store])
-	const openEditHistory = () => {
+	const openEditHistory = (mouseEvt: React.MouseEvent) => {
+		mouseEvt.stopPropagation()
 		openNestableModal(modals.eventEditHistory(roomCtx, evt))
 	}
 	const perMessageSender = getPerMessageProfile(evt)
@@ -527,17 +524,57 @@ const TimelineEvent = ({
 
 	const eventTS = newSafeDate(evt.timestamp)
 	const editEventTS = evt.last_edit ? newSafeDate(evt.last_edit.timestamp) : null
-	const wrapperClassNames = ["timeline-event"]
-	const isRedacted = displayAsRedacted(evt, memberEvt, roomCtx.store)
-	if (isRedacted) {
-		wrapperClassNames.push("redacted-event")
-	}
+
 	const relatesTo = getRelatesTo(evt)
 	const replyTo = relatesTo?.["m.in_reply_to"]?.event_id
 	const isFallbackReply = relatesTo?.is_falling_back
 	const threadRoot = getThreadRoot(relatesTo)
 	const isSmallThreadMessage = Boolean(threadRoot && smallThreads)
+
+	const [onTouchStart, onTouchMove, onTouchEnd, onTouchCancel] = useHorizontalSwipe({
+		onTrigger: () => {
+			roomCtx.setReplyTo(evt.event_id)
+		},
+		startThreshold: 20,
+		verticalLimit: 10,
+		minTriggerDistance: 60,
+		maxDistance: 90,
+		left: true,
+		enabled: (viewType === "timeline" || viewType === "thread") && !isSmallThreadMessage,
+	})
+	const enableTouchMenu = isMobileDevice && !disableMenu
+	const onClick = (mouseEvt: React.MouseEvent<HTMLDivElement>) => {
+		const targetElem = mouseEvt.target as HTMLElement
+		if (targetElem.closest("a, img, video, summary, iframe, div.media-container, div.location-container.leaflet")) {
+			return
+		}
+
+		mouseEvt.preventDefault()
+		mouseEvt.stopPropagation()
+		isFocused.current = true
+		eventRef.current?.classList.add("focused-event")
+		openModal({
+			content: <MenuPositioner
+				x={mouseEvt.clientX}
+				y={mouseEvt.clientY}
+				anchor="touch"
+				Child={EventFullMenu}
+				evt={evt}
+				roomCtx={roomCtx}
+			/>,
+			onClose: () => {
+				isFocused.current = false
+				eventRef.current?.classList.remove("focused-event")
+			},
+		})
+	}
+
+	const wrapperClassNames = ["timeline-event"]
+	const isRedacted = displayAsRedacted(evt, memberEvt, roomCtx.store)
 	const BodyType = getBodyType(evt, isRedacted, isSmallThreadMessage)
+	if (isRedacted) {
+		wrapperClassNames.push("redacted-event")
+	}
 	if (evt.unread_type & UnreadType.Highlight) {
 		wrapperClassNames.push("highlight")
 	}
@@ -550,12 +587,13 @@ const TimelineEvent = ({
 	if (evt.sender === client.userID) {
 		wrapperClassNames.push("own-event")
 	}
-	const forceContextMenuOnMobile =
-		viewType === "edit-history" || viewType === "context" || viewType === "pinned" || viewType === "notifications"
-	if ((isMobileDevice && !forceContextMenuOnMobile) || disableMenu) {
+	if (enableTouchMenu) {
+		wrapperClassNames.push("mobile-menu")
+	}
+	if (isMobileDevice || disableMenu) {
 		wrapperClassNames.push("no-hover")
 	}
-	if (isFocused) {
+	if (isFocused.current) {
 		wrapperClassNames.push("focused-event")
 	}
 	if (evt.unsigned["io.element.synapse.soft_failed"]) {
@@ -565,7 +603,8 @@ const TimelineEvent = ({
 		wrapperClassNames.push("policy-server-spammy")
 	}
 	let dateSeparator = null
-	const showInitialDateSeparator = viewType === "timeline" || viewType === "thread" || viewType === "context"
+	const showInitialDateSeparator = viewType === "timeline" || viewType === "thread"
+		|| viewType === "context" || viewType === "notifications"
 	const prevEvtDate = prevEvt ? newSafeDate(prevEvt.timestamp) : null
 	if (
 		(showInitialDateSeparator && !prevEvt)
@@ -639,6 +678,9 @@ const TimelineEvent = ({
 		renderAvatar = !smallAvatar
 		smallAvatar = false
 	}
+	if (!replyInMessage && !eventTimeOnly) {
+		wrapperClassNames.push("squishable-content")
+	}
 
 	const fullTime = formatFullTime(eventTS)
 	const shortTime = formatShortTime(eventTS)
@@ -649,20 +691,19 @@ const TimelineEvent = ({
 		className={wrapperClassNames.join(" ")}
 		// The sender name reads --sender-color from the row.
 		style={{ "--sender-color": getSenderColor(evt.room_id, senderID) } as React.CSSProperties}
-		onContextMenu={onContextMenu}
-		onClick={!disableMenu && viewType !== "edit-history" && isMobileDevice && !isSmallThreadMessage
-			? onClick : undefined}
+		onContextMenu={!isMobileDevice ? onContextMenu : undefined}
+		onTouchStart={onTouchStart}
+		onTouchMove={onTouchMove}
+		onTouchEnd={onTouchEnd}
+		onTouchCancel={onTouchCancel}
+		onClick={enableTouchMenu ? onClick : undefined}
+		ref={eventRef}
 	>
-		{!disableMenu && (!isMobileDevice || forceContextMenuOnMobile) && <div
+		{!disableMenu && !isMobileDevice ? <div
 			className={`context-menu-container ${forceContextMenuOpen ? "force-open" : ""}`}
 		>
 			<EventHoverMenu evt={evt} roomCtx={roomCtx} setForceOpen={setForceContextMenuOpen}/>
-		</div>}
-		{isMobileDevice && isFocused && createPortal(
-			<EventFixedMenu evt={evt} roomCtx={roomCtx} />,
-			document.getElementById(roomCtx.threadRoot
-				? "mobile-thread-event-menu-container" : "mobile-event-menu-container")!,
-		)}
+		</div> : null}
 		{replyAboveMessage}
 		{renderAvatar && <div
 			className="sender-avatar"
@@ -728,6 +769,9 @@ const TimelineEvent = ({
 				<BodyType room={roomCtx.store} sender={memberEvt} event={evt}/>
 				{!isSmallBodyType && !isRedacted && <EventURLPreviews room={roomCtx.store} event={evt}/>}
 			</ContentErrorBoundary>
+			{evt.send_error && evt.send_error !== "not sent" ? <div className="event-send-error">
+				{evt.send_error}
+			</div> : null}
 			{(viewType !== "edit-history" && editEventTS) ? <div
 				className="event-edited"
 				title={`Edited at ${formatFullTime(editEventTS)}`}

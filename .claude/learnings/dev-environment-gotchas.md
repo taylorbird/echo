@@ -45,6 +45,8 @@ not optional: drop it and the Homebrew dependency comes back.
 Since the gomuks v26.06 merge the backend also needs `sqlite_fts5` (local message search);
 without it `pkg/hicli/nofts.go` makes the build fail on purpose. So the tags are
 `-tags goolm,sqlite_fts5` everywhere, including `go build`/`go vet` checks.
+Since the gomuks v26.09 merge go.mod says `go 1.26.0` (toolchain go1.27.1), so Go 1.26 is
+the minimum; an older local Go fetches the toolchain itself when GOTOOLCHAIN allows it.
 
 ```bash
 # Frontend dist FIRST — the sidecar go:embeds web/dist (web/frontend.go), so the

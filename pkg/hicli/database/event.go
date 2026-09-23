@@ -443,6 +443,8 @@ type LocalContent struct {
 	// Sanitized HTML that is safe to render directly. This is optimized for web browsers,
 	// non-web frontends may want to parse the original HTML from `formatted_body` locally.
 	SanitizedHTML string `json:"sanitized_html,omitempty"`
+	// Plaintext preview that can be used for notifications, room list previews, etc.
+	PreviewText string `json:"preview_text,omitempty"`
 	// A version identifier for the sanitized HTML. This is only used to reparse the source
 	// in case there are changes to the sanitizer. Not relevant for frontends.
 	HTMLVersion int `json:"html_version,omitempty"`
@@ -458,15 +460,8 @@ type LocalContent struct {
 	// from other clients, this is parsed from the HTML and therefore may have slight changes to the
 	// original markdown (but the resulting HTML is the same anyway).
 	EditSource string `json:"edit_source,omitempty"`
-	// Whether the reply fallback was removed from the `body` and `formatted_body`.
-	// There is no way to get it back, as the content isn't stored.
-	ReplyFallbackRemoved bool `json:"reply_fallback_removed,omitempty"`
 	// The push rule ID that caused this event to notify or highlight.
 	PushRuleID string `json:"push_rule_id,omitempty"`
-}
-
-func (c *LocalContent) GetReplyFallbackRemoved() bool {
-	return c != nil && c.ReplyFallbackRemoved
 }
 
 func (c *LocalContent) GetPushRuleID() string {
@@ -750,35 +745,20 @@ func (e *Event) GetNonPushUnreadType() UnreadType {
 	if e.RelationType == event.RelReplace || e.RedactedBy != "" {
 		return UnreadTypeNone
 	}
-	switch e.Type {
-	case event.EventMessage.Type, event.EventSticker.Type, event.EventUnstablePollStart.Type:
+	switch e.GetType() {
+	case event.EventMessage, event.EventSticker, event.EventUnstablePollStart:
 		return UnreadTypeNormal
-	case event.EventEncrypted.Type:
-		switch e.DecryptedType {
-		case event.EventMessage.Type, event.EventSticker.Type, event.EventUnstablePollStart.Type:
-			return UnreadTypeNormal
-		}
 	}
 	return UnreadTypeNone
 }
 
 func (e *Event) CanUseForPreview() bool {
-	return (e.Type == event.EventMessage.Type || e.Type == event.EventSticker.Type ||
-		(e.Type == event.EventEncrypted.Type &&
-			(e.DecryptedType == event.EventMessage.Type || e.DecryptedType == event.EventSticker.Type))) &&
-		e.RelationType != event.RelReplace && e.RedactedBy == ""
-}
-
-func (e *Event) BumpsSortingTimestamp() bool {
-	return (e.Type == event.EventMessage.Type || e.Type == event.EventSticker.Type || e.Type == event.EventEncrypted.Type) &&
-		e.RelationType != event.RelReplace
-}
-
-func (e *Event) MarkReplyFallbackRemoved() {
-	if e.LocalContent == nil {
-		e.LocalContent = &LocalContent{}
+	switch e.GetType() {
+	case event.EventMessage, event.EventSticker, event.EventUnstablePollStart:
+		return e.RelationType != event.RelReplace && e.RedactedBy == ""
+	default:
+		return false
 	}
-	e.LocalContent.ReplyFallbackRemoved = true
 }
 
 func MakeFakeEvent(roomID id.RoomID, html string) *Event {

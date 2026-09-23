@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { isMobileDevice } from "@/util/ismobile.ts"
+import { isMobileDevice, isPWA } from "@/util/ismobile.ts"
 import type { ContentURI, RoomType } from "../../types"
 import { Preference, anyContext, anyGlobalContext, globalDeviceSpecific, roomSpecific } from "./types.ts"
 
@@ -250,6 +250,12 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: true,
 	}),
+	hide_fingerprint: new Preference<boolean>({
+		displayName: "Hide fingerprint",
+		description: "Avoid sending data that's easily fingerprintable",
+		allowedContexts: anyContext,
+		defaultValue: false,
+	}),
 	map_provider: new Preference<MapProvider>({
 		displayName: "Map provider",
 		description: "The map provider to use for location messages.",
@@ -329,6 +335,20 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: true,
 	}),
+	room_list_preview: new Preference<boolean>({
+		displayName: "Previews in room list",
+		description: "Should the room list have previews of message contents?",
+		allowedContexts: anyContext,
+		defaultValue: true,
+		category: "appearance",
+	}),
+	compact_room_list: new Preference<boolean>({
+		displayName: "Compact room list",
+		description: "Use a compact room list that takes less space and doesn't have message previews",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+		category: "appearance",
+	}),
 	pin_favorites: new Preference<boolean>({
 		displayName: "Pin favorites to top",
 		description: "Always keep favorited rooms at the top of the room list, ignoring recent activity.",
@@ -400,6 +420,20 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: "gomuks.png",
 		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop),
+	}),
+	theme_color_light: new Preference<string>({
+		displayName: "Light mode title bar color",
+		description: "PWA theme color when in light mode.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: "",
+		hidden: !isPWA,
+	}),
+	theme_color_dark: new Preference<string>({
+		displayName: "Dark mode title bar color",
+		description: "PWA theme color when in dark mode.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: "",
+		hidden: !isPWA,
 	}),
 	room_view_type: new Preference<RoomType | null>({
 		displayName: "Room type override",

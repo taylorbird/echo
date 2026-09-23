@@ -1,5 +1,7 @@
 div.timeline-view {
 	overflow-y: scroll;
+	overflow-x: hidden;
+	overscroll-behavior-y: contain;
 
 	display: flex;
 	flex-direction: column;
@@ -25,4 +27,8 @@ div.timeline-view {
 	> div.timeline-list {
 		padding-bottom: 2rem;
 	}
+}
+
+div.modal-box-inner > div.timeline-view {
+	overscroll-behavior-y: auto;
 }

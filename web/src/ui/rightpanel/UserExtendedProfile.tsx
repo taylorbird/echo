@@ -189,7 +189,7 @@ const UserExtendedProfile = ({
 		{profile && <button onClick={viewExtensibleProfile}>Global profile</button>}
 		{memberEvt && room && <button onClick={viewMemberEvent}>Member event</button>}
 	</div>
-	const baseContent = ((memberEvt && room) || loading) ? <div className="extended-profile">
+	const baseContent = ((memberEvt && room) || loading || errors) ? <div className="extended-profile">
 		{loading && <div className="user-info-loader" aria-hidden="true">
 			<SkeletonLine width="70%" />
 			<SkeletonLine width="45%" />

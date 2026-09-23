@@ -3,7 +3,7 @@
 	"private": true,
 	"license": "AGPL-3.0-or-later",
 	"productName": "gomuks-desktop",
-	"version": "26.08.0",
+	"version": "26.09.0",
 	"description": "Electron wrapper for gomuks web and backend",
 	"main": ".vite/build/main.js",
 	"scripts": {
@@ -30,9 +30,9 @@
 		"@electron/fuses": "^1.8.0",
 		"@eslint/js": "^9.11.1",
 		"@types/electron-squirrel-startup": "^1.0.2",
-		"electron": "43.4.0",
-		"eslint": "^9.11.1",
-		"eslint-plugin-import": "^2.31.0",
+		"electron": "44.3.0",
+		"eslint": "^10.9.1",
+		"eslint-plugin-import-x": "^4.17.1",
 		"eslint-plugin-react-hooks": "^7.0.1",
 		"eslint-plugin-react-refresh": "^0.5.2",
 		"typescript": "^6.0.2",
@@ -40,7 +40,7 @@
 		"vite": "^8.0.5"
 	},
 	"dependencies": {
-		"electron-context-menu": "^4.1.2",
+		"electron-context-menu": "^5.0.0",
 		"electron-dl": "^4.0.0",
 		"electron-squirrel-startup": "^1.0.1",
 		"update-electron-app": "^3.2.0"

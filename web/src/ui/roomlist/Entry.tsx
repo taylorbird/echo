@@ -20,7 +20,7 @@ import { type MemDBEvent, type MemberEventContent, type RoomID, RoomNameQuality 
 import { getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
-import { RoomMenu, getModalStyleFromMouse } from "../menu"
+import { MenuPositioner, RoomMenu } from "../menu"
 import { ModalContext } from "../modal"
 import UnreadCount from "./UnreadCount.tsx"
 import MessagesSquareIcon from "@/icons/modern/messages-square.svg?react"
@@ -42,18 +42,15 @@ function getPreviewText(
 	if (!evt) {
 		return ["", null]
 	}
-	if ((evt.type === "m.room.message" || evt.type === "m.sticker") && typeof evt.content.body === "string") {
+	const previewText = evt.local_content?.preview_text
+	if (previewText) {
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const client = use(ClientContext)!
 		const displayname = evt.sender === client.userID
 			? "You"
 			: getDisplayname(evt.sender, senderMemberEvt?.content as MemberEventContent)
-		let previewText = evt.content.body
-		if (evt.content.formatted_body?.includes?.("data-mx-spoiler")) {
-			previewText = "<message contains spoilers>"
-		}
 		return [
-			`${displayname}: ${evt.content.body}`,
+			`${displayname}: ${previewText}`,
 			<>
 				<span
 					className="sender-name bidi-isolate"
@@ -80,6 +77,8 @@ function renderEntry(
 ) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.room_id, room.preview_event, previewSender)
 
+	const hasUnreads = Boolean(room.marked_unread
+		|| room.unread_messages || room.unread_notifications || room.unread_highlights)
 	return <>
 		<div className="room-entry-left">
 			<img
@@ -90,15 +89,13 @@ function renderEntry(
 			/>
 		</div>
 		<div className="room-entry-right">
-			<div
-				className="room-name"
-			>
+			<div className={`room-name ${hasUnreads ? "has-unreads" : ""}`}>
 				<span className="room-name-text">{room.name}</span>
 				<KindIcon className="room-kind-icon" />
 			</div>
 			{previewText && <div className="message-preview" title={previewText}>{croppedPreviewText}</div>}
 		</div>
-		<UnreadCount counts={room} />
+		<UnreadCount counts={room} placeholder={<div className="room-entry-unreads-placeholder" />} />
 	</>
 }
 
@@ -119,10 +116,13 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 			return
 		}
 		openModal({
-			content: <RoomMenu
+			content: <MenuPositioner
+				x={evt.clientX}
+				y={evt.clientY}
+				anchor="click"
+				Child={RoomMenu}
 				room={realRoom}
 				entry={room}
-				style={getModalStyleFromMouse(evt, RoomMenu.height)}
 			/>,
 			noHistory: true,
 		})

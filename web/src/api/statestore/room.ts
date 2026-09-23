@@ -135,7 +135,7 @@ function isInThread(evt: MemDBEvent, threadRoot?: EventID | null): boolean {
 
 export const fakeGomuksSender: UserID = "@gomuks"
 
-const fakeGomuksMember: MemDBEvent = {
+export const fakeGomuksMember: MemDBEvent = {
 	mem: true,
 	pending: false,
 	rowid: -1,
@@ -150,7 +150,6 @@ const fakeGomuksMember: MemDBEvent = {
 	content: {
 		membership: "join",
 		displayname: "gomuks",
-		avatar_url: "mxc://maunium.net/nDpAldyJKmHQApuIJhVmprFq",
 	},
 	unsigned: {},
 }

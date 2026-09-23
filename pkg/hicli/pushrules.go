@@ -138,7 +138,7 @@ func (h *HiClient) evaluatePushRules(ctx context.Context, llSummary *mautrix.Laz
 		msg, ok := evt.Content.Parsed.(*event.MessageEventContent)
 		// TODO make the number configurable and/or consider room settings?
 		if ok && msg.Mentions != nil && len(msg.Mentions.UserIDs) > 15 {
-			return baseType, combinedRuleID
+			return baseType, "gomuks:suppress_mention_spam"
 		}
 	}
 	// Membership churn does not earn a badge. Older Synapse defaults ship
@@ -174,6 +174,22 @@ func (h *HiClient) LoadPushRules(ctx context.Context) {
 	}
 	h.receiveNewPushRules(ctx, rules)
 	zerolog.Ctx(ctx).Debug().Msg("Updated push rules from fetch")
+}
+
+func (h *HiClient) loadStoredPushRules(ctx context.Context) {
+	pushRules, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataPushRules)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("Failed to load stored push rules")
+	} else if pushRules != nil {
+		var rs pushrules.EventContent
+		err = json.Unmarshal(pushRules.Content, &rs)
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal stored push rules")
+		} else {
+			h.receiveNewPushRules(ctx, rs.Ruleset)
+			zerolog.Ctx(ctx).Debug().Msg("Loaded push rules from database")
+		}
+	}
 }
 
 func (h *HiClient) receiveNewPushRules(ctx context.Context, rules *pushrules.PushRuleset) {

@@ -7,7 +7,14 @@
 	   than being inlined away, so names, titles and usernames remain a named role
 	   the moment a second face is wanted again. */
 	--display-font-stack: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-	--monospace-font-stack: "Fira Code", monospace;
+	/* Upstream's Inter tuning (cv05, tighter tracking) is left neutral here: echo's type
+	   is set against plain Inter, and these stay defined so upstream rules that read them
+	   resolve to the default rather than to an invalid value. */
+	--letter-spacing: normal;
+	--font-feature-settings: normal;
+	--monospace-font-feature-settings: "cv02", "ss03"; /* alternate g for inter consistency and alternate & */
+	--monospace-font-stack: "Fira Code VF", "Fira Code", monospace;
+	--monospace-letter-spacing: -0.0088em;
 
 	--window-top-margin: env(safe-area-inset-top, 0px);
 	--window-bottom-margin: env(safe-area-inset-bottom, 0px);
@@ -79,6 +86,7 @@
 	--primary-color: #00c853;
 	--primary-color-dark: #00b24a;
 	--error-color: red;
+	--error-text-color: darkred;
 
 	--border-color: #ccc;
 	--pill-background-color: #ccc;
@@ -156,6 +164,8 @@
 	--room-list-padding: .125rem;
 
 	--timeline-avatar-size: 2.5rem;
+	--timeline-avatar-margin: 2px;
+	--timeline-avatar-size-half: calc(var(--timeline-avatar-size) / 2 + var(--timeline-avatar-margin));
 	--timeline-avatar-gap: 1rem;
 	--timeline-avatar-total-size: calc(var(--timeline-avatar-size) + var(--timeline-avatar-gap));
 	--timeline-message-gap: 1.5rem;
@@ -166,7 +176,11 @@
 	/* The avatar-centred sender row already leaves ~.65rem of visual air
 	   below the name; extra margin on top of that read as too far apart. */
 	--timeline-sender-name-content-gap: 0;
+	/* Echo's rows carry their spacing in the message gaps above, so no extra padding. */
 	--timeline-vertical-padding: 0;
+	--timeline-vertical-padding-small-event: 0;
+	--timeline-vertical-padding-same-sender: var(--timeline-vertical-padding);
+	--timeline-vertical-padding-small-thread: 0;
 	--timeline-horizontal-padding: 1.5rem;
 	--timeline-status-size: 4rem;
 
@@ -362,9 +376,25 @@
 	}
 }
 
+/*
+ * Inter comes from the Google Fonts stylesheet in index.html, which carries the 600
+ * weight echo's names and labels use. Upstream's bundled Inter (400/500/700 only) is
+ * not declared here: two sources for one family make it unpredictable which face a
+ * given weight resolves to.
+ */
+@font-face {
+	font-family: 'Fira Code VF';
+	src: url('fonts/FiraCode-VF.woff2');
+	font-weight: 300 700;
+	font-display: swap;
+	font-style: normal;
+}
+
 body {
 	font-family: var(--font-stack);
 	font-weight: 400;
+	font-feature-settings: var(--font-feature-settings);
+	letter-spacing: var(--letter-spacing);
 	margin: 0;
 	padding: 0;
 	background-color: var(--background-color);
@@ -406,6 +436,13 @@ html {
 #root {
 	display: flex;
 	justify-content: center;
+	position: fixed;
+	inset: 0;
+}
+
+html, body, #root {
+	overflow: hidden;
+	overscroll-behavior-y: none;
 }
 
 main {
@@ -414,6 +451,8 @@ main {
 
 pre, code {
 	font-family: var(--monospace-font-stack);
+	font-feature-settings: var(--monospace-font-feature-settings);
+	letter-spacing: var(--monospace-letter-spacing);
 }
 
 input, textarea {
@@ -421,6 +460,8 @@ input, textarea {
 	background-color: inherit;
 	font-size: 1em;
 	font-family: var(--font-stack);
+	font-feature-settings: var(--font-feature-settings);
+	letter-spacing: var(--letter-spacing);
 }
 
 button, a.button, span.button {
@@ -436,6 +477,8 @@ button, a.button, span.button {
 	color: inherit;
 	/* Buttons sometimes have their own fonts? */
 	font-family: var(--font-stack);
+	font-feature-settings: var(--font-feature-settings);
+	letter-spacing: var(--letter-spacing);
 
 	&:hover, &:focus {
 		background-color: var(--button-hover-color);
