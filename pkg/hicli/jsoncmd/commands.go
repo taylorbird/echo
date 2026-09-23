@@ -32,6 +32,7 @@ const (
 	ReqCancel                   Name = "cancel"
 	ReqSendMessage              Name = "send_message"
 	ReqSendEvent                Name = "send_event"
+	ReqSendStickyEvent          Name = "send_sticky_event"
 	ReqResendEvent              Name = "resend_event"
 	ReqReportEvent              Name = "report_event"
 	ReqRedactEvent              Name = "redact_event"
@@ -51,6 +52,7 @@ const (
 	ReqPaginateManual           Name = "paginate_manual"
 	ReqGetMentions              Name = "get_mentions"
 	ReqGetRelatedEvents         Name = "get_related_events"
+	ReqGetStickyEvents          Name = "get_sticky_events"
 	ReqGetRoomState             Name = "get_room_state"
 	ReqGetSpecificRoomState     Name = "get_specific_room_state"
 	ReqGetReceipts              Name = "get_receipts"
@@ -70,6 +72,8 @@ const (
 	ReqLogin                    Name = "login"
 	ReqLoginCustom              Name = "login_custom"
 	ReqVerify                   Name = "verify"
+	ReqGenerateRecoveryKey      Name = "generate_recovery_key"
+	ReqResetEncryption          Name = "reset_encryption"
 	ReqDiscoverHomeserver       Name = "discover_homeserver"
 	ReqGetLoginFlows            Name = "get_login_flows"
 	ReqRegisterPush             Name = "register_push"
@@ -115,6 +119,9 @@ var (
 	// SendEvent sends an arbitrary event into a room. This should be used for non-message events like reactions.
 	// Note that state events must use `set_state` instead.
 	SendEvent = &CommandSpec[*SendEventParams, *database.Event]{Name: ReqSendEvent}
+	// SendStickyEvent sends an arbitrary sticky (and optionally delayed) event into a room.
+	// This is mostly used by Element Call.
+	SendStickyEvent = &CommandSpec[*SendStickyEventParams, id.EventID]{Name: ReqSendStickyEvent}
 	// ResendEvent retries sending a previously failed outgoing event.
 	ResendEvent = &CommandSpec[*ResendEventParams, *database.Event]{Name: ReqResendEvent}
 	// ReportEvent reports an event to the homeserver.
@@ -165,6 +172,8 @@ var (
 	// GetRelatedEvents returns events related to a given event from the database (e.g. reactions,
 	// edits, replies depending on relation type). This will not call the homeserver.
 	GetRelatedEvents = &CommandSpec[*GetRelatedEventsParams, []*database.Event]{Name: ReqGetRelatedEvents}
+	// GetStickyEvents returns active sticky events in the given room. This will not call the homeserver.
+	GetStickyEvents = &CommandSpec[*GetStickyEventsParams, []*database.Event]{Name: ReqGetStickyEvents}
 	// GetRoomState returns full room state, optionally after fetching it from the homeserver.
 	GetRoomState = &CommandSpec[*GetRoomStateParams, []*database.Event]{Name: ReqGetRoomState}
 	// GetSpecificRoomState returns the requested individual state events.
@@ -219,6 +228,11 @@ var (
 	// Verify verifies the session using a recovery key or recovery phrase. Like the `login`
 	// request, this will also dispatch a `client_state` event after successfully verifying.
 	Verify = &CommandSpecWithoutResponse[*VerifyParams]{Name: ReqVerify}
+	// GenerateRecoveryKey generates a new recovery key, optionally from a given recovery phrase.
+	// This will not actually use the generated key for anything, `reset_encryption` has to be called separately.
+	GenerateRecoveryKey = &CommandSpec[*GenerateRecoveryKeyParams, *RecoveryKeyResponse]{Name: ReqGenerateRecoveryKey}
+	// ResetEncryption resets the account's cross-signing keys and key backup/SSSS to use the given recovery key.
+	ResetEncryption = &CommandSpecWithoutResponse[*ResetEncryptionParams]{Name: ReqResetEncryption}
 	// DiscoverHomeserver performs `.well-known` lookup on the server name of the given user ID and
 	// returns the results.
 	DiscoverHomeserver = &CommandSpec[*DiscoverHomeserverParams, *mautrix.ClientWellKnown]{Name: ReqDiscoverHomeserver}
@@ -272,6 +286,7 @@ var AllNames = []Name{
 	ReqCancel,
 	ReqSendMessage,
 	ReqSendEvent,
+	ReqSendStickyEvent,
 	ReqResendEvent,
 	ReqReportEvent,
 	ReqRedactEvent,
@@ -310,6 +325,8 @@ var AllNames = []Name{
 	ReqLogin,
 	ReqLoginCustom,
 	ReqVerify,
+	ReqGenerateRecoveryKey,
+	ReqResetEncryption,
 	ReqDiscoverHomeserver,
 	ReqGetLoginFlows,
 	ReqRegisterPush,

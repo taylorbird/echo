@@ -60,7 +60,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 		).finally(() => setLoading(false))
 	}
 
-	const login = (evt: React.FormEvent) => {
+	const login = (evt: React.SubmitEvent) => {
 		evt.preventDefault()
 		if (!loginFlows) {
 			// do nothing
@@ -69,7 +69,9 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 		} else {
 			setLoading(true)
 			client.rpc.login(homeserverURL, username, password).then(
-				() => {},
+				() => {
+					client.passwordCache = password
+				},
 				err => setError(err.toString()),
 			).finally(() => setLoading(false))
 		}

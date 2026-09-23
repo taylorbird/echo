@@ -79,6 +79,7 @@ export interface SyncRoom {
 	notifications: SyncNotification[] | null
 	account_data: Record<EventType, DBRoomAccountData> | null
 	receipts: Record<EventID, DBReceipt[]> | null
+	sticky?: EventRowID[] | null
 }
 
 export interface SyncNotification {
@@ -109,6 +110,12 @@ export interface SyncCompleteEvent extends BaseRPCCommand<SyncCompleteData> {
 	command: "sync_complete"
 }
 
+export interface VerificationState {
+	is_verified: boolean
+	state_checked: boolean
+	has_cross_signing: boolean
+	has_ssss: boolean
+}
 
 export type ClientState = {
 	is_initialized: boolean
@@ -118,6 +125,7 @@ export type ClientState = {
 	is_initialized: boolean
 	is_logged_in: true
 	is_verified: boolean
+	verification_state: VerificationState
 	user_id: UserID
 	device_id: DeviceID
 	homeserver_url: string

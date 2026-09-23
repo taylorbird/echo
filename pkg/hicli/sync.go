@@ -20,6 +20,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"go.mau.fi/util/emojirunes"
+	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/exzerolog"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
@@ -204,6 +205,13 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 			maps.Copy(syncCtx.evt.SpaceEdges, edges)
 		}
 	}
+	if len(syncCtx.changedSpaces) > 0 {
+		var err error
+		syncCtx.evt.TopLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to get top-level space IDs for sync after space edge changes")
+		}
+	}
 	if !syncCtx.evt.IsEmpty() {
 		h.EventHandler(syncCtx.evt)
 	}
@@ -365,10 +373,12 @@ func (h *HiClient) processSyncInvitedRoom(ctx context.Context, roomID id.RoomID,
 }
 
 func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, room *mautrix.SyncJoinedRoom) error {
+	var isNewRoom bool
 	existingRoomData, err := h.DB.Room.Get(ctx, roomID)
 	if err != nil {
 		return fmt.Errorf("failed to get room data: %w", err)
 	} else if existingRoomData == nil {
+		isNewRoom = true
 		err = h.DB.Room.CreateRow(ctx, roomID)
 		if err != nil {
 			return fmt.Errorf("failed to ensure room row exists: %w", err)
@@ -415,11 +425,13 @@ func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, 
 		ctx,
 		existingRoomData,
 		&room.State,
+		&room.Sticky,
 		&room.Timeline,
 		&room.Summary,
 		receiptsList,
 		newOwnReceipts,
 		accountData,
+		isNewRoom,
 	)
 	if err != nil {
 		return err
@@ -452,7 +464,7 @@ func isDecryptionErrorRetryable(err error) bool {
 	return errors.Is(err, crypto.ErrNoSessionFound) || errors.Is(err, olm.ErrUnknownMessageIndex) || errors.Is(err, crypto.ErrGroupSessionWithheld)
 }
 
-func removeReplyFallback(evt *event.Event) []byte {
+func removeReplyFallback(ctx context.Context, evt *event.Event) []byte {
 	if evt.Type != event.EventMessage && evt.Type != event.EventSticker {
 		return nil
 	}
@@ -461,15 +473,23 @@ func removeReplyFallback(evt *event.Event) []byte {
 	if ok {
 		prevFormattedBody := content.FormattedBody
 		content.RemovePerMessageProfileFallback()
+		perMessageProfileRemoved := prevFormattedBody != content.FormattedBody
 		if content.RelatesTo.GetReplyTo() != "" {
 			content.RemoveReplyFallback()
 		}
 		if content.FormattedBody != prevFormattedBody {
 			bytes, err := sjson.SetBytes(evt.Content.VeryRaw, "formatted_body", content.FormattedBody)
 			bytes, err2 := sjson.SetBytes(bytes, "body", content.Body)
-			if err == nil && err2 == nil {
+			var err3 error
+			if perMessageProfileRemoved {
+				bytes, err3 = sjson.DeleteBytes(bytes, exgjson.Path("com.beeper.per_message_profile", "has_fallback"))
+			}
+			if err == nil && err2 == nil && err3 == nil {
 				return bytes
 			}
+			zerolog.Ctx(ctx).Warn().
+				AnErr("err1", err).AnErr("err2", err2).AnErr("err3", err3).
+				Msg("Failed to remove reply fallback, returning original content")
 		}
 	}
 	return nil
@@ -484,7 +504,7 @@ func (h *HiClient) decryptEvent(ctx context.Context, evt *event.Event) (*event.E
 	if err != nil {
 		return nil, nil, false, "", err
 	}
-	withoutFallback := removeReplyFallback(decrypted)
+	withoutFallback := removeReplyFallback(ctx, decrypted)
 	if withoutFallback != nil {
 		return decrypted, withoutFallback, true, decrypted.Type.Type, nil
 	}
@@ -681,7 +701,7 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 	return dbEvt.LocalContent, nil
 }
 
-const CurrentHTMLSanitizerVersion = 12
+const CurrentHTMLSanitizerVersion = 13
 
 func (h *HiClient) ReprocessExistingEvent(ctx context.Context, evt *database.Event) {
 	if (evt.Type != event.EventMessage.Type && evt.DecryptedType != event.EventMessage.Type) ||
@@ -746,7 +766,7 @@ func (h *HiClient) processEvent(
 		return nil, err
 	}
 	dbEvt := database.MautrixToEvent(evt)
-	contentWithoutFallback := removeReplyFallback(evt)
+	contentWithoutFallback := removeReplyFallback(ctx, evt)
 	if contentWithoutFallback != nil {
 		dbEvt.Content = contentWithoutFallback
 		dbEvt.MarkReplyFallbackRemoved()
@@ -818,11 +838,13 @@ func (h *HiClient) processStateAndTimeline(
 	ctx context.Context,
 	room *database.Room,
 	state *mautrix.SyncEventsList,
+	sticky *mautrix.SyncEventsList,
 	timeline *mautrix.SyncTimeline,
 	summary *mautrix.LazyLoadSummary,
 	receipts []*database.Receipt,
 	newOwnReceipts []id.EventID,
 	accountData map[event.Type]*database.AccountData,
+	isNewRoom bool,
 ) error {
 	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	updatedRoom := &database.Room{
@@ -854,9 +876,13 @@ func (h *HiClient) processStateAndTimeline(
 			}
 		}
 	}
-	sdc := &spaceDataCollector{}
+	_, spaceOrderChanged := accountData[event.AccountDataSpaceOrder]
+	sdc := &spaceDataCollector{
+		OrderChanged: spaceOrderChanged,
+		IsNewRoom:    isNewRoom,
+	}
 	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
-	allNewEvents := make([]*database.Event, 0, len(state.Events)+len(timeline.Events))
+	allNewEvents := make([]*database.Event, 0, len(state.Events)+len(sticky.Events)+len(timeline.Events))
 	addedEvents := make(map[database.EventRowID]struct{})
 	newNotifications := make([]jsoncmd.SyncNotification, 0)
 	var recalculatePreviewEvent, unreadMessagesWereMaybeRedacted bool
@@ -983,6 +1009,15 @@ func (h *HiClient) processStateAndTimeline(
 		if !evt.Unsigned.ElementSoftFailed {
 			setNewState(evt.Type, *evt.StateKey, rowID)
 		}
+	}
+	newStickyRows := make([]database.EventRowID, len(sticky.Events))
+	for i, evt := range sticky.Events {
+		evt.Type.Class = event.MessageEventType
+		rowID, err := processNewEvent(evt, false, false)
+		if err != nil {
+			return err
+		}
+		newStickyRows[i] = rowID
 	}
 	var timelineRowTuples []database.TimelineRowTuple
 	receiptMap := make(map[id.EventID][]*database.Receipt)
@@ -1135,7 +1170,7 @@ func (h *HiClient) processStateAndTimeline(
 		return err
 	}
 	// TODO why is *old* unread count sometimes zero when processing the read receipt that is making it zero?
-	if syncCtx != nil && (roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0) {
+	if syncCtx != nil && (roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0 || len(newStickyRows) > 0) {
 		for _, receipt := range receipts {
 			receipt.RoomID = ""
 		}
@@ -1147,6 +1182,7 @@ func (h *HiClient) processStateAndTimeline(
 			Reset:       timeline.Limited,
 			Events:      allNewEvents,
 			Receipts:    receiptMap,
+			Sticky:      newStickyRows,
 
 			Notifications:        newNotifications,
 			DismissNotifications: dismissNotifications,
@@ -1253,6 +1289,9 @@ type spaceDataCollector struct {
 	Parents           map[id.RoomID]*database.SpaceParentEntry
 	PowerLevelChanged bool
 	IsFullState       bool
+
+	OrderChanged bool
+	IsNewRoom    bool
 }
 
 func (sdc *spaceDataCollector) Collect(evt *event.Event, rowID database.EventRowID) {
@@ -1311,10 +1350,13 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 		sdc.Children = nil
 		sdc.PowerLevelChanged = false
 	}
+	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	if len(sdc.Children) == 0 && len(sdc.Parents) == 0 && !sdc.PowerLevelChanged {
+		if (sdc.IsNewRoom || sdc.OrderChanged) && syncCtx != nil && room.GetType() == event.RoomTypeSpace {
+			syncCtx.changedSpaces = append(syncCtx.changedSpaces, room.ID)
+		}
 		return nil
 	}
-	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	return seq.GetDB().DoTxn(ctx, nil, func(ctx context.Context) error {
 		if len(sdc.Children) > 0 {
 			children, removedChildren := splitMapValues(sdc.Children)
@@ -1325,6 +1367,8 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 			if syncCtx != nil {
 				syncCtx.changedSpaces = append(syncCtx.changedSpaces, room.ID)
 			}
+		} else if (sdc.IsNewRoom || sdc.OrderChanged) && syncCtx != nil && room.GetType() == event.RoomTypeSpace {
+			syncCtx.changedSpaces = append(syncCtx.changedSpaces, room.ID)
 		}
 		if len(sdc.Parents) > 0 {
 			parents, removedParents := splitMapValues(sdc.Parents)

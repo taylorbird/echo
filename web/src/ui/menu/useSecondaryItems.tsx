@@ -17,6 +17,7 @@ import { use } from "react"
 import Client from "@/api/client.ts"
 import { useRoomMember, useRoomState } from "@/api/statestore"
 import { MemDBEvent } from "@/api/types"
+import { quote } from "@/api/types/commands.ts"
 import copyToClipboard from "@/util/clipboard.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { getEventLevel } from "@/util/powerlevel.ts"
@@ -26,6 +27,7 @@ import JSONView from "../util/JSONView.tsx"
 import { getPending, getPowerLevels } from "./util.ts"
 import ViewSourceIcon from "@/icons/code.svg?react"
 import DeleteIcon from "@/icons/delete.svg?react"
+import EmojiIcon from "@/icons/emoji-categories/smileys-emotion.svg?react"
 import PinIcon from "@/icons/pin.svg?react"
 import RefreshIcon from "@/icons/refresh.svg?react"
 import ReportIcon from "@/icons/report.svg?react"
@@ -45,7 +47,7 @@ export const useSecondaryItems = (
 		const copyRawCommand = () => {
 			const contentJSON = JSON.stringify(evt.content, null, "  ")
 			if (evt.state_key !== undefined) {
-				copyToClipboard(`/rawstate ${evt.type} ${evt.state_key} ${contentJSON}`)
+				copyToClipboard(`/rawstate ${evt.type} ${quote(evt.state_key)} ${contentJSON}`)
 			} else {
 				copyToClipboard(`/raw ${evt.type} ${contentJSON}`)
 			}
@@ -60,6 +62,9 @@ export const useSecondaryItems = (
 				<button style={{ padding: ".5rem" }} onClick={copyRawCommand}>Copy /raw command</button>
 			</div>,
 		})
+	}
+	const onClickViewReactions = () => {
+		openModal(modals.eventReactions(roomCtx, evt))
 	}
 	const onClickReport = () => {
 		openModal({
@@ -148,6 +153,10 @@ export const useSecondaryItems = (
 
 	return <>
 		<button onClick={onClickViewSource}><ViewSourceIcon/>{names && "View source"}</button>
+		{evt.reactions &&
+			<button onClick={onClickViewReactions}>
+				<EmojiIcon/>{names && "Reactions"}
+			</button>}
 		{evt.decryption_error && evt.content.session_id &&
 			<button onClick={onClickRerequestSession}><RefreshIcon/>{names && "Request key"}</button>}
 		<button onClick={onClickShareEvent}><ShareIcon/>{names && "Share"}</button>

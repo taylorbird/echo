@@ -90,6 +90,19 @@ const TextPreferenceCell = ({ context, name, setPref, value, inheritedValue }: P
 	</div>
 }
 
+const NumberPreferenceCell = ({ context, name, pref, setPref, value, inheritedValue }: PreferenceCellProps<number>) => {
+	return <div className={cellClass("number-preference", context, value)}>
+		<input
+			type="number"
+			min={pref.minValue}
+			max={pref.maxValue}
+			value={value ?? inheritedValue}
+			onChange={evt => setPref(context, name, evt.target.value)}
+		/>
+		{makeRemover(context, setPref, name, value)}
+	</div>
+}
+
 const ColorPreferenceCell = ({ context, name, setPref, value, inheritedValue }: PreferenceCellProps<string>) => {
 	return <div className={cellClass("color-preference", context, value)}>
 		<input
@@ -237,6 +250,8 @@ const ScopeLine = ({ label, ...cellProps }: ScopeLineProps) => {
 		cell = colorPreferences.has(cellProps.name)
 			? <ColorPreferenceCell {...cellProps as PreferenceCellProps<string>} />
 			: <TextPreferenceCell {...cellProps as PreferenceCellProps<string>} />
+	} else if (prefType === "number") {
+		cell = <NumberPreferenceCell {...cellProps as PreferenceCellProps<number>} />
 	}
 	return <div className="scope-line">
 		<span className="scope-line-label">{label}</span>
@@ -280,6 +295,15 @@ const SimplePreferenceRow = ({
 					value={value as string}
 					onChange={evt => setPref(editContext, name, evt.target.value)}
 				/>
+		} else if (prefType === "number") {
+			const numberPref = pref as Preference<number>
+			return <input
+				type="number"
+				min={numberPref.minValue}
+				max={numberPref.maxValue}
+				value={value as number}
+				onChange={evt => setPref(editContext, name, evt.target.value)}
+			/>
 		}
 		return null
 	}

@@ -42,6 +42,7 @@ export default class Keybindings {
 	constructor(private store: StateStore, private context: MainScreenContextFields) {}
 
 	private keyDownMap: KeyMap = {
+		"Escape": () => this.context.clearActiveRoom(),
 		"Ctrl+k": () => document.getElementById("room-search")?.focus(),
 		// Cmd+K on macOS: Slack-style quick switcher for jumping between rooms/DMs
 		"Super+k": () => window.openModal(modals.quickSwitcher(this.store, this.context)),
@@ -85,7 +86,6 @@ export default class Keybindings {
 	}
 
 	private keyUpMap: KeyMap = {
-		// "Escape": evt => evt.target === evt.currentTarget && this.context.clearActiveRoom(),
 	}
 
 	private openCheatConsole() {

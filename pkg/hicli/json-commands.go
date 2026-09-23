@@ -17,6 +17,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/pushrules"
@@ -48,6 +49,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.SendMessage.RunCtx(ctx, req.Data, h.API.SendMessage)
 	case jsoncmd.ReqSendEvent:
 		return jsoncmd.SendEvent.RunCtx(ctx, req.Data, h.API.SendEvent)
+	case jsoncmd.ReqSendStickyEvent:
+		return jsoncmd.SendStickyEvent.RunCtx(ctx, req.Data, h.API.SendStickyEvent)
 	case jsoncmd.ReqResendEvent:
 		return jsoncmd.ResendEvent.RunCtx(ctx, req.Data, h.API.ResendEvent)
 	case jsoncmd.ReqReportEvent:
@@ -80,6 +83,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetEvent.RunCtx(ctx, req.Data, h.API.GetEvent)
 	case jsoncmd.ReqGetRelatedEvents:
 		return jsoncmd.GetRelatedEvents.RunCtx(ctx, req.Data, h.API.GetRelatedEvents)
+	case jsoncmd.ReqGetStickyEvents:
+		return jsoncmd.GetStickyEvents.RunCtx(ctx, req.Data, h.API.GetStickyEvents)
 	case jsoncmd.ReqGetEventContext:
 		return jsoncmd.GetEventContext.RunCtx(ctx, req.Data, h.API.GetEventContext)
 	case jsoncmd.ReqPaginateManual:
@@ -124,6 +129,10 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.LoginCustom.RunCtx(ctx, req.Data, h.API.LoginCustom)
 	case jsoncmd.ReqVerify:
 		return jsoncmd.Verify.RunCtx(ctx, req.Data, h.API.Verify)
+	case jsoncmd.ReqGenerateRecoveryKey:
+		return jsoncmd.GenerateRecoveryKey.Run(req.Data, h.API.GenerateRecoveryKey)
+	case jsoncmd.ReqResetEncryption:
+		return jsoncmd.ResetEncryption.RunCtx(ctx, req.Data, h.API.ResetEncryption)
 	case jsoncmd.ReqDiscoverHomeserver:
 		return jsoncmd.DiscoverHomeserver.RunCtx(ctx, req.Data, h.API.DiscoverHomeserver)
 	case jsoncmd.ReqGetLoginFlows:
@@ -163,6 +172,19 @@ func (h *JSONAPI) SendEvent(ctx context.Context, params *jsoncmd.SendEventParams
 	return h.Send(ctx, params.RoomID, params.EventType, params.Content, params.DisableEncryption, params.Synchronous)
 }
 
+func (h *JSONAPI) SendStickyEvent(ctx context.Context, params *jsoncmd.SendStickyEventParams) (id.EventID, error) {
+	resp, err := h.HiClient.Client.SendMessageEvent(ctx, params.RoomID, params.EventType, params.Content, mautrix.ReqSendEvent{
+		UnstableDelay:          params.Delay.Duration,
+		UnstableStickyDuration: params.StickyDuration.Duration,
+	})
+	if err != nil {
+		return "", err
+	} else if resp.UnstableDelayID != "" {
+		return id.EventID(resp.UnstableDelayID), nil
+	}
+	return resp.EventID, nil
+}
+
 func (h *JSONAPI) ResendEvent(ctx context.Context, params *jsoncmd.ResendEventParams) (*database.Event, error) {
 	return h.Resend(ctx, params.TransactionID)
 }
@@ -179,7 +201,7 @@ func (h *JSONAPI) RedactEvent(ctx context.Context, params *jsoncmd.RedactEventPa
 
 func (h *JSONAPI) SetState(ctx context.Context, params *jsoncmd.SendStateEventParams) (id.EventID, error) {
 	return h.HiClient.SetState(ctx, params.RoomID, params.EventType, params.StateKey, params.Content, mautrix.ReqSendEvent{
-		UnstableDelay: time.Duration(params.DelayMS) * time.Millisecond,
+		UnstableDelay: params.DelayMS.Duration,
 	})
 }
 
@@ -226,6 +248,10 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 }
 
 func (h *JSONAPI) SetProfileField(ctx context.Context, params *jsoncmd.SetProfileFieldParams) error {
+	// Value is a raw JSON field, so nil means it was omitted
+	if params.Value == nil {
+		return h.Client.DeleteProfileField(ctx, params.Field)
+	}
 	return h.Client.SetProfileField(ctx, params.Field, params.Value)
 }
 
@@ -254,6 +280,10 @@ func (h *JSONAPI) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) 
 
 func (h *JSONAPI) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
 	return nonNilArray(h.DB.Event.GetRelatedEvents(ctx, params.RoomID, params.EventID, params.RelationType))
+}
+
+func (h *JSONAPI) GetStickyEvents(ctx context.Context, params *jsoncmd.GetStickyEventsParams) ([]*database.Event, error) {
+	return nonNilArray(h.DB.Event.GetActiveSticky(ctx, params.RoomID))
 }
 
 func (h *JSONAPI) GetEventContext(ctx context.Context, params *jsoncmd.GetEventContextParams) (*jsoncmd.EventContextResponse, error) {
@@ -306,7 +336,7 @@ func (h *JSONAPI) JoinRoom(ctx context.Context, params *jsoncmd.JoinRoomParams) 
 			zerolog.Ctx(ctx).Warn().Msg("Invited room metadata not found for from_invite join request")
 		} else if dmUserID := invite.GetDMUserID(h.Account.UserID); dmUserID != "" {
 			err = h.ConvertToDM(ctx, invite.ID, dmUserID)
-			if err != nil {
+			if err != nil && !errors.Is(err, ErrMDirectNoOp) {
 				return nil, fmt.Errorf("failed to mark room as DM: %w", err)
 			}
 		}
@@ -416,6 +446,21 @@ func (h *JSONAPI) LoginCustom(ctx context.Context, params *jsoncmd.LoginCustomPa
 
 func (h *JSONAPI) Verify(ctx context.Context, params *jsoncmd.VerifyParams) error {
 	return h.HiClient.Verify(ctx, params.RecoveryKey)
+}
+
+func (h *JSONAPI) GenerateRecoveryKey(params *jsoncmd.GenerateRecoveryKeyParams) (*jsoncmd.RecoveryKeyResponse, error) {
+	key, err := ssss.NewKey(params.Passphrase)
+	if err != nil {
+		return nil, err
+	}
+	return &jsoncmd.RecoveryKeyResponse{
+		RecoveryKey:    key.RecoveryKey(),
+		PassphraseMeta: key.Metadata.Passphrase,
+	}, nil
+}
+
+func (h *JSONAPI) ResetEncryption(ctx context.Context, params *jsoncmd.ResetEncryptionParams) error {
+	return h.HiClient.ResetEncryption(ctx, params.RecoveryKey, params.PassphraseMeta, params.AccountPassword)
 }
 
 func (h *JSONAPI) DiscoverHomeserver(ctx context.Context, params *jsoncmd.DiscoverHomeserverParams) (*mautrix.ClientWellKnown, error) {

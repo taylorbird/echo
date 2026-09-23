@@ -261,6 +261,9 @@ const MessageComposer = () => {
 			return
 		}
 		doSendMessage(state)
+		if (room.preferences.refocus_input_after_send) {
+			textInput.current?.focus()
+		}
 	}
 	const doSendMessage = (state: ComposerState) => {
 		if (editing) {
@@ -458,6 +461,7 @@ const MessageComposer = () => {
 			if (autocompleteUpdate !== undefined) {
 				setAutocomplete(autocompleteUpdate && { ...autocomplete, ...autocompleteUpdate })
 				evt.preventDefault()
+				evt.stopPropagation()
 			}
 		} else if (fullKey === "ArrowUp" && inp.selectionStart === 0 && inp.selectionEnd === 0) {
 			const currentlyEditing = editing

@@ -38,6 +38,7 @@ import {
 	RPCEvent,
 	RawDBEvent,
 	ReceiptType,
+	RecoveryKeyResponse,
 	RelatesTo,
 	RelationType,
 	ReqCreateRoom,
@@ -143,7 +144,7 @@ export default abstract class RPCClient {
 				headers["Authorization"] = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
 			}
 
-			const resp = await fetch(`${BACKEND_URL}_gomuks/auth`, {
+			const resp = await fetch(`${BACKEND_URL}_gomuks/auth?secure=${window.isSecureContext}`, {
 				method: "POST",
 				headers,
 				credentials: BACKEND_CREDENTIALS,
@@ -159,11 +160,16 @@ export default abstract class RPCClient {
 				return false
 			}
 
+			let body = ""
+			try {
+				body = (await resp.text()).trim()
+			} catch {}
+			const authFailPrefix = `Authentication failed: ${resp.status} ${resp.statusText}`
 			if (!resp.ok && !signal.aborted) {
 				this.connect.emit({
 					connected: false,
 					reconnecting: false,
-					error: `Authentication failed: ${resp.statusText}`,
+					error: [authFailPrefix, body].filter(x => !!x).join(" - "),
 				})
 				return false
 			}
@@ -212,6 +218,16 @@ export default abstract class RPCClient {
 		synchronous: boolean = false,
 	): Promise<RawDBEvent> {
 		return this.request("send_event", { room_id, type, content, disable_encryption, synchronous })
+	}
+
+	sendStickyEvent(
+		room_id: RoomID,
+		type: EventType,
+		content: unknown,
+		sticky_duration_ms: number,
+		delay_ms?: number,
+	): Promise<EventID> {
+		return this.request("send_sticky_event", { room_id, type, content, sticky_duration_ms, delay_ms })
 	}
 
 	resendEvent(transaction_id: string): Promise<RawDBEvent> {
@@ -263,7 +279,7 @@ export default abstract class RPCClient {
 		return this.request("get_profile", { user_id })
 	}
 
-	setProfileField(field: string, value: JSONValue): Promise<void> {
+	setProfileField(field: string, value?: JSONValue): Promise<void> {
 		return this.request("set_profile_field", { field, value })
 	}
 
@@ -307,6 +323,10 @@ export default abstract class RPCClient {
 
 	getRelatedEvents(room_id: RoomID, event_id: EventID, relation_type?: RelationType): Promise<RawDBEvent[]> {
 		return this.request("get_related_events", { room_id, event_id, relation_type })
+	}
+
+	getStickyEvents(room_id: RoomID): Promise<RawDBEvent[]> {
+		return this.request("get_sticky_events", { room_id })
 	}
 
 	getMentions(
@@ -398,6 +418,14 @@ export default abstract class RPCClient {
 
 	verify(recovery_key: string): Promise<void> {
 		return this.request("verify", { recovery_key })
+	}
+
+	generateRecoveryKey(passphrase?: string): Promise<RecoveryKeyResponse> {
+		return this.request("generate_recovery_key", { passphrase })
+	}
+
+	resetEncryption(key: RecoveryKeyResponse, account_password?: string): Promise<void> {
+		return this.request("reset_encryption", { ...key, account_password })
 	}
 
 	requestOpenIDToken(): Promise<RespOpenIDToken> {

@@ -64,9 +64,29 @@ func (h *HiClient) getInitialSyncRoom(ctx context.Context, room *database.Room) 
 	return syncRoom
 }
 
+func (h *HiClient) getInitialSyncAccountData(ctx context.Context) (first, last map[event.Type]*database.AccountData) {
+	ad, err := h.DB.AccountData.GetAllGlobal(ctx, h.Account.UserID)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("Failed to get global account data")
+		return
+	}
+	first = make(map[event.Type]*database.AccountData, len(ad))
+	last = make(map[event.Type]*database.AccountData, 1)
+	for _, data := range ad {
+		switch data.Type {
+		case "im.ponies.emote_rooms":
+			last[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
+		default:
+			first[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
+		}
+	}
+	return
+}
+
 func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*jsoncmd.SyncComplete] {
 	return func(yield func(*jsoncmd.SyncComplete) bool) {
 		maxTS := time.Now().Add(1 * time.Hour)
+		firstAccountData, lastAccountData := h.getInitialSyncAccountData(ctx)
 		{
 			spaces, err := h.DB.Room.GetAllSpaces(ctx)
 			if err != nil {
@@ -76,13 +96,8 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 				return
 			}
 			payload := jsoncmd.SyncComplete{
-				Rooms: make(map[id.RoomID]*jsoncmd.SyncRoom, len(spaces)),
-			}
-			for _, room := range spaces {
-				payload.Rooms[room.ID] = h.getInitialSyncRoom(ctx, room)
-				if ctx.Err() != nil {
-					return
-				}
+				Rooms:       make(map[id.RoomID]*jsoncmd.SyncRoom, len(spaces)),
+				AccountData: firstAccountData,
 			}
 			payload.TopLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
 			if err != nil {
@@ -97,6 +112,16 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 					zerolog.Ctx(ctx).Err(err).Msg("Failed to get space edges to send to client")
 				}
 				return
+			}
+			for _, room := range spaces {
+				payload.Rooms[room.ID] = h.getInitialSyncRoom(ctx, room)
+				if ctx.Err() != nil {
+					return
+				}
+				_, hasEdges := payload.SpaceEdges[room.ID]
+				if !hasEdges {
+					payload.SpaceEdges[room.ID] = []*database.SpaceEdge{}
+				}
 			}
 			payload.InvitedRooms, err = h.DB.InvitedRoom.GetAll(ctx)
 			if err != nil {
@@ -141,17 +166,6 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 			}
 		}
 		// This is last so that the frontend would know about all rooms before trying to fetch custom emoji packs
-		ad, err := h.DB.AccountData.GetAllGlobal(ctx, h.Account.UserID)
-		if err != nil {
-			zerolog.Ctx(ctx).Err(err).Msg("Failed to get global account data")
-			return
-		}
-		payload := jsoncmd.SyncComplete{
-			AccountData: make(map[event.Type]*database.AccountData, len(ad)),
-		}
-		for _, data := range ad {
-			payload.AccountData[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
-		}
-		yield(&payload)
+		yield(&jsoncmd.SyncComplete{AccountData: lastAccountData})
 	}
 }

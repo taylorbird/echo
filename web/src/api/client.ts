@@ -44,6 +44,7 @@ export default class Client {
 	#stateRequestPromise: Promise<void> | null = null
 	#gcInterval: ReturnType<typeof setInterval> | undefined
 	#toDeviceRequested = false
+	passwordCache?: string
 
 	constructor(readonly rpc: RPCClient) {
 		this.rpc.event.listen(this.#handleEvent)
@@ -347,6 +348,17 @@ export default class Client {
 			return []
 		}
 		const events = await this.rpc.getRelatedEvents(room.roomID, eventID, relationType)
+		return events.map(evt => room.getOrApplyEvent(evt))
+	}
+
+	async getStickyEvents(room: RoomStateStore | RoomID | undefined) {
+		if (typeof room === "string") {
+			room = this.store.rooms.get(room)
+		}
+		if (!room) {
+			return []
+		}
+		const events = await this.rpc.getStickyEvents(room.roomID)
 		return events.map(evt => room.getOrApplyEvent(evt))
 	}
 

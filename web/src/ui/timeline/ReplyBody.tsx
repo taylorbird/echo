@@ -123,7 +123,7 @@ export const ReplyBody = ({
 				type: "thread",
 				threadRoot,
 			})
-		} else if (!jumpToVisibleEvent(event.event_id, evt.currentTarget.closest(".timeline-list"))) {
+		} else if (!jumpToVisibleEvent(event.event_id, evt.currentTarget.closest(".timeline-list"), roomCtx)) {
 			jumpToEvent(roomCtx, event.event_id)
 		}
 	}

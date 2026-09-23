@@ -29,8 +29,9 @@ import {
 } from "matrix-widget-api"
 import { BACKEND_CREDENTIALS, BACKEND_URL } from "@/api/backend.ts"
 import Client from "@/api/client.ts"
+import { getMediaURL } from "@/api/media.ts"
 import { RoomStateStore } from "@/api/statestore"
-import { EventRowID, RoomID } from "@/api/types"
+import { ContentURI, EventRowID, RoomID } from "@/api/types"
 import { matrixToToMatrixURI } from "@/util/validation.ts"
 import { filterEvent, isRecord, iterRoomTimeline, memDBEventToIRoomEvent, notNull } from "./util"
 
@@ -67,6 +68,40 @@ class GomuksWidgetDriver extends WidgetDriver {
 			const rawDBEvt = await this.client.rpc.sendEvent(roomID, eventType, content, false, true)
 			return { eventId: rawDBEvt.event_id, roomId: rawDBEvt.room_id }
 		}
+	}
+
+	async sendStickyEvent(
+		stickyDurationMS: number,
+		eventType: string,
+		content: unknown,
+		roomID: string | null = null,
+	): Promise<ISendEventDetails> {
+		if (!isRecord(content)) {
+			throw new Error("Content must be an object")
+		}
+		roomID = roomID ?? this.room.roomID
+		const eventID = await this.client.rpc.sendStickyEvent(roomID, eventType, content, stickyDurationMS)
+		return { eventId: eventID, roomId: roomID }
+	}
+
+	async sendDelayedStickyEvent(
+		delay: number | null,
+		parentDelayID: string | null,
+		stickyDurationMS: number,
+		eventType: string,
+		content: unknown,
+		roomID: string | null = null,
+	): Promise<ISendDelayedEventDetails> {
+		if (!isRecord(content)) {
+			throw new Error("Content must be an object")
+		} else if (parentDelayID !== null) {
+			throw new Error("Parent delayed events are not supported")
+		} else if (!delay) {
+			throw new Error("Delay must be a number")
+		}
+		roomID = roomID ?? this.room.roomID
+		const delayID = await this.client.rpc.sendStickyEvent(roomID, eventType, content, stickyDurationMS, delay)
+		return { delayId: delayID, roomId: roomID }
 	}
 
 	async sendDelayedEvent(
@@ -204,6 +239,10 @@ class GomuksWidgetDriver extends WidgetDriver {
 		)).flatMap(evts => evts)
 	}
 
+	async readStickyEvents(roomID: RoomID): Promise<IRoomEvent[]> {
+		return (await this.client.getStickyEvents(roomID)).map(memDBEventToIRoomEvent)
+	}
+
 	async readRoomAccountData(type: string, roomIDs: string[] | null = null): Promise<IRoomAccountData[]> {
 		return this.readRoomData(roomIDs, room => {
 			const content = room.accountData.get(type)
@@ -246,8 +285,8 @@ class GomuksWidgetDriver extends WidgetDriver {
 		return { contentUri: json.url }
 	}
 
-	async downloadFile(url: string): Promise<{ file: XMLHttpRequestBodyInit }> {
-		const res = await fetch(url)
+	async downloadFile(mxc: ContentURI): Promise<{ file: XMLHttpRequestBodyInit }> {
+		const res = await fetch(getMediaURL(mxc)!)
 		if (!res.ok) {
 			throw new Error(res.statusText)
 		}

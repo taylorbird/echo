@@ -136,6 +136,8 @@ export interface BaseDBEvent {
 	reactions?: Record<string, number>
 	last_edit_rowid?: EventRowID
 	unread_type: UnreadType
+
+	sticky_duration_ms?: number
 }
 
 export interface RawDBEvent extends BaseDBEvent {
@@ -331,4 +333,16 @@ export interface KeyRestoreProgress  {
 	saved: number
 	post_processed: number
 	total: number
+}
+
+export interface PassphraseMetadata {
+	algorithm: string
+	iterations: number
+	salt: string
+	bits: number
+}
+
+export interface RecoveryKeyResponse {
+	recovery_key: string
+	passphrase_meta?: PassphraseMetadata
 }
