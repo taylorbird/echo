@@ -40,7 +40,9 @@ div.release-notes {
 		display: flex;
 		flex-direction: column;
 		gap: .75rem;
-		padding-right: .25rem;
+		/* WKWebView draws the scrollbar over the content rather than beside it, so the text
+		   needs its own room on the right or line ends disappear under the thumb. */
+		padding-right: 1rem;
 		line-height: 1.55;
 
 		> h3 {
