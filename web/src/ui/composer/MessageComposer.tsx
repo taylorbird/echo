@@ -372,7 +372,8 @@ const MessageComposer = () => {
 		if (room.preferences.hide_fingerprint) {
 			url_previews = undefined
 		} else {
-			extra["app.gomuks"] = "web"
+			// Upstream's key, so other gomuks-aware clients still recognise it; the value names echo.
+			extra["app.gomuks"] = "echo"
 		}
 		client.sendMessage({
 			room_id: room.roomID,

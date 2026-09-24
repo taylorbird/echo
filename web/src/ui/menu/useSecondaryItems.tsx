@@ -22,7 +22,7 @@ import copyToClipboard from "@/util/clipboard.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { getEventLevel } from "@/util/powerlevel.ts"
 import { ensureString, getLocalpart } from "@/util/validation.ts"
-import { ConfirmWithMessageModal, ModalCloseContext, ModalContext, modals } from "../modal"
+import { ConfirmWithMessageModal, ModalCloseContext, ModalContext, ResultModal, modals } from "../modal"
 import { RoomContext, RoomContextData } from "../roomview/roomcontext.ts"
 import JSONView from "../util/JSONView.tsx"
 import { getPending, getPowerLevels } from "./util.ts"
@@ -152,10 +152,17 @@ export const useSecondaryItems = (
 	}
 	const onClickRerequestSession = () => {
 		closeModal()
-		client.rpc.rerequestSession(evt.room_id, evt.content.session_id, evt.sender).then(
-			() => window.alert("Key re-requested successfully"),
-			err => window.alert(`Failed to re-request key: ${err}`),
-		)
+		openModal({
+			dimmed: true,
+			boxed: true,
+			content: <ResultModal
+				title="Request key"
+				promise={client.rpc.rerequestSession(evt.room_id, evt.content.session_id, evt.sender)}
+				pending="Asking your other devices and the sender for the key to this message."
+				success="Key requested. The message will unlock if another device or the sender still has it."
+				failure={err => `The key couldn't be requested: ${err}`}
+			/>,
+		})
 	}
 
 	const showMediaPreviews = roomCtx.store.preferences.show_media_previews

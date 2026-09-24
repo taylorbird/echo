@@ -377,11 +377,27 @@
 }
 
 /*
- * Inter comes from the Google Fonts stylesheet in index.html, which carries the 600
- * weight echo's names and labels use. Upstream's bundled Inter (400/500/700 only) is
- * not declared here: two sources for one family make it unpredictable which face a
- * given weight resolves to.
+ * Inter is bundled, as upstream does, but as the official Inter 4.1 variable font
+ * rather than upstream's static 400/500/700 files: echo's names and labels are set in
+ * 600, which that set lacks. One file per style covers every weight, and nothing is
+ * fetched from Google Fonts any more.
  */
+@font-face {
+	font-family: "Inter";
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url("fonts/InterVariable.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Inter";
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url("fonts/InterVariable-Italic.woff2") format("woff2");
+}
+
 @font-face {
 	font-family: 'Fira Code VF';
 	src: url('fonts/FiraCode-VF.woff2');

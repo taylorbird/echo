@@ -2,6 +2,12 @@
 
 <!-- Things uncertain, need revisiting, or blocked on -->
 
+## New this session (2026-09-23)
+
+- **Styling pass planned for the release after the upstream sync** (user, 2026-09-24: "come back to it probably the next release, don't forget"). Screens still on upstream's plain look: (1) the reaction hover tooltip (below), (2) the full reactions list modal (web/src/ui/modal/EventReactions.tsx), (3) the message search panel's options area (checkboxes, date inputs; web/src/ui/rightpanel/MessageSearch.tsx), (4) the devtools push rule editor, (5) the encryption verification screen (web/src/ui/login/VerificationScreen.tsx; still titled "gomuks web", now has Log out / Reset encryption / Set up encryption buttons), (6) the disabled "(N more)" button in user info mutual rooms. Suggested order: 1 and 5 first. Also: `window.alert` is still used for errors across the menus (RoomMenu, usePrimaryItems, useSecondaryItems); only "Request key" moved to the echo-styled ResultModal so far.
+- **Compact room list** (upstream v26.09 option under Appearance): user will look at it before the upstream-sync release ships; keep or hide.
+- **Reaction "who reacted" tooltip needs a design pass** (user, 2026-09-23, "for later"). Hovering a reaction chip shows a small dark box with the reactors' names (`div.reaction-tooltip`, web/src/ui/timeline/TimelineEvent.css) that sits over the message text above the chip. Should match the rest of the UI (radius, padding, surface, placement). Upstream v26.04 also added a full reactions list modal (EventReactions.tsx) that may want the same treatment.
+
 ## New this session (2026-09-21)
 
 - **Web favicon should point at the penguin** (`web/index.html:5` still `<link rel="icon" href="gomuks.png" />`). The Dock icon is the echo penguin; the browser favicon is the upstream gomuks gopher. Small fix, non-blocking, deferred — note the penguin currently lives at `web/src/icons/echo-penguin.png` (a Vite import), so the favicon needs a copy under `web/public/` (or a Vite-resolved `href`), not just an href swap.
