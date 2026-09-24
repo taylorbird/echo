@@ -429,3 +429,32 @@ nohup scripts/release.sh minor > <scratch>/release-<version>.log 2>&1 &
 **Format:** one source line per bullet, never hard-wrapped. GitHub release bodies show wraps as line breaks. App versions up to 0.6.1 split a wrapped bullet into a one-line bullet plus a stray paragraph (parser fixed 2026-09-23, but old installs render the feed with the old parser).
 **Between releases** `RELEASE_NOTES.md` holds only the header comment, so `release.sh` refuses to run until the notes are written.
 **Past notes can be fixed without a release:** `gh release edit vX --notes-file` for the GitHub body (keep the "---\n\nDownload the DMG below…" footer), and for the Latest release only, download `latest.json`, replace `.notes` with jq, check that nothing else differs, and `gh release upload --clobber`. The updater signature covers the tarball, not latest.json.
+
+## 2026-09-24 (upstream sync, 0.7.0)
+
+### Go backend build tags: goolm and sqlite_fts5 both mandatory
+**Fact:** As of gomuks v26.09, the backend build requires TWO tags: `go build -tags goolm,sqlite_fts5 ./cmd/gomuks`. The `goolm` tag (pure-Go olm implementation, available since mautrix v0.26.3) is already in place. The `sqlite_fts5` tag is NEW upstream (local message search in pkg/hicli/search.go); without it, `pkg/hicli/nofts.go` deliberately fails the build. Both are mandatory. go.mod specifies go 1.26 as the minimum (toolchain is go1.27.1).
+
+### Node >= 22.12 required for Vite 8 + rolldown
+**Fact:** Vite 8 uses rolldown (bundler rewrite), which ships a native binary rolldown-binding.darwin-arm64.node. Node 22.2.0 (the default fnm version on this machine) is too old; npm silently skips the native binary and fails to load any module. Builds complete but the app crashes at runtime with missing dependencies. Node 22.23.1 works. **Discipline:** prefix npm installs, `tauri dev`, and release.sh with `fnm exec --using=22.23.1` to guarantee the right Node version. The dev session snapshot (2026-09-23) ran as `nohup fnm exec --using=22.23.1 /Users/tbird/gomuks/scripts/release.sh minor > ~/Library/Logs/echo-release/release-0.7.0.log 2>&1 &` and `fnm exec --using=22.23.1 sh -c 'cd /Users/tbird/gomuks/web && exec ./node_modules/.bin/tauri dev'`.
+
+### gh token lacks workflow scope; resolve workflows before pushing upstream syncs
+**Fact:** The taylorbird gh token (personal account) lacks the `workflow` scope, which is required to push changes to `.github/workflows/*` files. This only comes up during upstream syncs, where merge commits may touch `.github/workflows/go.yml` or `.github/workflows/js.yml`. On an upstream sync, these files are pull-request-only (echo runs workflows locally, not in GitHub Actions), so resolution rule: KEEP echo's copies of those files (commit 86694d3b restored them after a rejected push). **Discipline:** before pushing any branch that touches `.github/workflows/*`, resolve them to echo's side (resolve conflicts to ours). If this approach ever changes, the full alternative is granting the token the `workflow` scope, but that broadens its permissions across all repos.
+
+### @tauri-apps package versions must stay locked per Cargo.lock
+**Fact:** The web/package-lock.json entries for `@tauri-apps/plugin-updater` (2.10.1), `@tauri-apps/plugin-opener` (2.5.4), and `@tauri-apps/cli` (2.11.4) must match the Cargo.lock versions exactly, or there are version mismatches at runtime. Additionally, `react-colorful` (5.6.1) is locked. These are verified in the web/src-tauri/Cargo.lock and must not drift. **During upstream syncs:** if Cargo.lock is regenerated as part of a merge conflict resolution, re-lock the npm packages to match before committing.
+
+### OAuth device code via Matrix Authentication Service (legacy SSO removed)
+**Fact:** Upstream gomuks removed the legacy SSO login endpoint (`pkg/gomuks/sso.go` deleted). In its place, all sign-in now uses OAuth device code flow via the homeserver's Matrix Authentication Service (MAS). The device code screen appears in `web/src/ui/login/LoginScreen.tsx` with only "Continue in your browser" visible (no username entry). Client registration uses a static `client_name: "echo"` set at the request time (not fetched from config). The consent page should display "echo" (if the MAS is configured with the right metadata), but on mssj.me it shows the raw redirect URL because that homeserver's well-known advertises legacy MAS without OIDC client registration metadata. This is upstream's limitation, not echo's.
+
+### Inter 4.1 variable fonts bundled; Google Fonts removed
+**Supersedes prior "Inter from Google Fonts" note.** web/src/fonts/ now holds Inter 4.1 variable fonts (InterVariable.woff2 and InterVariable-Italic.woff2), replacing upstream's static 400/500/700 set. The variable fonts support weight 600 (used by echo for sender names), which the static set lacked. Google Fonts link removed from index.html.
+
+### DB schema v27 incompatible with pre-0.7.0 builds
+**Fact:** The 0.7.0 release contains schema changes (upstream's DB evolution). Installs running 0.6.2 or earlier will auto-upgrade their database on first run of 0.7.0. Once upgraded, that database cannot be read by 0.6.2 or earlier — a downgrade will fail with schema mismatch. This is normal for Matrix clients and upstream's decision. Echo users should not downgrade after running 0.7.0.
+
+### Release logs and dev logs in separate directories
+**Fact:** Release builds log to `~/Library/Logs/echo-release/` (one file per release, named by version). Dev builds log to `~/Library/Logs/echo-dev/`. The distinction keeps release build diagnostics (for production testing) separate from the current dev session's logs.
+
+### PreToolUse hook requires push review before git push
+**Mechanism:** A PreToolUse hook in this environment (configured in ~/.claude/settings.json) requires that every `git push` be preceded by a push review (the `push-review` command or the equivalent tool). This is a permission control: unpushed commits cannot reach origin without review. **Exception:** release.sh pushes internally (as part of its release ritual) where the hook cannot intercept. The pattern is: do the push review manually before launching release.sh, or let release.sh's internal push succeed if the review is already done. Never try to work around the hook with a different approach (force push, shell redirection, subagent push); surface what's blocked and let the user decide.

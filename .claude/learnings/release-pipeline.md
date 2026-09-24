@@ -121,3 +121,19 @@ This pins both `git push` (via the credential helper) and any subsequent `gh` CL
 ## Wrapped bullets broke the notes parser (fixed 2026-09-23)
 
 `parseReleaseNotes` in `web/src/util/releasenotes.ts` used to close the list on any line not starting with `- `. Every hard-wrapped bullet from 0.4.0 to 0.6.1 therefore rendered in the "What's new" panel as a one-line bullet followed by the rest of the sentence as a separate paragraph. Now a plain line straight after a bullet continues that bullet (covered by a test). Installed builds up to 0.6.1 still have the old parser, which is why notes are written with one line per bullet. Editing past notes without cutting a release is covered in constraints.md (2026-09-23).
+
+## 0.7.0 Released 2026-09-24
+
+**Version:** 0.7.0 (minor bump) shipped 2026-09-24 with upstream sync (v26.03 through v26.09) as background. Echo changes: Inter 4.1 variable fonts bundled (web/src/fonts/), removes Google Fonts link; OAuth device code sign-in replaces legacy SSO (upstream removed pkg/gomuks/sso.go); composer mentions and mention pills work (@Name, mention-picker taller, pills rounded .5rem); user mention pills carry mentioned person's room-aware sender colour via custom property `--mention-color` + `@` prefix; space sub-filters work from boot (null filter = All chats); Rooms/Direct messages views show static section titles (collapse only in All chats); Tab in composer no longer moves focus unless IME composing; macOS webview configured allowsInlinePredictions for inline text prediction (objc2 0.6 + objc2-web-kit 0.3 new deps); "Request key" now ResultModal-styled; outgoing messages carry "app.gomuks": "echo" (was "web") unless hide-fingerprint pref on.
+
+**Release hiccup:** push rejected (gh token lacks `workflow` scope, .github/workflows/ changed in merge). Fix: restore echo's copies of .github/workflows files (commit 86694d3b), move unpushed lightweight tag v0.7.0 to the new commit, push main + tag with `GH_TOKEN="$(gh auth token --user taylorbird)" git push origin main refs/tags/v0.7.0`, then `gh release create v0.7.0 <artifacts> ... --latest`. DMG, echo.app.tar.gz, .sig, latest.json all pre-built and notarized, ready for manual upload. Both notarizations Accepted; push and release succeeded. Feed verified serving 0.7.0.
+
+## Upstream Merge by Tag with Real Merges (2026-09-24)
+
+**Pattern:** When syncing an upstream Matrix client library with many point releases, merge by tag with `git merge --no-ff upstream/v<tag>` for each release, rather than cherry-picking commits. This keeps history readable (one commit per release) and makes future syncs incremental (next sync starts from the last-merged tag, not a scattered commit range).
+
+**Conflict rule (2026-09-24):** When merging, keep echo's visual design and take upstream's behaviour changes. Upstream visual-only changes (theme colors, padding, room-name weight, Inter tuning) stay out; all protocol/backend/library changes come in.
+
+**Verified post-merge:** go build -tags goolm,sqlite_fts5, tsc, npm run lint, vitest, production build all clean. Rebuild dev sidecar with same flags.
+
+**19 unreleased upstream commits** after v26.09 were not merged (they're on upstream/main but not tagged). Next sync can pick them up incrementally by fast-forwarding to a later tag or commit.

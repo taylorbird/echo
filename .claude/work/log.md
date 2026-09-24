@@ -2,6 +2,41 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-09-24 10:35
+
+**Session Summary**: Upstream sync completed: fetched gomuks releases v26.03 through v26.09 (v0.2603.0 through v0.2609.0), merged as separate commits on branch upstream-sync, main fast-forwarded to merge base (head 91d2f022 pushed). 0.7.0 released (minor bump due to upstream OAuth MSC removal + app fingerprint change). Post-merge echo changes: Inter 4.1 variable fonts bundled (web/src/fonts/, removes Google Fonts link), outgoing messages carry "app.gomuks": "echo" (was "web") unless hide-fingerprint pref on, "Request key" now ResultModal-styled, composer Tab no longer moves focus (preventDefault unless IME composing), macOS webview configured with allowsInlinePredictions (function macos_webview_configuration in lib.rs, new deps objc2 0.6 and objc2-web-kit 0.3, user confirmed inline predictions work + Tab accepts them). Release 0.7.0 had one hiccup (push rejected, .github/workflows changed, fix: restore echo's copies, move unpushed tag v0.7.0 to new commit, push main + tag manually, create release manually with gh). 19 unreleased upstream commits after v26.09 not merged (later sync can pick them up incremental). Untracked work-state files ready for checkpoint update. Tree clean, dev app stopped.
+
+**Decisions Made**:
+- Merge upstream by tag with real merges (not cherry-picks): incremental and downstream-compatible
+- Conflict rule: keep echo's visual, take upstream's behaviour
+- Upstream visual-only changes (theme colors, padding, room-name weight, Inter tuning) left out
+- Compact room list option (v26.09) kept
+- Keep echo's .github/workflows copies rather than grant token workflow scope
+- Only "Request key" moved off window.alert; other menu alerts remain for styling pass
+
+**Actions Taken**:
+- Fetched upstream via git fetch; merged upstream/main v0.2603.0 through v0.2609.0 by tag with --no-ff
+- Merge conflicts resolved per rule (visual kept as echo, behaviour taken from upstream)
+- web/package-lock.json: took upstream's, restored echo's @tauri-apps/* and react-colorful versions, ran npm install
+- Verified: go build -tags goolm,sqlite_fts5, tsc, npm run lint, vitest, production build all clean
+- Rebuilt dev sidecar: go build -tags goolm,sqlite_fts5 -o web/src-tauri/binaries/gomuks-aarch64-apple-darwin ./cmd/gomuks
+- Resolved .github/workflows to echo's side before pushing
+- Kept echo's pkg/hicli/pushrules.go isInviteForMe gate
+- Release 0.7.0: npm build, go build, tauri build, sign, notarize, staple (all verified + GitHub release)
+- Updated .claude/work/current.md, constraints.md, log.md, questions.md
+- Updated learnings files: release-pipeline.md, dev-environment-gotchas.md, tauri-macos-chrome.md
+- Created new learnings file upstream-sync.md with sync procedure
+
+**Context/Thoughts**:
+- Upstream sync as separate commits keeps history readable and allows later syncs to start from v26.09
+- Workflow-scope rejection resolved elegantly: echo's CI never runs (Actions disabled); keeping local copies is simpler than expanding token perms
+- OAuth device code is upstream's design (MAS integration); echo just passes client_name: "echo"
+- Variable Inter 4.1 was chosen over static set because weight 600 (sender names) is out of upstream's range
+- Tab accept inline predictions is unverified by user live (user said "seems to work"); needs production testing
+- DB schema v27 is upstream-driven; no action needed, just a consequence of the sync
+- 19 unreleased upstream commits will be picked up on the next sync (no rush to cherry-pick now)
+- All durable constraints recorded in constraints.md with 2026-09-24 date
+
 ## 2026-09-21 17:22
 
 **Session Summary**: One long session spanning 08:40–17:22 PDT. Released 0.6.0 (minor: f9795a08 "chrome: unified title bar, Inter throughout, blue/red unread ramp, Recent sub-filter" containing batch-1 fixes, unread retune, and login redesign from 2026-09-20) and 0.6.1 (patch: disconnected screen, loading-state sweep, release notes rewrite). Both shipped: app and DMG notarized/Accepted, feed verified serving both versions. Penguin logomark is echo original (not upstream gomuks). DisconnectedScreen renders full-window opaque skeleton under filter:blur(3px) with centred box and penguin lockup; different from first-sync SyncBox (which stays bare). Loading unified to one @keyframes sk-sweep animation app-wide with HairlineWait for unknown-shape states; react-spinners removed entirely. 20 UI sites converted from spinners. Durable constraints recorded for all new patterns (skeleton animation, loading idioms, disconnected screen, reduce-motion gates, token scoping). Favicon mismatch (still gomuks.png) deferred to next session.

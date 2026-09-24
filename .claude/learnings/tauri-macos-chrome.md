@@ -55,3 +55,31 @@
 - **Workaround:** Re-export the icon from Icon Composer using the PNG layer as the source instead of SVG. A 1024×1024 transparent RGBA PNG works fine.
 - **Tauri integration:** @tauri-apps/cli ≥2.11 bundles .icon files listed in `bundle.icon` via actool → Assets.car (macOS 26+ asset catalog format). Tauri 2.10 and earlier don't support .icon at all.
 - **Regeneration:** The canonical approach is to regenerate all icon sizes from a single source PNG via `npx tauri icon <path-to-png>`, which produces icns, ico, and PNG outputs. This is the "safe" path. If you want a .icon package, it must come from Icon Composer with a working PNG layer.
+
+## WKWebViewConfiguration for macOS Inline Predictions (2026-09-24)
+
+**Feature:** macOS has a native inline text prediction feature (similar to iOS Predictive Text). By default, WKWebView disables it (`allowsInlinePredictions = NO` in Objective-C), even if the system setting is on. To enable it:
+
+**Tauri pattern (2026-09-24):** In `web/src-tauri/src/lib.rs`, build a `WKWebViewConfiguration` with the flag set and pass it to the webview window builder:
+
+```rust
+// Dependencies: objc2 0.6, objc2-web-kit 0.3
+use objc2_web_kit::WKWebViewConfiguration;
+
+fn macos_webview_configuration() -> Retained<WKWebViewConfiguration> {
+    let config = WKWebViewConfiguration::new();
+    config.setAllowsInlinePredictions(true);
+    config
+}
+
+// In the window builder:
+WebviewWindowBuilder::new(&app, "main", webview_url)
+    .with_webview_configuration(macos_webview_configuration())
+    .build()
+```
+
+**Behaviour:** Inline predictions appear below text input and Tab accepts the prediction (auto-completes). The system prediction engine watches the textarea and suggests completions based on language context.
+
+**Known quirk:** WRY (Tauri's WebKit wrapper) reuses the supplied configuration and reads its data store back. It does NOT re-register already-registered URL scheme handlers, and it uses the default data store when none is customised. Side effect: if your app needs a custom data store or URL scheme handlers, check WRY source code to see if supplying a custom config will interfere.
+
+**Accessibility note:** Inline predictions require the textarea to be visible in the Accessibility API tree (the echo window reports 0 windows to AX, so Cotypist cannot attach). This is a Tauri/WRY limitation, not an echo configuration.

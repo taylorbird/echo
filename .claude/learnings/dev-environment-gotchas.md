@@ -365,3 +365,47 @@ STOPPED to restore the lockfile-exact tree.
 **Inference:** Tauri/WRY-wide behaviour where the NSWindow is absent from the Accessibility API tree. NOT a consequence of `transparent: true` or `macOSPrivateApi: true` (yaak has both and exhibits the same signature). Related to Cotypist (assistive text prediction) having no text field to attach to because the window is invisible in the AX tree.
 
 **Corrected learning:** "0 windows from System Events" is not by itself evidence of anything. Always validate the query method against an app known to have a window before concluding the app under test has failed.
+
+## Node >= 22.12 Required for Vite 8 + rolldown (2026-09-24)
+
+**Gotcha:** Vite 8 bundles rolldown (rewrite of the JavaScript bundler), which includes a native binary rolldown-binding.darwin-arm64.node. The default fnm Node on this machine is 22.2.0, which is too old to load the native binding. npm silently skips loading it, and the build appears to succeed, but the app crashes at runtime with missing dependencies.
+
+**Symptom:** frontend builds successfully; `tauri dev` launches the webview; page loads; then errors in devtools console indicate missing modules (e.g., "Could not find a default export").
+
+**Fix:** use Node 22.23.1 or later. The machine's fnm has this version available. Prefix npm installs, `tauri dev`, and release.sh with:
+```bash
+fnm exec --using=22.23.1 npm install
+fnm exec --using=22.23.1 npm run build
+fnm exec --using=22.23.1 sh -c 'cd web && exec ./node_modules/.bin/tauri dev'
+fnm exec --using=22.23.1 /path/to/scripts/release.sh minor
+```
+
+**Verified:** 0.7.0 release ran as `nohup fnm exec --using=22.23.1 .../scripts/release.sh minor ...` and both production and dev builds worked correctly.
+
+## Build Tags: goolm and sqlite_fts5 Both Required (2026-09-24)
+
+**Gotcha:** As of gomuks v26.09, the backend build requires TWO tags: `go build -tags goolm,sqlite_fts5 ./cmd/gomuks`. Both are mandatory. The `goolm` tag (pure-Go olm implementation) has been in place since mautrix v0.26.3. The `sqlite_fts5` tag is new upstream (local message search feature); without it, `pkg/hicli/nofts.go` deliberately fails the build.
+
+**Minimum Go version:** go.mod specifies go 1.26 as the minimum (installed toolchain is go1.27.1).
+
+**When running:** any `go build`, `go vet`, or build verification must include both tags:
+```bash
+go build -tags goolm,sqlite_fts5 -o web/src-tauri/binaries/gomuks-aarch64-apple-darwin ./cmd/gomuks
+go vet -tags goolm,sqlite_fts5 ./...
+```
+
+## gh Token Lacks workflow Scope; Resolve .github/workflows Before Upstream Syncs (2026-09-24)
+
+**Gotcha:** The taylorbird gh token (personal account) lacks the `workflow` scope, which is required to push changes to `.github/workflows/*` files. This only becomes visible during upstream syncs: if a merge commit touches .github/workflows/go.yml or .github/workflows/js.yml (the shared GitHub Actions workflows), a `git push` at the end of release.sh will be rejected with "Insufficient permissions" (403). The error message may blame "workflow scope" inaccurately.
+
+**Why it matters:** echo doesn't use GitHub Actions (the workflows are upstream's CI; echo runs locally). Granting the token the full `workflow` scope would widen its permissions globally across all repos — a security trade-off that's not worth it for one file.
+
+**Pattern (2026-09-24):** On an upstream sync, KEEP echo's copies of .github/workflows/go.yml and .github/workflows/js.yml. Before pushing, resolve merge conflicts in those files to echo's side (ours, not theirs). When `git push` runs, it will succeed because the token can push to .github/workflows if the file is one echo already owns.
+
+**Verified:** 0.7.0 release hit this: push was rejected; commit 86694d3b restored .github/workflows to echo's versions; manual `git push` with `GH_TOKEN` pinned succeeded.
+
+## @tauri-apps Package Versions Locked to Cargo.lock (2026-09-24)
+
+**Gotcha:** The web/package-lock.json entries for @tauri-apps/plugin-updater (2.10.1), @tauri-apps/plugin-opener (2.5.4), @tauri-apps/cli (2.11.4), and react-colorful (5.6.1) must match the Cargo.lock versions exactly. Mismatches cause version errors at runtime. This becomes visible after an upstream sync when Cargo.lock is regenerated as part of merge conflict resolution.
+
+**Pattern:** If Cargo.lock changes during a merge, re-lock the npm packages to match BEFORE committing. Verify all four versions align between the two lock files.
