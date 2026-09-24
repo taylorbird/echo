@@ -38,3 +38,9 @@ base64 = "0.22"
 # immediately, so nothing can ever authenticate with it. See ensure_backend_config in lib.rs.
 bcrypt = "0.17"
 rand = "0.9"
+
+# Only to hand the main window a WKWebViewConfiguration with inline predictions on (see
+# macos_webview_configuration in lib.rs). Same versions tauri itself already pulls in.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-web-kit = { version = "0.3", features = ["WKWebViewConfiguration"] }

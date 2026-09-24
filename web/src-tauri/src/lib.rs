@@ -320,6 +320,26 @@ const OG_COLLECTOR_SCRIPT: &str = r#"
 })();
 "#;
 
+/*
+ * WKWebView ships with macOS inline predictions (the grey completion Tab accepts in native
+ * text fields) switched off, whatever the system setting says, and tauri has no option for it.
+ * Passing our own configuration is the only way in: it must be set before the web view exists.
+ * With it on, the system setting decides, the same as in any native app.
+ *
+ * wry keeps doing its own setup on a configuration it is handed; for a fresh one like this,
+ * the data store it reads back is the default store it would have picked anyway.
+ */
+#[cfg(target_os = "macos")]
+fn macos_webview_configuration() -> objc2::rc::Retained<objc2_web_kit::WKWebViewConfiguration> {
+  // Called from run_on_main_thread, so the marker is always available.
+  let mtm = objc2::MainThreadMarker::new().expect("webview configuration built off the main thread");
+  unsafe {
+    let config = objc2_web_kit::WKWebViewConfiguration::new(mtm);
+    config.setAllowsInlinePredictions(true);
+    config
+  }
+}
+
 // Fetches OpenGraph tags by loading the page in a hidden webview. Unlike a plain HTTP
 // client, the real WebKit engine passes Cloudflare's TLS/JS fingerprinting, which is
 // the whole reason this exists: the homeserver's scraper is blocked by such sites.
@@ -462,6 +482,8 @@ pub fn run() {
                   Some(script) => builder.initialization_script(&script),
                   None => builder,
                 };
+                #[cfg(target_os = "macos")]
+                let builder = builder.with_webview_configuration(macos_webview_configuration());
                 if let Err(err) = builder.build() {
                   log::error!("failed to create main window: {err}");
                 }
