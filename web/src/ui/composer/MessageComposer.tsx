@@ -485,6 +485,12 @@ const MessageComposer = () => {
 				evt.preventDefault()
 				evt.stopPropagation()
 			}
+		} else if (fullKey === "Tab" && !evt.nativeEvent.isComposing) {
+			// Tab stays in the composer instead of moving focus to the buttons under it.
+			// In a native text field Tab is how you accept a macOS suggestion, so jumping
+			// to the emoji button felt like the keystroke went somewhere else. Skipped
+			// while an input method is composing, which needs the key for itself.
+			evt.preventDefault()
 		} else if (fullKey === "ArrowUp" && inp.selectionStart === 0 && inp.selectionEnd === 0) {
 			const currentlyEditing = editing
 				? room.editTargets.indexOf(editing.rowid)
