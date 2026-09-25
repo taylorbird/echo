@@ -38,7 +38,7 @@
 ## Files and images
 
 - Files in the chat show as a card with the file type, name and size.
-- Clicking a file opens a window with its details and a **Download** button. Downloads go to your Downloads folder and open when they finish. Images are shown in Finder.
+- Clicking a file opens a window with its details and a **Download** button. Downloads go to your Downloads folder. Documents, audio and video open when they finish, and other files are shown in Finder.
 - Enlarged images open in a window with the controls along the top.
 - Drop files anywhere on the chat to upload them.
 - You can attach several files to one message. Each file is sent as its own message, and your text goes with the last one.

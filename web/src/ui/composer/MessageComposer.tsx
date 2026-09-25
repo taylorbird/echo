@@ -288,13 +288,17 @@ const MessageComposer = () => {
 		const extras = editing ? [] : (state.extraMedia ?? [])
 		if (extras.length) {
 			// Earlier files first, one message each, awaited so they arrive in order;
-			// the text, reply and mentions ride on the last one.
+			// the text, reply and mentions ride on the last one. Only the first send
+			// clears the composer: the later ones run after network round trips, by
+			// which time the box may hold the next message being typed.
 			const main = { ...state, extraMedia: []}
 			void (async () => {
+				let first = true
 				for (const media of extras) {
-					await doSendMessage({ ...emptyComposer, media }, { noReply: true })
+					await doSendMessage({ ...emptyComposer, media }, { noReply: true, keepComposer: !first })
+					first = false
 				}
-				await doSendMessage(main)
+				await doSendMessage(main, { keepComposer: true })
 			})()
 		} else {
 			doSendMessage(state)
@@ -303,14 +307,18 @@ const MessageComposer = () => {
 			textInput.current?.focus()
 		}
 	}
-	const doSendMessage = (state: ComposerState, opts?: { noReply?: boolean }): Promise<unknown> | undefined => {
-		if (editing) {
-			setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
-		} else {
-			setState(emptyComposer)
+	const doSendMessage = (
+		state: ComposerState, opts?: { noReply?: boolean, keepComposer?: boolean },
+	): Promise<unknown> | undefined => {
+		if (!opts?.keepComposer) {
+			if (editing) {
+				setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
+			} else {
+				setState(emptyComposer)
+			}
+			rawSetEditing(null)
+			setAutocomplete(null)
 		}
-		rawSetEditing(null)
-		setAutocomplete(null)
 		const mentions: Mentions = {
 			user_ids: [],
 			room: state.text.includes("@room") && state.mentionRoom,
@@ -630,7 +638,14 @@ const MessageComposer = () => {
 		encodingOpts?: MediaEncodingOptions,
 	) => {
 		uploadChain.current = uploadChain.current.then(() => new Promise<void>(done => {
-			uploadOne(file, filename, encodingOpts, done)
+			// If starting the upload throws, the queue must still move on.
+			try {
+				uploadOne(file, filename, encodingOpts, done)
+			} catch (err) {
+				console.error("Failed to start upload", err)
+				setLoadingMedia(null)
+				done()
+			}
 		}))
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [client.rpc, isEncrypted, attachMedia])

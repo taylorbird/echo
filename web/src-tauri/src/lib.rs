@@ -324,8 +324,8 @@ const OG_COLLECTOR_SCRIPT: &str = r#"
  * Attachment downloads. Media links point at the sidecar and need the webview's session
  * cookie, so they cannot go to the system browser; WKWebView downloads them instead. wry
  * already picks ~/Downloads/<suggested name> (with a " (n)" suffix on collision), so all this
- * adds is what happens once the file lands: images (the lightbox's download button) are shown
- * in Finder, anything else (a PDF someone sent) opens in its default app.
+ * adds is what happens once the file lands: a document or media file (a PDF someone sent)
+ * opens in its default app, and everything else, images included, is shown in Finder.
  *
  * On macOS the Finished event carries no path, so the destination from Requested is kept per
  * URL until then.
@@ -350,20 +350,27 @@ fn attachment_download_handler<R: tauri::Runtime>(
           log::warn!("attachment download failed: {url}");
           return true;
         }
-        let is_image = saved
+        let ext = saved
           .extension()
           .and_then(|ext| ext.to_str())
-          .map(|ext| {
-            matches!(
-              ext.to_ascii_lowercase().as_str(),
-              "png" | "jpg" | "jpeg" | "gif" | "webp" | "heic" | "avif" | "bmp" | "tiff"
-            )
-          })
-          .unwrap_or(false);
-        let result = if is_image {
-          tauri_plugin_opener::reveal_item_in_dir(&saved)
-        } else {
+          .map(|ext| ext.to_ascii_lowercase())
+          .unwrap_or_default();
+        // Only documents and media are opened for you. Anyone in a room can send a file,
+        // and handing a script, installer, app bundle or web page straight to its default
+        // app is too much to do on one click; those are shown in Finder instead, as are
+        // images (the lightbox's download button) and anything unrecognised.
+        let opens = matches!(
+          ext.as_str(),
+          "pdf" | "txt" | "md" | "rtf" | "csv"
+            | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "pages" | "numbers" | "key"
+            | "odt" | "ods" | "odp"
+            | "mp3" | "m4a" | "aac" | "wav" | "flac" | "ogg" | "opus"
+            | "mp4" | "m4v" | "mov" | "webm"
+        );
+        let result = if opens {
           tauri_plugin_opener::open_path(&saved, None::<&str>)
+        } else {
+          tauri_plugin_opener::reveal_item_in_dir(&saved)
         };
         if let Err(err) = result {
           log::warn!("could not open downloaded attachment {}: {err}", saved.display());
