@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { use, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { use, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react"
 import { getAvatarThumbnailURL } from "@/api/media.ts"
 import {
 	RoomListEntry,
@@ -190,6 +190,10 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 	const openModal = use(ModalContext)
 	const mainScreen = use(MainScreenContext)
 	const roomList = useEventAsState(client.store.roomList)
+	// A space's member list arriving changes which DMs it holds without touching
+	// the room list itself; the filter runs at render, so render again.
+	const [, onSpaceMembers] = useReducer((n: number) => n + 1, 0)
+	useEffect(() => client.store.spaceMembersSub.subscribe(onSpaceMembers), [client])
 	const spaces = useEventAsState(client.store.topLevelSpaces)
 	const initComplete = useEventAsState(client.initComplete)
 	// The list is provisional both before the store has finished loading and while the
@@ -477,7 +481,7 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 		if (!closingID) {
 			return
 		}
-		const timeout = setTimeout(endClosing, 750)
+		const timeout = setTimeout(endClosing, 1100)
 		return () => clearTimeout(timeout)
 	}, [closingID, endClosing])
 	const onBandAnimationEnd = useCallback((evt: React.AnimationEvent<HTMLDivElement>) => {
@@ -589,8 +593,23 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 		const isFirst = from === 0
 		const isLast = to >= partables.length
 		const cast = isFirst && isLast ? "" : isFirst ? "top" : isLast ? "bottom" : "between"
+		// A rule above every space (the first one also sets the spaces apart from
+		// the built-in filters), once there is more than one space. When a space's
+		// band opens right below this segment, its rule closes the segment instead.
+		const firstSpace = 2
+		const withDividers = spaces.length > 1
+		const tiles: React.ReactNode[] = []
+		for (let i = from; i < to; i++) {
+			if (withDividers && i >= firstSpace) {
+				tiles.push(<div className="space-bar-divider" key={`divider-${i}`} />)
+			}
+			tiles.push(renderPartable(partables[i]))
+		}
+		if (withDividers && to >= firstSpace && to === openIndex) {
+			tiles.push(<div className="space-bar-divider" key={`divider-${to}`} />)
+		}
 		return <div className={`space-bar-segment ${cast}`} key={`segment-${from}`}>
-			{partables.slice(from, to).map(renderPartable)}
+			{tiles}
 			{isLast ? railTail : null}
 		</div>
 	}

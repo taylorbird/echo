@@ -380,44 +380,6 @@ div.event-reactions {
 				max-width: 10rem;
 			}
 		}
-
-		> div.reaction-tooltip {
-			display: none;
-			position: absolute;
-			bottom: 100%;
-			left: 0;
-			margin-bottom: .25rem;
-			z-index: 5;
-
-			background-color: var(--background-color);
-			border: 1px solid var(--border-color);
-			border-radius: .375rem;
-			box-shadow: 0 4px 12px var(--modal-box-shadow-color);
-			/*
-			 * Breathing room is mostly bought horizontally, and the vertical budget
-			 * is genuinely tight: div.event-content above carries `overflow: hidden`
-			 * and `contain: content`, so this tooltip is clipped to that box. It
-			 * opens upward from a pill already near the bottom of it, which leaves
-			 * only a couple of lines of headroom over a short message. Taller
-			 * padding plus a looser line-height pushed the text straight through
-			 * the top edge and clipped it away entirely.
-			 *
-			 * Making this genuinely roomy means rendering it in a portal rather than
-			 * inside the clipped box — worth doing if the tooltip ever needs to hold
-			 * more than a few names.
-			 */
-			padding: .3125rem .625rem;
-
-			/* Names wrap; the pill itself never does. */
-			width: max-content;
-			max-width: 18rem;
-			white-space: normal;
-			cursor: default;
-		}
-
-		&:hover > div.reaction-tooltip {
-			display: block;
-		}
 	}
 }
 
@@ -442,4 +404,32 @@ div.date-separator {
 		flex: 1;
 		opacity: .2;
 	}
+}
+
+/*
+ * Who reacted. Rendered into <body> by EventReactions rather than inside the
+ * pill: div.event-content carries `overflow: hidden` and `contain: content`, so
+ * a tooltip opening upward from a pill under a one-line message had its top cut
+ * off. Fixed to the pill's on-screen position, centred above it.
+ */
+body > div.reaction-tooltip {
+	position: fixed;
+	transform: translate(-50%, -100%);
+	z-index: 20;
+	pointer-events: none;
+
+	background-color: var(--background-color);
+	color: var(--text-color);
+	border: 1px solid var(--border-color);
+	border-radius: .5rem;
+	box-shadow: 0 4px 12px var(--modal-box-shadow-color);
+	padding: .375rem .625rem;
+	font-size: .875rem;
+	line-height: 1.35;
+
+	/* Names wrap; a long list stays a readable column, not one endless line. */
+	width: max-content;
+	max-width: 18rem;
+	white-space: normal;
+	text-align: center;
 }

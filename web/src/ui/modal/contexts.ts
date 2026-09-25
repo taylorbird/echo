@@ -14,10 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, createContext } from "react"
+import type { FileDetails } from "@/util/fileinfo.ts"
 
 export interface LightboxParams {
 	src: string
 	alt: string
+	// What the download prompt shows. Timeline images pass it; other openers (avatars,
+	// URL previews) don't, and the prompt falls back to the name and a HEAD request.
+	file?: FileDetails
 }
 
 export type OpenLightboxType = (params: LightboxParams | React.MouseEvent<HTMLImageElement>) => void

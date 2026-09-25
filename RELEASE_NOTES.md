@@ -21,3 +21,29 @@
          cannot see (cookies, CSS, dev builds).
        - No em dashes, no punchy closing lines, no "X, not Y" framing.
        - Setting and button names in **bold**, exactly as they appear in the app. -->
+
+## Spaces
+
+- Inside a space, **Direct messages** now shows your DMs with people who are in that space or its subspaces. **Rooms** shows only the space's rooms.
+- A space's unread badge now includes those DMs.
+- Spaces in the sidebar are separated by a thin line.
+- Opening and closing a space's filters animates more slowly.
+
+## Messages
+
+- Custom emoji send as emoji again instead of as text.
+- A formatting bar appears above the message box when you select text, with bold, italic, strikethrough, code and link. Hover a button to see the markdown it adds.
+- The list of who reacted no longer gets cut off at the top.
+
+## Files and images
+
+- Files in the chat show as a card with the file type, name and size.
+- Clicking a file opens a window with its details and a **Download** button. Downloads go to your Downloads folder and open when they finish. Images are shown in Finder.
+- Enlarged images open in a window with the controls along the top.
+- Drop files anywhere on the chat to upload them.
+- You can attach several files to one message. Each file is sent as its own message, and your text goes with the last one.
+- The upload window has a new layout, and large images no longer fill the screen.
+
+## Known issue
+
+- Read receipts aren't always sent, so a room can stay unread after you've read it. Marking it read in another client clears it.

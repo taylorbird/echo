@@ -353,6 +353,14 @@ export default class Client {
 		} else if (ev.command === "init_complete") {
 			this.initComplete.emit(true)
 			this.store.stateCache?.tryFlush()
+			// Member lists the backend already has on disk cost no server round trip,
+			// so read them now: space badges and DM views are right before a space
+			// is ever opened. Lists it has never fetched wait for loadSpaceMembers.
+			for (const spaceID of this.store.spaceEdges.keys()) {
+				if (this.store.rooms.get(spaceID)?.meta.current.has_member_list) {
+					this.loadSpaceMembers(spaceID, false)
+				}
+			}
 		} else if (ev.command === "sync_complete") {
 			this.store.applySync(ev.data)
 		} else if (ev.command === "events_decrypted") {
@@ -651,6 +659,28 @@ export default class Client {
 			})
 		}
 		return room.waitStateLoaded
+	}
+
+	/*
+	 * Makes sure a space's member list, and those of its subspaces, are loaded, so
+	 * the space can show DMs with its members. Called when a space is opened;
+	 * each list is fetched at most once, as the member panel does.
+	 */
+	loadSpaceMembers(spaceID: RoomID, recursive = true, seen: Set<RoomID> = new Set()) {
+		if (seen.has(spaceID)) {
+			return
+		}
+		seen.add(spaceID)
+		const room = this.store.rooms.get(spaceID)
+		if (room && !room.fullMembersLoaded && !room.membersRequested) {
+			this.loadRoomState(spaceID, { omitMembers: false, refetch: false })
+				.catch(err => console.error("Failed to load space members", spaceID, err))
+		}
+		if (recursive) {
+			for (const child of this.store.spaceEdges.get(spaceID)?.childSpaces ?? []) {
+				this.loadSpaceMembers(child.id, true, seen)
+			}
+		}
 	}
 
 	async loadRoomState(

@@ -163,6 +163,10 @@ export class StateStore {
 	readonly accountData: Map<string, UnknownEventContent> = new Map()
 	readonly accountDataSubs = new MultiSubscribable()
 	readonly emojiRoomsSub = new Subscribable()
+	// Fires when a space's member list changed which DMs it holds. The room list
+	// filters at render time, so it only needs telling to render again.
+	readonly spaceMembersSub = new Subscribable()
+	#pendingSpaceMembers: Set<RoomID> = new Set()
 	readonly preferences = getPreferenceProxy(this)
 	#frequentlyUsedEmoji: Map<string, number> | null = null
 	#emojiPackKeys: RoomStateGUID[] | null = null
@@ -389,7 +393,10 @@ export class StateStore {
 		}
 		if (this.spaceOrphans.include(someMeta)) {
 			this.spaceOrphans.applyUnreads(meta, oldMeta)
-			return
+			// A room no space claims by edges can still be a DM with a space's member.
+			if (!someMeta.dm_user_id) {
+				return
+			}
 		} else if (oldMeta && this.spaceOrphans.include(oldMeta)) {
 			this.spaceOrphans.applyUnreads(null, oldMeta)
 		}
@@ -648,6 +655,65 @@ export class StateStore {
 			)
 		}
 		return this.#watchedRoomEmojiPacks ?? {}
+	}
+
+	/*
+	 * Called by a room whenever its member state changes. Only spaces care, and a
+	 * sync or a full member load touches many members at once, so the work is
+	 * batched to one pass per task.
+	 */
+	spaceMembersMaybeChanged(roomID: RoomID) {
+		if (!this.spaceEdges.has(roomID)) {
+			return
+		}
+		if (this.#pendingSpaceMembers.size === 0) {
+			queueMicrotask(this.#flushSpaceMembers)
+		}
+		this.#pendingSpaceMembers.add(roomID)
+	}
+
+	#flushSpaceMembers = () => {
+		let changed = false
+		for (const spaceID of this.#pendingSpaceMembers) {
+			const space = this.spaceEdges.get(spaceID)
+			const room = this.rooms.get(spaceID)
+			if (!space || !room) {
+				continue
+			}
+			const members = new Set<UserID>()
+			for (const rowID of room.state.get("m.room.member")?.values() ?? []) {
+				const evt = room.eventsByRowID.get(rowID)
+				const membership = evt?.content.membership
+				// Joined and invited, as Element counts them. Never ourselves: our
+				// own ID is on every space and would match nothing useful.
+				if (evt?.state_key && evt.state_key !== this.userID
+					&& (membership === "join" || membership === "invite")) {
+					members.add(evt.state_key as UserID)
+				}
+			}
+			changed = space.setMembers(members) || changed
+		}
+		this.#pendingSpaceMembers.clear()
+		if (changed) {
+			this.#recountSpaceUnreads()
+			this.spaceMembersSub.notify()
+		}
+	}
+
+	// Space badges are running totals; after a membership change they are rebuilt
+	// from the room list, once per space, rather than patched.
+	#recountSpaceUnreads() {
+		for (const space of this.spaceEdges.values()) {
+			const counts = { unread_messages: 0, unread_notifications: 0, unread_highlights: 0 }
+			for (const entry of this.roomListEntries.values()) {
+				if (space.include(entry)) {
+					counts.unread_messages += entry.unread_messages
+					counts.unread_notifications += entry.unread_notifications
+					counts.unread_highlights += entry.unread_highlights
+				}
+			}
+			space.setUnreads(counts)
+		}
 	}
 
 	getSpaceStore(spaceID: RoomID, force: true): SpaceEdgeStore

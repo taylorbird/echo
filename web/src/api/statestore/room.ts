@@ -581,6 +581,7 @@ export class RoomStateStore {
 			this.#membersCache = null
 			this.#allCommandsCache = null
 			this.requestedMembers.delete(key as UserID)
+			this.parent.spaceMembersMaybeChanged(this.roomID)
 		} else if (evtType === "m.room.power_levels") {
 			this.#membersCache = null
 		} else if (evtType === "org.matrix.msc4391.command_description") {
@@ -765,6 +766,10 @@ export class RoomStateStore {
 			this.#membersCache = null
 		}
 		this.state = newStateMap
+		if (!omitMembers) {
+			// A space's full member list decides which DMs it shows.
+			this.parent.spaceMembersMaybeChanged(this.roomID)
+		}
 		this.stateLoaded = true
 		this.fullMembersLoaded = this.fullMembersLoaded || !omitMembers
 		for (const [evtType, stateMap] of newStateMap) {

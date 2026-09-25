@@ -16,8 +16,8 @@
 import React, { JSX, use, useReducer, useState } from "react"
 import { Blurhash } from "react-blurhash"
 import { usePreference } from "@/api/statestore"
-import { ContentWarningType, MediaMessageEventContent } from "@/api/types"
-import { ensureString } from "@/util/validation.ts"
+import { ContentWarningType, MediaMessageEventContent, UserProfile } from "@/api/types"
+import { ensureString, getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../../ClientContext.ts"
 import TextMessageBody from "./TextMessageBody.tsx"
 import EventContentProps from "./props.ts"
@@ -57,7 +57,10 @@ const MediaMessageBody = ({ event, room, sender }: EventContentProps) => {
 
 	const containerSize = imageWidth === 320 ? undefined : { width: imageWidth, height: imageWidth / 4 * 3 }
 	const [mediaContent, containerClass, containerStyle] =
-		useMediaContent(content, event.type, containerSize, onLoad, autoplayGifs)
+		useMediaContent(content, event.type, containerSize, onLoad, autoplayGifs, {
+			sender: getDisplayname(event.sender, sender?.content as UserProfile | undefined),
+			timestamp: event.timestamp,
+		})
 
 	let placeholderElem: JSX.Element | null = null
 	if (renderPlaceholderElem) {

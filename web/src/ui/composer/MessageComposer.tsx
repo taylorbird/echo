@@ -63,6 +63,7 @@ import ErrorBoundary from "../util/ErrorBoundary.tsx"
 import type { AutocompleteQuery } from "./Autocompleter.tsx"
 import CommandInput from "./CommandInput.tsx"
 import { ComposerLocation, ComposerLocationValue, ComposerMedia } from "./ComposerMedia.tsx"
+import FormatBar from "./FormatBar.tsx"
 import {
 	canAutocompleteCommand,
 	charToAutocompleteType,
@@ -90,6 +91,10 @@ export interface CommandState {
 export interface ComposerState {
 	text: string
 	media: MediaMessageEventContent | null
+	// Attachments added before `media`, oldest first. Matrix carries one file per
+	// event, so each goes out as its own message ahead of the one with the text.
+	// Optional because drafts saved before this field existed are restored as-is.
+	extraMedia?: MediaMessageEventContent[]
 	location: ComposerLocationValue | null
 	command: CommandState | null
 	previews: URLPreviewType[]
@@ -110,6 +115,7 @@ const MAX_TEXTAREA_ROWS = 10
 const emptyComposer: ComposerState = {
 	text: "",
 	media: null,
+	extraMedia: [],
 	location: null,
 	command: null,
 	previews: [],
@@ -169,6 +175,8 @@ const MessageComposer = () => {
 	const mainScreen = use(MainScreenContext)!
 	const openModal = use(ModalContext)
 	const [autocomplete, setAutocomplete] = useState<AutocompleteQuery | null>(null)
+	// Drives the format bar: it shows while text in the composer is selected.
+	const [hasSelection, setHasSelection] = useState(false)
 	const [state, setState] = useReducer(composerReducer, uninitedComposer)
 	const [editing, rawSetEditing] = useState<MemDBEvent | null>(null)
 	const [loadingMedia, setLoadingMedia] = useState<number | null>(null)
@@ -255,6 +263,7 @@ const MessageComposer = () => {
 			|| !isMedia
 		setState({
 			media: isMedia ? evtContent as MediaMessageEventContent : null,
+			extraMedia: [],
 			text: textIsEditable
 				? (evt.local_content?.edit_source ?? evtContent.body ?? "")
 				: "",
@@ -276,12 +285,25 @@ const MessageComposer = () => {
 		if (!canSend || loadingMedia !== null || state.loadingPreviews.length) {
 			return
 		}
-		doSendMessage(state)
+		const extras = editing ? [] : (state.extraMedia ?? [])
+		if (extras.length) {
+			// Earlier files first, one message each, awaited so they arrive in order;
+			// the text, reply and mentions ride on the last one.
+			const main = { ...state, extraMedia: []}
+			void (async () => {
+				for (const media of extras) {
+					await doSendMessage({ ...emptyComposer, media }, { noReply: true })
+				}
+				await doSendMessage(main)
+			})()
+		} else {
+			doSendMessage(state)
+		}
 		if (room.preferences.refocus_input_after_send) {
 			textInput.current?.focus()
 		}
 	}
-	const doSendMessage = (state: ComposerState) => {
+	const doSendMessage = (state: ComposerState, opts?: { noReply?: boolean }): Promise<unknown> | undefined => {
 		if (editing) {
 			setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
 		} else {
@@ -309,7 +331,7 @@ const MessageComposer = () => {
 				rel_type: "m.replace",
 				event_id: editing.event_id,
 			}
-		} else if (replyToEvt) {
+		} else if (replyToEvt && !opts?.noReply) {
 			const replyToEvtRelation = getRelatesTo(replyToEvt)
 			const replyToThreadRoot = !roomCtx.threadRoot ? getThreadRoot(replyToEvtRelation) : undefined
 			if (!state.silentReply && (!replyToThreadRoot || state.explicitReplyInThread)) {
@@ -375,7 +397,7 @@ const MessageComposer = () => {
 			// Upstream's key, so other gomuks-aware clients still recognise it; the value names echo.
 			extra["app.gomuks"] = "echo"
 		}
-		client.sendMessage({
+		return client.sendMessage({
 			room_id: room.roomID,
 			base_content,
 			extra,
@@ -592,18 +614,42 @@ const MessageComposer = () => {
 		}
 		onComposerCaretChange(evt, newState.text, newState.command)
 	}
+	// A finished upload joins the attachments rather than replacing them; the one
+	// before it moves into extraMedia. When editing, it replaces as it always did.
+	const attachMedia = useCallback((media: MediaMessageEventContent) => setState(s => (
+		s.media && !editing && s.media.msgtype !== "m.sticker"
+			? { extraMedia: [...(s.extraMedia ?? []), s.media], media, location: null }
+			: { media, location: null }
+	)), [editing])
+	// Uploads run one after another, so several files dropped at once attach in the
+	// order they were given and the single progress bar tracks one at a time.
+	const uploadChain = useRef<Promise<void>>(Promise.resolve())
 	const doUploadFile = useCallback((
 		file: Blob,
 		filename: string,
 		encodingOpts?: MediaEncodingOptions,
 	) => {
+		uploadChain.current = uploadChain.current.then(() => new Promise<void>(done => {
+			uploadOne(file, filename, encodingOpts, done)
+		}))
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [client.rpc, isEncrypted, attachMedia])
+	const uploadOne = (
+		file: Blob,
+		filename: string,
+		encodingOpts: MediaEncodingOptions | undefined,
+		done: () => void,
+	) => {
 		const encryptUpload = encodingOpts?._encrypt ?? isEncrypted
 		if (client.rpc.rpcMediaUpload) {
 			setLoadingMedia(0)
 			client.rpc.uploadMedia(file, filename, encryptUpload).then(
-				media => setState({ media, location: null }),
+				media => attachMedia(media),
 				err => window.alert(`Failed to upload file: ${err.message}`),
-			).finally(() => setLoadingMedia(null))
+			).finally(() => {
+				setLoadingMedia(null)
+				done()
+			})
 			return
 		}
 		const params = new URLSearchParams([
@@ -636,7 +682,7 @@ const MessageComposer = () => {
 				media = JSON.parse(xhr.responseText.slice(xhr.responseText.indexOf("{")))
 			} catch {}
 			if (xhr.status >= 200 && xhr.status < 300 && !media?.error) {
-				setState({ media, location: null })
+				attachMedia(media)
 			} else {
 				window.alert(`Failed to upload file: ${media?.error || xhr.statusText}`)
 			}
@@ -650,6 +696,7 @@ const MessageComposer = () => {
 		xhr.addEventListener("loadend", () => {
 			cancelMediaUpload.current = () => {}
 			setLoadingMedia(null)
+			done()
 		})
 
 		cancelMediaUpload.current = () => xhr.abort()
@@ -658,13 +705,31 @@ const MessageComposer = () => {
 		xhr.withCredentials = BACKEND_CROSS_ORIGIN
 		xhr.setRequestHeader("Content-Type", file.type)
 		xhr.send(file)
-	}, [client.rpc, isEncrypted])
-	const openFileUploadModal = (file: File | null | undefined, isVoice?: true) => {
-		if (!file) {
+	}
+	const openFileUploadModal = (
+		input: File | File[] | FileList | null | undefined,
+		isVoice?: true,
+		position?: { index: number, total: number },
+	) => {
+		const files = !input ? [] : input instanceof File ? [input] : Array.from(input)
+		if (!files.length) {
 			return
 		}
+		const [file, ...rest] = files
 		if (room.preferences.upload_dialog || (state.text.startsWith("/") && !isFakeCommand(state.text))) {
-			openModal(modals.mediaUpload(file, doUploadFile, isEncrypted, isVoice))
+			// The next file's dialog opens as this one closes, whether it was
+			// uploaded or cancelled. Deferred, because onClose runs while the modal
+			// wrapper is still swapping its own state.
+			const here = position ?? (files.length > 1 ? { index: 1, total: files.length } : undefined)
+			const openNext = rest.length && here
+				? () => setTimeout(() => openFileUploadModal(rest, undefined, { ...here, index: here.index + 1 }), 0)
+				: undefined
+			openModal(modals.mediaUpload(file, doUploadFile, isEncrypted, isVoice, openNext, here))
+		} else if (rest.length) {
+			window.closeModal()
+			for (const each of files) {
+				doUploadFile(each, each.name)
+			}
 		} else {
 			window.closeModal()
 			const encTo = isVoice && file.type !== "audio/ogg; codecs=opus" ? "audio/ogg; codecs=opus" : undefined
@@ -694,7 +759,7 @@ const MessageComposer = () => {
 		const text = evt.clipboardData.getData("text/plain")
 		const input = evt.currentTarget
 		if (file) {
-			openFileUploadModal(file)
+			openFileUploadModal(evt.clipboardData.files)
 		} else if (
 			input.selectionStart !== input.selectionEnd
 			&& (text.startsWith("http://") || text.startsWith("https://") || text.startsWith("matrix:"))
@@ -724,10 +789,7 @@ const MessageComposer = () => {
 		evt.stopPropagation()
 		setIsDragging(false)
 		dragCounter.current = 0
-		const file = evt.dataTransfer?.files?.[0]
-		if (file) {
-			openFileUploadModal(file)
-		}
+		openFileUploadModal(evt.dataTransfer?.files)
 	}
 	const onDragOver = (evt: React.DragEvent<HTMLDivElement>) => {
 		evt.preventDefault()
@@ -848,7 +910,15 @@ const MessageComposer = () => {
 			possiblePreviews: urls,
 		}))
 	}, [room.preferences, state.uninited, state.text])
-	const clearMedia = useCallback(() => setState({ media: null, location: null }), [])
+	// Removing the newest attachment brings the one before it forward.
+	const clearMedia = useCallback(() => setState(s => ({
+		media: s.extraMedia?.at(-1) ?? null,
+		extraMedia: s.extraMedia?.slice(0, -1) ?? [],
+		location: null,
+	})), [])
+	const removeExtraMedia = (index: number) => setState(s => ({
+		extraMedia: (s.extraMedia ?? []).filter((_, i) => i !== index),
+	}))
 	const onChangeLocation = useCallback((location: ComposerLocationValue) => setState({ location }), [])
 	const closeReply = useCallback((evt: React.MouseEvent) => {
 		evt.stopPropagation()
@@ -862,14 +932,15 @@ const MessageComposer = () => {
 	let mediaDisabledTitle: string | undefined
 	let stickerDisabledTitle: string | undefined
 	let locationDisabledTitle: string | undefined
-	if (state.media) {
-		mediaDisabledTitle = "You can only attach one file at a time"
+	if (state.media && (editing || state.media.msgtype === "m.sticker")) {
+		mediaDisabledTitle = "You can only attach one file when editing"
+		locationDisabledTitle = "You can't attach a location to a message with a file"
+	} else if (state.media) {
 		locationDisabledTitle = "You can't attach a location to a message with a file"
 	} else if (state.location) {
 		mediaDisabledTitle = "You can't attach a file to a message with a location"
 		locationDisabledTitle = "You can only attach one location at a time"
 	} else if (loadingMedia !== null) {
-		mediaDisabledTitle = "Uploading file..."
 		locationDisabledTitle = "You can't attach a location to a message with a file"
 	}
 	if (state.media?.msgtype !== "m.sticker") {
@@ -932,7 +1003,7 @@ const MessageComposer = () => {
 			openModal(modals.voiceRecorder(openFileUploadModal, textInput))
 		}
 		const openLocationPicker = () => {
-			setState({ location: { lat: 0, long: 0, prec: 1 }, media: null })
+			setState({ location: { lat: 0, long: 0, prec: 1 }, media: null, extraMedia: []})
 		}
 		return <>
 			<button onClick={openEmojiPicker} title="Add emoji"><EmojiIcon/>{includeText && "Emoji"}</button>
@@ -1049,6 +1120,8 @@ const MessageComposer = () => {
 					setState={setState}
 				/>
 			</ErrorBoundary>
+		</div> : hasSelection ? <div className="format-bar-wrapper">
+			<FormatBar textInput={textInput}/>
 		</div> : null}
 		<div
 			className={`message-composer ${isDragging ? "dragging" : ""}`}
@@ -1084,6 +1157,11 @@ const MessageComposer = () => {
 				</label>
 				{<button onClick={cancelMediaUpload.current}><CloseIcon/></button>}
 			</div>}
+			{state.extraMedia?.map((media, i) => <ComposerMedia
+				key={`extra-${i}`}
+				content={media}
+				clearMedia={() => removeExtraMedia(i)}
+			/>)}
 			{state.media && <ComposerMedia content={state.media} clearMedia={!disableClearMedia && clearMedia}/>}
 			{state.location && <ComposerLocation
 				room={room} client={client}
@@ -1128,6 +1206,10 @@ const MessageComposer = () => {
 					onClick={onComposerCaretChange}
 					onPaste={onPaste}
 					onChange={onChange}
+					onSelect={evt => setHasSelection(
+						evt.currentTarget.selectionStart !== evt.currentTarget.selectionEnd,
+					)}
+					onBlur={() => setHasSelection(false)}
 					placeholder={isEncrypted ? "Send a message (encrypted)" : "Send a message"}
 					id="message-composer"
 				/>
@@ -1139,7 +1221,8 @@ const MessageComposer = () => {
 				><SendIcon/></button>}
 				<input
 					ref={fileInput}
-					onChange={evt => openFileUploadModal(evt.target.files?.[0])}
+					onChange={evt => openFileUploadModal(evt.target.files)}
+					multiple
 					type="file"
 					value=""
 				/>

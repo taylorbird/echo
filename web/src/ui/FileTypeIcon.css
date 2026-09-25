@@ -1,0 +1,35 @@
+/* Tint per kind of file: the page is a wash of it, the edge and label full strength. */
+svg.file-type-icon {
+	--file-tint: #9aa3b5;
+
+	&.pdf { --file-tint: #ff6b6b; }
+	&.image { --file-tint: #b794ff; }
+	&.video { --file-tint: #ff9f5a; }
+	&.audio { --file-tint: #4fd1a5; }
+	&.archive { --file-tint: #e8c547; }
+	&.sheet { --file-tint: #5fd068; }
+	&.doc { --file-tint: #5cbbff; }
+	&.code { --file-tint: #9fb6d6; }
+
+	> path.page {
+		fill: color-mix(in srgb, var(--file-tint) 16%, transparent);
+		stroke: var(--file-tint);
+		stroke-width: 2;
+	}
+
+	> path.fold {
+		fill: color-mix(in srgb, var(--file-tint) 45%, transparent);
+	}
+
+	> rect.label {
+		fill: var(--file-tint);
+	}
+
+	> text {
+		fill: #16181f;
+		font-family: var(--font-stack);
+		font-size: 9px;
+		font-weight: 700;
+		letter-spacing: .04em;
+	}
+}

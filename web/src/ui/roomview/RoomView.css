@@ -52,3 +52,35 @@ div.room-view {
 		}
 	}
 }
+
+/* A file dragged over the chat pane. The pane's own containment makes it the
+   containing block, so inset 0 covers exactly the pane. */
+div.room-view > div.room-drop-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: color-mix(in srgb, var(--background-color) 70%, transparent);
+	backdrop-filter: blur(4px);
+
+	> div.room-drop-box {
+		/* Children must not become drag targets of their own, or every move across
+		   the label would read as leaving the overlay. */
+		pointer-events: none;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: .75rem;
+		padding: 2rem 3rem;
+		border: 2px dashed var(--primary-color);
+		border-radius: 1rem;
+		font-weight: 600;
+
+		> svg {
+			width: 2rem;
+			height: 2rem;
+		}
+	}
+}

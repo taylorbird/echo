@@ -16,9 +16,12 @@
 import React, { CSSProperties, JSX, use, useState } from "react"
 import { getEncryptedMediaURL, getMediaURL } from "@/api/media.ts"
 import type { EventType, MediaMessageEventContent } from "@/api/types"
+import { FileDetails, describeType, formatSize } from "@/util/fileinfo.ts"
 import { ImageContainerSize, calculateMediaSize, defaultVideoContainerSize } from "@/util/mediasize.ts"
 import { ensureString } from "@/util/validation.ts"
-import { LightboxContext } from "../../modal"
+import FileTypeIcon from "../../FileTypeIcon.tsx"
+import { LightboxContext, ModalContext } from "../../modal"
+import DownloadPrompt from "../../modal/DownloadPrompt.tsx"
 import DownloadIcon from "@/icons/download.svg?react"
 
 export const useMediaContent = (
@@ -27,11 +30,26 @@ export const useMediaContent = (
 	containerSize?: ImageContainerSize,
 	onLoad?: () => void,
 	autoplayGifs?: boolean,
+	// Who sent it and when, for the download prompt. The hook only sees the content.
+	origin?: { sender?: string, timestamp?: number },
 ): [JSX.Element | null, string, CSSProperties] => {
 	const mediaURL = content.file?.url ? getEncryptedMediaURL(content.file.url) : getMediaURL(content.url)
+	const fileDetails = (): FileDetails => ({
+		url: mediaURL ?? "",
+		filename: ensureString(content.filename ?? content.body) || "file",
+		mimetype: ensureString(content.info?.mimetype) || undefined,
+		size: typeof content.info?.size === "number" ? content.info.size : undefined,
+		width: typeof content.info?.w === "number" ? content.info.w : undefined,
+		height: typeof content.info?.h === "number" ? content.info.h : undefined,
+		encrypted: !!content.file?.url,
+		sender: origin?.sender,
+		timestamp: origin?.timestamp,
+	})
 	const thumbnailURL = content.info?.thumbnail_file?.url
 		? getEncryptedMediaURL(content.info.thumbnail_file.url) : getMediaURL(content.info?.thumbnail_url)
 	const [errored, setErrored] = useState(false)
+	const openLightbox = use(LightboxContext)
+	const openModal = use(ModalContext)
 	if (content.msgtype === "m.image" || content.msgtype === "m.sticker" || evtType === "m.sticker") {
 		const style = calculateMediaSize(content.info?.w, content.info?.h, containerSize)
 		return [<img
@@ -45,7 +63,11 @@ export const useMediaContent = (
 			src={mediaURL}
 			alt={ensureString(content.filename ?? content.body)}
 			title={ensureString(content.filename ?? content.body)}
-			onClick={use(LightboxContext)}
+			onClick={() => openLightbox({
+				src: mediaURL ?? "",
+				alt: ensureString(content.filename ?? content.body),
+				file: fileDetails(),
+			})}
 			className={errored ? "errored" : undefined}
 		/>, "image-container", style.container]
 	} else if (content.msgtype === "m.video") {
@@ -79,13 +101,35 @@ export const useMediaContent = (
 	} else if (content.msgtype === "m.audio") {
 		return [<audio controls src={mediaURL} preload="none"/>, "audio-container", {}]
 	} else if (content.msgtype === "m.file") {
+		const details = fileDetails()
+		const meta = [describeType(details), details.size !== undefined ? formatSize(details.size) : null]
+			.filter(Boolean).join(" · ")
 		return [<a
+			className="file-card"
 			href={mediaURL}
 			target="_blank"
 			rel="noopener noreferrer"
 			download={ensureString(content.filename ?? content.body)}
+			// Asks first: the prompt says what the file is and does the download itself.
+			// externallinks.ts leaves links marked this way alone.
+			data-download-prompt=""
+			onClick={evt => {
+				evt.preventDefault()
+				evt.stopPropagation()
+				openModal({
+					dimmed: true,
+					boxed: true,
+					content: <DownloadPrompt details={details} onClose={() => window.closeModal()}/>,
+				})
+			}}
 		>
-			<DownloadIcon height={32} width={32}/> {ensureString(content.filename ?? content.body)}
+			{/* The prompt's icon at chat size, so the file reads as a file to click. */}
+			<FileTypeIcon details={details}/>
+			<span className="file-card-text">
+				<span className="file-card-name">{details.filename}</span>
+				{meta && <span className="file-card-meta">{meta}</span>}
+			</span>
+			<DownloadIcon className="file-card-download"/>
 		</a>, "file-container", {}]
 	}
 	return [null, "unknown-container", {}]

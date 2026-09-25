@@ -16,7 +16,13 @@
 import equal from "fast-deep-equal"
 import { RefObject, use, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react"
 import Client from "@/api/client.ts"
-import { RoomListFilter, RoomStateStore } from "@/api/statestore"
+import {
+	RoomListFilter,
+	RoomStateStore,
+	SpaceEdgeStore,
+	SpaceOrphansSpace,
+	SubFilteredSpace,
+} from "@/api/statestore"
 import type { EventID, RoomID } from "@/api/types"
 import useAppVersion from "@/util/appversion.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
@@ -135,6 +141,10 @@ class ContextFields implements MainScreenContextFields {
 		console.log("Switching to space", space?.id)
 		this.directSetSpace(space)
 		this.client.store.currentRoomListFilter = space
+		const realSpace = space instanceof SubFilteredSpace ? space.parent : space
+		if (realSpace instanceof SpaceEdgeStore && !(realSpace instanceof SpaceOrphansSpace)) {
+			this.client.loadSpaceMembers(realSpace.id)
+		}
 		if (pushState) {
 			if (this.client.store.activeRoomID && space) {
 				const entry = this.client.store.roomListEntries.get(this.client.store.activeRoomID)

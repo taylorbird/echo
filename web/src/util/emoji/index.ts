@@ -112,8 +112,11 @@ function filterAndSort(
 export function emojiToMarkdown(emoji: PartialEmoji): string {
 	if (emoji.u.startsWith("mxc://")) {
 		const title = emoji.t && emoji.t !== emoji.n ? emoji.t : `:${emoji.n}:`
-		const escapedTitle = title.replaceAll(`\\`, `\\\\`).replaceAll(`"`, `\\"`)
-		return `![:${emoji.n}:](${emoji.u} "Emoji: ${escapedTitle}")`
+		// The title is delimited with parentheses rather than quotes: the composer
+		// inserts via execCommand("insertText"), which WebKit treats as typing, so
+		// macOS smart quotes curled the closing " and the markdown image broke.
+		const escapedTitle = title.replaceAll(`\\`, `\\\\`).replace(/[()]/g, `\\$&`)
+		return `![:${emoji.n}:](${emoji.u} (Emoji: ${escapedTitle}))`
 		//return `<img data-mx-emoticon height="32" src="${emoji.u}" alt=":${emoji.n}:" title="${title}"/>`
 	}
 	return emoji.u

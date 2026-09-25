@@ -43,29 +43,99 @@ div.overlay {
 }
 
 div.lightbox {
-	> div.controls {
-		position: fixed;
-		top: calc(.5rem + var(--window-top-margin));
-		right: .5rem;
+	/* The box: the same surface, radius and shadow as the other modals. */
+	> div.lightbox-box {
 		display: flex;
-		z-index: 1;
+		flex-direction: column;
+		max-width: 90vw;
+		max-height: 88vh;
+		min-width: min(24rem, 90vw);
+		background-color: var(--background-color);
+		border-radius: 1rem;
+		box-shadow: 0 0 1rem var(--modal-box-shadow-color);
+		overflow: hidden;
+	}
 
-		> button, > a {
-			color: var(--lightbox-button-color);
-			width: 3rem;
-			height: 3rem;
+	div.lightbox-toolbar {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: .5rem .5rem .5rem 1rem;
+		border-bottom: 1px solid var(--border-color);
 
-			> svg {
+		> div.lightbox-title {
+			flex: 1;
+			min-width: 0;
+			font-weight: 600;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		> div.controls {
+			display: flex;
+			gap: .125rem;
+			flex-shrink: 0;
+
+			> button {
 				width: 2rem;
 				height: 2rem;
+				border-radius: .5rem;
+				color: var(--text-color);
+				opacity: .75;
+
+				&:hover, &:focus-visible {
+					opacity: 1;
+					background-color: var(--light-hover-color);
+				}
+
+				> svg {
+					width: 1.25rem;
+					height: 1.25rem;
+				}
 			}
 		}
 	}
 
-	> img {
-		max-width: 75%;
-		max-height: 75%;
+	/* Zoom and pan happen in here, clipped to the box. */
+	div.lightbox-stage {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		padding: 1rem;
+		background-color: var(--light-hover-color);
 
-		transition: rotate 0.2s;
+		> img {
+			/* The toolbar (3rem) and the stage padding come out of the box's 88vh. */
+			max-width: calc(90vw - 2rem);
+			max-height: calc(88vh - 5rem);
+			object-fit: contain;
+			transition: rotate 0.2s;
+		}
+	}
+
+	/* The download prompt is drawn inside the lightbox, which sits above every
+	   modal, in the same box the modals use. */
+	> div.lightbox-prompt {
+		position: fixed;
+		inset: 0;
+		z-index: 2;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: var(--dimmed-overlay-background-color);
+
+		> div.modal-box {
+			background-color: var(--background-color);
+			border-radius: 1rem;
+			padding: 1rem;
+			max-width: min(var(--modal-max-width), 80vw);
+			max-height: 80vh;
+			overflow: auto;
+			box-shadow: 0 0 1rem var(--modal-box-shadow-color);
+		}
 	}
 }

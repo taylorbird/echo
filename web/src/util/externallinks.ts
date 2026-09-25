@@ -74,6 +74,25 @@ export default function handleExternalLinks() {
 		// Same-origin links point at the gomuks backend (media, downloads). The
 		// system browser has no session cookie for those, so leave them alone.
 		if (url.protocol !== "mailto:" && url.origin === location.origin) {
+			// Attachments (a file message, the lightbox's download button) carry `download`
+			// plus target="_blank". Left to bubble, the shell plugin's listener claims them
+			// and the click does nothing; and a new-window target has nowhere to go here. So
+			// re-issue the click on a target-less copy: WKWebView downloads it with the
+			// session cookie, and lib.rs opens or reveals the file when it lands.
+			// File messages open a download prompt from their own click handler instead.
+			if (anchor.hasAttribute("data-download-prompt")) {
+				return
+			}
+			if (anchor.hasAttribute("download")) {
+				evt.stopPropagation()
+				if (anchor.target) {
+					evt.preventDefault()
+					const copy = document.createElement("a")
+					copy.href = anchor.href
+					copy.download = anchor.download
+					copy.click()
+				}
+			}
 			return
 		}
 		evt.preventDefault()

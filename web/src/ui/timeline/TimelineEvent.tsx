@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, use, useCallback, useEffect, useRef, useState } from "react"
 import { HexColorPicker } from "react-colorful"
+import { createPortal } from "react-dom"
 import type Client from "@/api/client.ts"
 import {
 	getAvatarThumbnailURL, getCustomUserColor, getMediaURL, getSenderColor, setCustomUserColor,
@@ -102,6 +103,19 @@ const EventReactions = ({ reactions, onToggle, client, room, eventID }: EventRea
 	// Keys with a send or redact in flight, mapped to the count delta to show
 	// optimistically until the real counts arrive.
 	const [pending, setPending] = useState<Map<string, number>>(new Map())
+	// The reaction under the pointer and where its pill sits on screen. The tooltip
+	// is portalled to <body>: inside the event it was clipped by div.event-content's
+	// overflow and containment, which cut its top off over a one-line message.
+	const [hovered, setHovered] = useState<{ reaction: string, rect: DOMRect } | null>(null)
+	useEffect(() => {
+		if (!hovered) {
+			return
+		}
+		// The pill moves with the timeline but a fixed tooltip would not.
+		const hide = () => setHovered(null)
+		window.addEventListener("scroll", hide, { capture: true, passive: true })
+		return () => window.removeEventListener("scroll", hide, { capture: true })
+	}, [hovered])
 	const pendingTimers = useRef(new Map<string, number>())
 	// Guards a second click during the window where the annotation fetch is
 	// still in flight and there's no delta to put in `pending` yet.
@@ -264,7 +278,11 @@ const EventReactions = ({ reactions, onToggle, client, room, eventID }: EventRea
 				key={reaction}
 				className={classNames.join(" ")}
 				onClick={() => void onClickReaction(reaction)}
-				onMouseEnter={() => void loadRelations()}
+				onMouseEnter={evt => {
+					setHovered({ reaction, rect: evt.currentTarget.getBoundingClientRect() })
+					void loadRelations()
+				}}
+				onMouseLeave={() => setHovered(null)}
 			>
 				<div className="reaction-inner">
 					{reaction.startsWith("mxc://")
@@ -274,9 +292,20 @@ const EventReactions = ({ reactions, onToggle, client, room, eventID }: EventRea
 					    than a chip claiming a count of zero. */}
 					{displayCount > 0 && <span className="reaction-count">{displayCount}</span>}
 				</div>
-				<div className="reaction-tooltip">{tooltipText(reaction)}</div>
 			</div>
 		})}
+		{hovered && createPortal(<div
+			className="reaction-tooltip"
+			role="tooltip"
+			style={{
+				// Centred over the pill, then kept a little inside the window edges.
+				left: Math.max(8, Math.min(
+					hovered.rect.left + hovered.rect.width / 2,
+					window.innerWidth - 8,
+				)),
+				top: hovered.rect.top - 6,
+			}}
+		>{tooltipText(hovered.reaction)}</div>, document.body)}
 	</div>
 }
 

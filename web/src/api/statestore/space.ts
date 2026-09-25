@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { RoomListEntry, StateStore } from "@/api/statestore/main.ts"
-import { DBSpaceEdge, RoomID } from "@/api/types"
+import { DBSpaceEdge, RoomID, UserID } from "@/api/types"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import Subscribable from "@/util/subscribable.ts"
 
@@ -43,6 +43,19 @@ export abstract class Space implements RoomListFilter {
 
 	clearUnreads() {
 		this.counts.emit(emptyUnreadCounts)
+	}
+
+	// Replaces the running total outright, for when membership changed under it and
+	// the deltas applyUnreads works from no longer describe what the space holds.
+	setUnreads(counts: SpaceUnreadCounts) {
+		const cur = this.counts.current
+		if (
+			counts.unread_messages !== cur.unread_messages
+			|| counts.unread_notifications !== cur.unread_notifications
+			|| counts.unread_highlights !== cur.unread_highlights
+		) {
+			this.counts.emit(counts)
+		}
 	}
 
 	applyUnreads(newCounts?: SpaceUnreadCounts | null, oldCounts?: SpaceUnreadCounts | null) {
@@ -133,6 +146,13 @@ export class SpaceEdgeStore extends Space {
 	#flattenedRooms: Set<RoomID> = new Set()
 	#childSpaces: Set<SpaceEdgeStore> = new Set()
 	readonly #parentSpaces: Set<SpaceEdgeStore> = new Set()
+	// Joined and invited members of the space room itself, and the same unioned
+	// over every subspace below it. A DM belongs to the space when the person on
+	// the other end is in the flattened set, which is how Element decides it
+	// (SpaceStore.isRoomInSpace): nobody adds DMs to a space as children, so going
+	// by child edges alone left a space's DM view permanently empty.
+	#members: Set<UserID> = new Set()
+	#flattenedMembers: Set<UserID> = new Set()
 	sub = new Subscribable()
 
 	constructor(public id: RoomID, private parent: StateStore) {
@@ -149,6 +169,38 @@ export class SpaceEdgeStore extends Space {
 
 	include(room: RoomListEntry) {
 		return this.#flattenedRooms.has(room.room_id)
+			|| (!!room.dm_user_id && this.#flattenedMembers.has(room.dm_user_id))
+	}
+
+	// Membership by child edges only, without the member-based DMs.
+	includeByEdges(room: RoomListEntry) {
+		return this.#flattenedRooms.has(room.room_id)
+	}
+
+	// Returns whether anything changed, so the caller knows to recount unreads.
+	setMembers(members: Set<UserID>): boolean {
+		if (members.size === this.#members.size && members.isSubsetOf(this.#members)) {
+			return false
+		}
+		this.#members = members
+		this.#updateFlattenedMembers(new WeakSet())
+		return true
+	}
+
+	#updateFlattenedMembers(stack: WeakSet<SpaceEdgeStore>) {
+		if (stack.has(this)) {
+			return
+		}
+		stack.add(this)
+		let flattened = new Set(this.#members)
+		for (const space of this.#childSpaces) {
+			flattened = flattened.union(space.#flattenedMembers)
+		}
+		this.#flattenedMembers = flattened
+		for (const parent of this.#parentSpaces) {
+			parent.#updateFlattenedMembers(stack)
+		}
+		stack.delete(this)
 	}
 
 	get children() {
@@ -219,6 +271,8 @@ export class SpaceEdgeStore extends Space {
 		if (this.#parentSpaces.size > 0) {
 			this.#notifyParentsOfChange(recalculateFlattened, addedRooms, new WeakSet())
 		}
+		// A subspace joining or leaving changes whose DMs this space carries.
+		this.#updateFlattenedMembers(new WeakSet())
 		this.sub.notify()
 	}
 }
@@ -236,7 +290,9 @@ export class SpaceOrphansSpace extends SpaceEdgeStore {
 	 * rather than every chat you are in — the spaces below it cover the rest.
 	 */
 	include(room: RoomListEntry): boolean {
-		return !super.include(room)
+		// By edges only: a DM with someone who shares a space is still a chat no
+		// space has claimed, and it stays here as well as appearing in that space.
+		return !this.includeByEdges(room)
 	}
 }
 

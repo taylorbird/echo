@@ -33,7 +33,7 @@ export class RoomContextData {
 	public scrolledToBottom = true
 	public isFake = false
 	public setForceViewType: (viewType: RoomType | null) => void = noop("setForceViewType")
-	public onFileDropped: (file: File) => void = noop("onFileDropped")
+	public onFileDropped: (files: File | File[] | FileList) => void = noop("onFileDropped")
 
 	constructor(
 		public readonly store: RoomStateStore,

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { Component, createRef, useCallback, useLayoutEffect, useState } from "react"
 import { keyToString } from "../keybindings.ts"
+import DownloadPrompt from "./DownloadPrompt.tsx"
 import { LightboxContext, LightboxParams } from "./contexts.ts"
 import CloseIcon from "@/icons/close.svg?react"
 import DownloadIcon from "@/icons/download.svg?react"
@@ -80,7 +81,13 @@ interface Point {
 	y: number
 }
 
-export class Lightbox extends Component<LightboxProps> {
+interface LightboxState {
+	// The download prompt is open over the image.
+	prompting: boolean
+}
+
+export class Lightbox extends Component<LightboxProps, LightboxState> {
+	state: LightboxState = { prompting: false }
 	translate = { x: 0, y: 0 }
 	zoom = 1
 	rotate = 0
@@ -257,7 +264,11 @@ export class Lightbox extends Component<LightboxProps> {
 	onKeyDown = (evt: React.KeyboardEvent<HTMLDivElement>) => {
 		const key = keyToString(evt)
 		if (key === "Escape") {
-			this.close()
+			if (this.state.prompting) {
+				this.closePrompt()
+			} else {
+				this.close()
+			}
 		}
 		evt.stopPropagation()
 	}
@@ -283,6 +294,31 @@ export class Lightbox extends Component<LightboxProps> {
 	}
 
 	stopPropagation = (evt: React.MouseEvent) => evt.stopPropagation()
+	// Clicks inside the box never close the lightbox; one that ends a pan only
+	// drops the grabbing cursor, as the backdrop click used to.
+	onClickBox = (evt: React.MouseEvent) => {
+		evt.stopPropagation()
+		if (this.ref.current?.style.cursor === "grabbing") {
+			this.ref.current.style.cursor = "auto"
+			this.maybePanning = false
+		}
+	}
+	openPrompt = (evt: React.MouseEvent) => {
+		evt.stopPropagation()
+		this.setState({ prompting: true })
+	}
+	closePrompt = () => {
+		this.setState({ prompting: false })
+		this.wrapperRef.current?.focus()
+	}
+	onClickPromptBackdrop = (evt: React.MouseEvent) => {
+		// Clicks inside the box stay there; only the dimmed area around it dismisses,
+		// and never the lightbox underneath.
+		evt.stopPropagation()
+		if (evt.target === evt.currentTarget) {
+			this.closePrompt()
+		}
+	}
 	zoomIn = this.transformer(() => this.zoom = Math.min(this.zoom * 1.1, 10))
 	zoomOut = this.transformer(() => this.zoom = Math.max(this.zoom / 1.1, 0.01))
 	rotateLeft = this.transformer(() => this.rotate -= 90)
@@ -301,31 +337,48 @@ export class Lightbox extends Component<LightboxProps> {
 			onKeyDown={this.onKeyDown}
 			ref={this.wrapperRef}
 		>
-			<div className="controls" onClick={this.stopPropagation}>
-				<button onClick={this.zoomOut}><ZoomOutIcon/></button>
-				<button onClick={this.zoomIn}><ZoomInIcon/></button>
-				<button onClick={this.rotateLeft}><RotateLeftIcon/></button>
-				<button onClick={this.rotateRight}><RotateRightIcon/></button>
-				<a
-					className="button"
-					href={this.props.src}
-					target="_blank"
-					rel="noopener noreferrer"
-					download={Boolean(window.gomuksAndroid)}
-				>
-					<DownloadIcon/>
-				</a>
-				<button onClick={this.props.onClose}><CloseIcon/></button>
+			{/* A modal box like the others rather than the image loose on the backdrop:
+			    the name and the controls sit in a bar across its top, and the image is
+			    zoomed and panned inside the box, clipped to it. */}
+			<div className="lightbox-box" onClick={this.onClickBox}>
+				<div className="lightbox-toolbar">
+					<div className="lightbox-title" title={this.props.alt}>{this.props.alt}</div>
+					<div className="controls">
+						<button onClick={this.zoomOut} title="Zoom out"><ZoomOutIcon/></button>
+						<button onClick={this.zoomIn} title="Zoom in"><ZoomInIcon/></button>
+						<button onClick={this.rotateLeft} title="Rotate left"><RotateLeftIcon/></button>
+						<button onClick={this.rotateRight} title="Rotate right"><RotateRightIcon/></button>
+						<button onClick={this.openPrompt} title="Download"><DownloadIcon/></button>
+						<button onClick={this.props.onClose} title="Close"><CloseIcon/></button>
+					</div>
+				</div>
+				<div className="lightbox-stage">
+					<img
+						onMouseDown={isTouchDevice ? undefined : this.onMouseDown}
+						onWheel={isTouchDevice ? undefined : this.onWheel}
+						src={this.props.src}
+						alt={this.props.alt}
+						ref={this.ref}
+						style={this.style}
+						draggable="false"
+					/>
+				</div>
 			</div>
-			<img
-				onMouseDown={isTouchDevice ? undefined : this.onMouseDown}
-				onWheel={isTouchDevice ? undefined : this.onWheel}
-				src={this.props.src}
-				alt={this.props.alt}
-				ref={this.ref}
-				style={this.style}
-				draggable="false"
-			/>
+			{/* Drawn inside the lightbox because the lightbox sits above every modal. */}
+			{this.state.prompting && <div
+				className="lightbox-prompt"
+				onClick={this.onClickPromptBackdrop}
+				onMouseDown={this.stopPropagation}
+			>
+				<div className="modal-box">
+					<div className="modal-box-inner">
+						<DownloadPrompt
+							details={this.props.file ?? { url: this.props.src, filename: this.props.alt || "image" }}
+							onClose={this.closePrompt}
+						/>
+					</div>
+				</div>
+			</div>}
 		</div>
 	}
 }

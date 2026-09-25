@@ -66,6 +66,8 @@ export function mediaUpload(
 	isEncrypted: boolean = false,
 	isVoice: boolean = false,
 	onClose?: () => void,
+	// Where this file sits when several were added at once, for the dialog title.
+	position?: { index: number, total: number },
 ): NonNestableModalState {
 	const blobURL = URL.createObjectURL(file)
 	return {
@@ -82,6 +84,7 @@ export function mediaUpload(
 			doUploadFile={doUploadFile}
 			isEncrypted={isEncrypted}
 			isVoice={isVoice}
+			position={position}
 		/>,
 	}
 }

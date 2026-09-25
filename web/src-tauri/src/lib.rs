@@ -321,6 +321,61 @@ const OG_COLLECTOR_SCRIPT: &str = r#"
 "#;
 
 /*
+ * Attachment downloads. Media links point at the sidecar and need the webview's session
+ * cookie, so they cannot go to the system browser; WKWebView downloads them instead. wry
+ * already picks ~/Downloads/<suggested name> (with a " (n)" suffix on collision), so all this
+ * adds is what happens once the file lands: images (the lightbox's download button) are shown
+ * in Finder, anything else (a PDF someone sent) opens in its default app.
+ *
+ * On macOS the Finished event carries no path, so the destination from Requested is kept per
+ * URL until then.
+ */
+fn attachment_download_handler<R: tauri::Runtime>(
+) -> impl Fn(tauri::Webview<R>, tauri::webview::DownloadEvent<'_>) -> bool + Send + Sync + 'static {
+  use tauri::webview::DownloadEvent;
+  let pending: Mutex<std::collections::HashMap<String, PathBuf>> = Mutex::default();
+  move |_webview, event| {
+    match event {
+      DownloadEvent::Requested { url, destination } => {
+        if let Ok(mut pending) = pending.lock() {
+          pending.insert(url.to_string(), destination.clone());
+        }
+      }
+      DownloadEvent::Finished { url, path, success } => {
+        let saved = pending.lock().ok().and_then(|mut pending| pending.remove(url.as_str()));
+        let Some(saved) = path.filter(|p| !p.as_os_str().is_empty()).or(saved) else {
+          return true;
+        };
+        if !success {
+          log::warn!("attachment download failed: {url}");
+          return true;
+        }
+        let is_image = saved
+          .extension()
+          .and_then(|ext| ext.to_str())
+          .map(|ext| {
+            matches!(
+              ext.to_ascii_lowercase().as_str(),
+              "png" | "jpg" | "jpeg" | "gif" | "webp" | "heic" | "avif" | "bmp" | "tiff"
+            )
+          })
+          .unwrap_or(false);
+        let result = if is_image {
+          tauri_plugin_opener::reveal_item_in_dir(&saved)
+        } else {
+          tauri_plugin_opener::open_path(&saved, None::<&str>)
+        };
+        if let Err(err) = result {
+          log::warn!("could not open downloaded attachment {}: {err}", saved.display());
+        }
+      }
+      _ => {}
+    }
+    true
+  }
+}
+
+/*
  * WKWebView ships with macOS inline predictions (the grey completion Tab accepts in native
  * text fields) switched off, whatever the system setting says, and tauri has no option for it.
  * Passing our own configuration is the only way in: it must be set before the web view exists.
@@ -482,6 +537,7 @@ pub fn run() {
                   Some(script) => builder.initialization_script(&script),
                   None => builder,
                 };
+                let builder = builder.on_download(attachment_download_handler());
                 #[cfg(target_os = "macos")]
                 let builder = builder.with_webview_configuration(macos_webview_configuration());
                 if let Err(err) = builder.build() {

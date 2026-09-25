@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX, Suspense, lazy, useEffect, useState } from "react"
+import React, { JSX, Suspense, lazy, useEffect, useState } from "react"
 import { RoomStateStore, usePreference } from "@/api/statestore"
 import { RoomType } from "@/api/types"
 import MessageComposer from "../composer/MessageComposer.tsx"
@@ -27,6 +27,7 @@ import ElementCall from "../widget/ElementCall.tsx"
 import RoomViewHeader from "./RoomViewHeader.tsx"
 import SpaceView from "./SpaceView.tsx"
 import { RoomContext, RoomContextData } from "./roomcontext.ts"
+import AttachIcon from "@/icons/attach.svg?react"
 import "./RoomView.css"
 
 interface RoomViewProps {
@@ -89,8 +90,51 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 	// Keyed off the resolved view type, so forcing a space to the timeline view
 	// (via the room type override, which resolves to "") brings the header back.
 	const isSpaceDashboard = viewType === "m.space"
+	// Dropping a file anywhere on the chat pane goes to the composer's upload flow,
+	// as dropping it on the composer always did. Only the timeline view has a
+	// composer to take it.
+	const acceptsDrops = getViewForRoomType(viewType) === null
+	const [dropping, setDropping] = useState(false)
+	const onDragEnter = (evt: React.DragEvent) => {
+		if (acceptsDrops && evt.dataTransfer?.types?.includes("Files")) {
+			evt.preventDefault()
+			setDropping(true)
+		}
+	}
+	const onOverlayDragOver = (evt: React.DragEvent) => {
+		evt.preventDefault()
+		evt.dataTransfer.dropEffect = "copy"
+	}
+	const onOverlayDragLeave = (evt: React.DragEvent) => {
+		// The overlay has children; leaving one of them for another is not leaving.
+		if (!evt.currentTarget.contains(evt.relatedTarget as Node | null)) {
+			setDropping(false)
+		}
+	}
+	const onOverlayDrop = (evt: React.DragEvent) => {
+		evt.preventDefault()
+		setDropping(false)
+		const files = evt.dataTransfer?.files
+		if (files?.length) {
+			roomContextData.onFileDropped(files)
+		}
+	}
 	return <RoomContext value={roomContextData}>
-		<div className={`room-view ${isSpaceDashboard ? "headerless" : ""}`}>
+		<div className={`room-view ${isSpaceDashboard ? "headerless" : ""}`} onDragEnter={onDragEnter}>
+			{/* Covers the whole pane while a file is over it, so it takes every drag
+			    event itself and nothing underneath (the composer's own drop target
+			    included) competes for the drop. */}
+			{dropping && <div
+				className="room-drop-overlay"
+				onDragOver={onOverlayDragOver}
+				onDragLeave={onOverlayDragLeave}
+				onDrop={onOverlayDrop}
+			>
+				<div className="room-drop-box">
+					<AttachIcon/>
+					<span>Drop to upload</span>
+				</div>
+			</div>}
 			<ErrorBoundary thing="room header" wrapperClassName="room-header-error">
 				{isSpaceDashboard
 					? null

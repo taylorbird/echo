@@ -226,7 +226,7 @@ div.space-bar-under-layer {
 	/* The curve the Toggle knob already travels on, so the rail opens with the
 	   same hand as the rest of the app: almost all of the distance is covered
 	   early, then it settles rather than arriving. */
-	animation: space-bar-part .26s cubic-bezier(.32, .72, 0, 1);
+	animation: space-bar-part .42s cubic-bezier(.32, .72, 0, 1);
 
 	/*
 	 * Leaving is quicker than arriving, but it lands on the same house curve the
@@ -241,7 +241,7 @@ div.space-bar-under-layer {
 	 * reads as the rail flicking open again just as it finishes closing.
 	 */
 	&.closing {
-		animation: space-bar-close .52s cubic-bezier(.32, .72, 0, 1) forwards;
+		animation: space-bar-close .84s cubic-bezier(.32, .72, 0, 1) forwards;
 		/* It is on its way out and its sub-filters belong to a filter that is no
 		   longer active — a click landing here would select something invisible. */
 		pointer-events: none;
@@ -269,10 +269,10 @@ div.space-bar-under-layer-inner {
 	 * image for the same reason: without it the sub-filters are crushed against
 	 * the clip at full opacity on the way out.
 	 */
-	animation: space-bar-part-fade .26s cubic-bezier(.32, .72, 0, 1);
+	animation: space-bar-part-fade .42s cubic-bezier(.32, .72, 0, 1);
 
 	div.space-bar-under-layer.closing > & {
-		animation: space-bar-part-fade-out .52s cubic-bezier(.32, .72, 0, 1) forwards;
+		animation: space-bar-part-fade-out .84s cubic-bezier(.32, .72, 0, 1) forwards;
 	}
 }
 
