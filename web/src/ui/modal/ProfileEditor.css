@@ -1,0 +1,139 @@
+/* Laid out like the download and upload windows: the picture on the left, the
+   fields on the right, the same button pair below. */
+form.profile-editor {
+	width: min(32rem, 80vw);
+	gap: 1rem;
+
+	> div.profile-body {
+		display: grid;
+		grid-template-columns: 8rem 1fr;
+		gap: 1.25rem;
+		align-items: start;
+
+		@media screen and (max-width: 30rem) {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	div.profile-avatar-column {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: .625rem;
+		min-width: 0;
+
+		> input[type="file"] {
+			display: none;
+		}
+
+		> div.profile-user-id {
+			font-size: .75rem;
+			color: var(--secondary-text-color);
+			text-align: center;
+			overflow-wrap: anywhere;
+		}
+	}
+
+	button.profile-avatar {
+		position: relative;
+		width: 6rem;
+		height: 6rem;
+		border-radius: 50%;
+		overflow: hidden;
+		padding: 0;
+
+		> img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		/* The prompt to change it only shows on hover, so the picture reads as a
+		   picture the rest of the time. */
+		> span.profile-avatar-hint {
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background-color: rgba(0, 0, 0, .5);
+			color: #fff;
+			font-size: .8125rem;
+			font-weight: 600;
+			opacity: 0;
+			transition: opacity .12s;
+		}
+
+		&:hover > span.profile-avatar-hint, &:focus-visible > span.profile-avatar-hint {
+			opacity: 1;
+		}
+	}
+
+	div.profile-fields {
+		display: flex;
+		flex-direction: column;
+		gap: .375rem;
+		min-width: 0;
+
+		> label {
+			font-size: .8125rem;
+			color: var(--secondary-text-color);
+			margin-top: .25rem;
+		}
+
+		> input, > textarea {
+			font: inherit;
+			padding: .5rem .625rem;
+			border: 1px solid var(--border-color);
+			border-radius: .5rem;
+			background-color: var(--background-color);
+			color: var(--text-color);
+			outline: none;
+			resize: vertical;
+
+			&:focus {
+				border-color: var(--primary-color);
+			}
+		}
+
+		> div.profile-note {
+			font-size: .8125rem;
+			color: var(--tertiary-text-color, var(--secondary-text-color));
+		}
+	}
+
+	> div.profile-error {
+		font-size: .875rem;
+		color: var(--error-color);
+	}
+
+	/* Same pair as the download prompt and upload window. */
+	> div.confirm-buttons {
+		gap: .5rem;
+
+		> button {
+			font-weight: 600;
+			padding: .55rem 1.1rem;
+			border-radius: .375rem;
+			outline: none;
+		}
+
+		> button.profile-cancel {
+			color: var(--text-color);
+			box-shadow: inset 0 0 0 1px var(--button-hover-color);
+
+			&:hover, &:focus-visible {
+				background: var(--light-hover-color);
+			}
+		}
+
+		> button.profile-save {
+			background: var(--primary-color);
+			color: var(--inverted-text-color);
+
+			&:hover:not(:disabled), &:focus-visible {
+				background: var(--primary-color-dark);
+			}
+		}
+	}
+}

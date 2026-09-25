@@ -33,6 +33,7 @@ import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { keyToString } from "../keybindings.ts"
 import { ConfirmModal, ModalContext, modals } from "../modal"
+import ProfileEditor from "../modal/ProfileEditor.tsx"
 import Entry from "./Entry.tsx"
 import FakeSpace from "./FakeSpace.tsx"
 import Space from "./Space.tsx"
@@ -687,8 +688,14 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 				<button
 					className="rail-profile"
 					title={`Your profile (${client.userID})`}
-					disabled={!activeRoomID}
-					onClick={() => mainScreen.setRightPanel({ type: "user", userID: client.userID })}
+					// Opens the profile editor, room or no room. It used to open the side
+					// panel, which only exists with a room open, so the button sat disabled
+					// on Home.
+					onClick={() => openModal({
+						dimmed: true,
+						boxed: true,
+						content: <ProfileEditor client={client}/>,
+					})}
 				>
 					<img className="avatar" src={getAvatarThumbnailURL(client.userID, ownProfile)} alt=""/>
 				</button>

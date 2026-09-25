@@ -44,6 +44,10 @@
 - You can attach several files to one message. Each file is sent as its own message, and your text goes with the last one.
 - The upload window has a new layout, and large images no longer fill the screen.
 
+## Profile
+
+- Click your avatar at the bottom of the sidebar to change your display name, picture and bio. It works with or without a room open.
+
 ## Known issue
 
 - Read receipts aren't always sent, so a room can stay unread after you've read it. Marking it read in another client clears it.
