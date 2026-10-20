@@ -9,7 +9,13 @@ can live here instead.
 
 - `theme.css` — echo's look (palette, Inter / Fira Code) over Sable's design tokens, loaded
   right after `src/styles.css`. Outside `src/` because Sable's theme check allows literal
-  colours only in `src/styles.css`.
+  colours only in `src/styles.css`. It imports one file per UI area from `styles/`
+  (frame, rail, roomlist, timeline, panels, popups, loading), each targeting Sable's own
+  markup and written against `design/SPEC.md`. Layout rules are desktop only
+  (`width >= 48rem`); the phone layout stays Sable's until echo has its own.
+- `components/` — the few pieces of echo's UI that CSS can't draw, each mounted from Sable's
+  markup by a one-line hook (below).
+- `layout.ts` — echo's desktop geometry that lives in Sable's script (the room list's width).
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
   the Sable project itself keep its name.
 - `brand/logo.svg` — the in-app logo. `icons/` — native app icons, generated with
@@ -29,6 +35,8 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/locales.ts` | `brandLocale(...)` around the loaded bundle |
 | `src/lib/i18n.ts` | `brandLocale(en)` for the built-in English fallback |
 | `src/lib/ui/SableBrandMark.svelte` | logo import points at `echo/brand/logo.svg` |
+| `src/lib/features/sidebar/AppShell.svelte` | room list starts at `ECHO_ROOM_NAV_WIDTH` (`echo/layout.ts`) instead of 288 |
+| `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomPreview>` (`echo/components/RoomPreview.svelte`) after each room's name |
 
 ## Running
 

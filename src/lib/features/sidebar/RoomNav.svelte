@@ -79,6 +79,7 @@
     type RoomNavRow,
   } from './nav-rows.js';
   import { PeerProfiles } from './peer-profiles.svelte.js';
+  import EchoRoomPreview from '../../../../echo/components/RoomPreview.svelte';
   import { publishVisibleRoomOrder } from './visible-rooms.svelte.js';
   import { navSectionKind, navSectionLabels, type NavSectionKind } from './nav-section.js';
   import {
@@ -634,6 +635,7 @@
           {#if !collapsed}
             <span class="room-text">
               <span class="room-name">{name}</span>
+              <EchoRoomPreview {room} profiles={peerProfiles} />
               {#if room?.is_direct && room.topic && preferences.showDmTopics}
                 <span class="room-topic">{room.topic}</span>
               {:else if peerStatus}

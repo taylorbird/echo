@@ -1,1 +1,335 @@
-/* echo: roomlist. See echo/design/SPEC.md. */
+/* echo: the room list. See echo/design/SPEC.md §4.
+
+   Sable's RoomNav.svelte draws a dense list of 2.25rem rows. echo's rows are
+   4rem tall and full-bleed, with a 2.5rem round avatar, the room name at
+   1.125rem/600, a one-line "Sender: text" preview (echo/components/
+   RoomPreview.svelte), a badge lane at the right, a hairline between rows and a
+   glow bar in a lane at the far left: green for the open room, the unread tier's
+   colour otherwise.
+
+   `.room-list:not(.collapsed)` leaves Sable's icon-only list, shown when the
+   pane is dragged narrow, as it is. */
+
+@media (width >= 48rem) {
+  :root .sidebar .room-nav {
+    background: var(--echo-roomlist);
+    border-right: 1px solid var(--echo-hairline);
+    color: var(--echo-text);
+    position: relative;
+  }
+
+  /* The header row shares --header-height with the room header, so their bottom
+     edges form one line (SPEC §0.7). */
+  :root .sidebar .room-nav-header {
+    flex-basis: var(--header-height);
+    min-height: var(--header-height);
+    padding: 0 0.5rem 0 1rem;
+  }
+
+  :root .sidebar .room-nav-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  /* Leave the header's right side to the actions lifted into it below. */
+  :root .room-nav:has(.room-nav-actions:not(.collapsed)) .room-nav-header {
+    padding-right: calc(0.5rem + 4 * 2.5rem);
+  }
+
+  :root .sidebar .room-nav-header .room-nav-menu {
+    color: var(--echo-text);
+    height: 2.5rem;
+    width: 2.5rem;
+  }
+
+  /* Create room, explore and search: echo keeps these as square icon buttons
+     in the search row, not as list rows. The labels stay for screen readers. */
+  :root .sidebar .room-nav-actions:not(.collapsed) {
+    align-items: center;
+    display: flex;
+    gap: 0;
+    height: var(--header-height);
+    padding: 0;
+    position: absolute;
+    right: calc(0.5rem + 2.5rem);
+    top: 0;
+    z-index: 1;
+  }
+
+  :root .room-nav-actions:not(.collapsed) :is(.nav-action, .room-nav-trigger) {
+    border-radius: 0.25rem;
+    flex: none;
+    height: 2.5rem;
+    justify-content: center;
+    min-height: 0;
+    padding: 0;
+    width: 2.5rem;
+  }
+
+  :root
+    .room-nav-actions:not(.collapsed)
+    :is(.nav-action, .room-nav-trigger):is(:hover, :focus-visible) {
+    background: var(--echo-button-hover);
+    outline: none;
+  }
+
+  :root .room-nav-actions:not(.collapsed) .room-text {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  :root .room-nav-actions .room-icon > svg {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+
+  /* Sections (SPEC §4.2). */
+  :root .sidebar .room-nav .rooms-heading {
+    border-radius: 0.5rem;
+    color: var(--echo-section-ink);
+    gap: 0.5rem;
+    height: 2.25rem;
+    margin: 0.25rem 0.5rem 0;
+    opacity: 1;
+    padding: 0 0.375rem 0 0.5rem;
+    width: calc(100% - 1rem);
+  }
+
+  :root .sidebar .room-nav .rooms-heading:is(:hover, :focus-visible) {
+    background: var(--echo-entry-hover);
+  }
+
+  :root .sidebar .room-nav .rooms-heading-label {
+    font-size: 1rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :root .sidebar .room-nav .category-caret {
+    flex-basis: 1.125rem;
+    height: 1.125rem;
+    margin-left: auto;
+    opacity: 0.45;
+    width: 1.125rem;
+  }
+
+  :root .room-nav .category-caret > svg {
+    height: 1.125rem;
+    width: 1.125rem;
+  }
+
+  :root .sidebar .room-nav .room-category {
+    color: var(--echo-section-ink);
+    font-size: 0.875rem;
+    font-weight: 700;
+    min-height: 2.25rem;
+    opacity: 1;
+    padding-left: calc(1rem + 10px + var(--room-depth, 0) * 1rem);
+  }
+
+  :root .sidebar .room-nav .room-list:not(.collapsed) {
+    padding: 0 0 0.5rem;
+  }
+
+  /* Rows (SPEC §4.3): full-bleed and square. */
+  :root .room-list:not(.collapsed) > .room-row-wrap {
+    border-radius: 0;
+    contain-intrinsic-size: auto 4rem;
+  }
+
+  :root .room-list:not(.collapsed) > .room-row-wrap:is(:hover, :focus-within) {
+    background: var(--echo-entry-hover);
+  }
+
+  /* A light hairline between rows. */
+  :root .room-list:not(.collapsed) > .room-row-wrap + .room-row-wrap {
+    box-shadow: inset 0 1px 0 var(--echo-row-hairline);
+  }
+
+  /* The row under the open one drops its hairline. */
+  :root .room-list > .room-row-wrap:has([aria-current='page']) + .room-row-wrap {
+    box-shadow: none;
+  }
+
+  /* The glow bar's lane, centred in the first 1rem (SPEC §4.3). */
+  :root .room-list:not(.collapsed) > .room-row-wrap::before {
+    background: var(--echo-bar, transparent);
+    border-radius: 999px;
+    box-shadow:
+      0 0 6px var(--echo-bar-near, transparent),
+      0 0 14px var(--echo-bar-far, transparent);
+    content: '';
+    height: 2rem;
+    left: calc((1rem - 0.1875rem) / 2);
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    width: 0.1875rem;
+  }
+
+  /* Unread rows: a wash and a bar in the tier's colour (SPEC §4.4). Each tier's
+     selector outranks the last, so they resolve by specificity. */
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.unread-badge) {
+    --echo-bar: var(--echo-unread-message);
+    --echo-bar-near: var(--echo-blue-near);
+    --echo-bar-far: var(--echo-blue-far);
+
+    background: var(--echo-unread-wash);
+  }
+
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.unread-badge):has(.unread-badge-count) {
+    --echo-bar: var(--echo-unread-notify);
+  }
+
+  /* A DM's unread is red: someone is waiting on you. */
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.unread-badge):has([href^='/direct/']) {
+    --echo-bar: var(--echo-unread-highlight);
+    --echo-bar-near: var(--echo-red-near);
+    --echo-bar-far: var(--echo-red-far);
+  }
+
+  :root
+    .room-list:not(.collapsed)
+    > .room-row-wrap:has(.unread-badge):has(.unread-badge-highlight) {
+    --echo-bar: var(--echo-unread-highlight);
+    --echo-bar-near: var(--echo-red-near);
+    --echo-bar-far: var(--echo-red-far);
+
+    background: var(--echo-highlight-wash);
+  }
+
+  /* The open room: a warm wash with a lit top edge and a dark seam, and the
+     green bar. Outranks the unread tiers above. */
+  :root
+    .room-list:not(.collapsed)
+    > .room-row-wrap:has(.unread-badge, *):has([aria-current='page']) {
+    --echo-bar: var(--echo-room-glow);
+    --echo-bar-near: var(--echo-room-near);
+    --echo-bar-far: var(--echo-room-far);
+
+    background: var(--echo-entry-active);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 8%),
+      inset 0 -1px 0 rgb(0 0 0 / 35%);
+  }
+
+  :root .room-list:not(.collapsed) .room-row.selection-layer {
+    align-items: center;
+    background: transparent;
+    border-radius: 0;
+    font-weight: 400;
+    gap: 0.25rem;
+    height: 4rem;
+    padding: 0.5rem 0.5rem 0.5rem calc(1rem + 10px + var(--room-depth, 0) * 1rem);
+  }
+
+  /* The avatar lane: 3.5rem holding a 2.5rem round avatar. */
+  :root .room-list:not(.collapsed) .room-avatar,
+  :root .room-list:not(.collapsed) .room-row > .room-icon {
+    flex: 0 0 3.5rem;
+    height: 3rem;
+    justify-content: flex-start;
+    width: 3.5rem;
+  }
+
+  :root .room-list .room-avatar > .room-avatar-icon {
+    --avatar-size: 2.5rem;
+
+    border-radius: 50%;
+    font-size: 1rem;
+    margin: 0.25rem;
+  }
+
+  /* Rooms without a picture: their kind glyph on a quiet disc. */
+  :root .room-list .room-avatar > .room-avatar-icon.glyph {
+    background: var(--echo-entry-hover);
+    opacity: 1;
+  }
+
+  :root .room-list .room-avatar-icon.room-avatar-icon svg {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+
+  /* No ring on the open room's avatar: the bar already says it. */
+  :root .room-list .room-row .room-avatar-icon.room-avatar-icon::after {
+    content: none;
+  }
+
+  :root .room-list:not(.collapsed) .room-text {
+    gap: 0.125rem;
+  }
+
+  /* Room names are one colour; a room's state is its wash, bar and badge
+     (SPEC §0.8). Every row has the same weight. */
+  :root .room-list:not(.collapsed) .room-row .room-name {
+    color: var(--echo-room-name);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  /* echo shows the latest message, not the topic or status, under the name. */
+  :root .room-list .room-text:has(.echo-room-preview) > .room-topic {
+    display: none;
+  }
+
+  /* The badge lane. */
+  :root .room-list:not(.collapsed) .room-row .room-status {
+    justify-content: center;
+    margin-right: 0.25rem;
+    min-width: 0;
+    width: 3rem;
+  }
+
+  /* Badges (SPEC §4.4): a small blue dot for plain unread, a light blue count
+     for notifications, a red "@" count for mentions. */
+  :root .room-row .room-status > .unread-badge-dot {
+    background: var(--echo-unread-message);
+    background-clip: border-box;
+    height: 0.4375rem;
+    padding: 0;
+    width: 0.4375rem;
+  }
+
+  :root .room-row[href^='/direct/'] .room-status > .unread-badge-dot {
+    background: var(--echo-unread-highlight);
+  }
+
+  :root .room-row .room-status > .unread-badge-count {
+    background: var(--echo-unread-notify);
+    border-radius: 1rem;
+    box-shadow:
+      0 0 7px var(--echo-blue-near),
+      0 0 15px var(--echo-blue-far);
+    color: var(--echo-unread-ink);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    height: 1rem;
+    line-height: 1;
+    min-width: 1rem;
+    padding: 0.5px 0.25rem 0;
+  }
+
+  :root .room-row .room-status > .unread-badge-count.unread-badge-highlight {
+    background: var(--echo-unread-highlight);
+    box-shadow:
+      0 0 7px var(--echo-red-near),
+      0 0 16px var(--echo-red-far);
+    color: var(--echo-unread-highlight-ink);
+  }
+
+  :root .room-row .room-status > .unread-badge-highlight::before {
+    content: '@';
+    font-weight: 600;
+    margin-right: 0.0625rem;
+  }
+}
