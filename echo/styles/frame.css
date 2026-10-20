@@ -183,6 +183,10 @@
 
   /* The reading surface: opaque, square, the chat colour (SPEC §0.6). */
   :root .drawer-panel.content-panel {
+    --surface-container: var(--echo-chat);
+    --surface-container-hover: var(--echo-timeline-hover);
+    --surface-on-container: var(--echo-text);
+
     background: var(--echo-chat);
     color: var(--echo-text);
   }
@@ -190,5 +194,29 @@
   /* Hand cursors are a web idiom; echo is a desktop app (SPEC §1.3). */
   :root .app-shell :is(a, button, [role='button']) {
     cursor: default;
+  }
+}
+
+/* macOS app window (SPEC §2.4): echo has no title-bar band; every pane runs to
+   the window's top edge and the traffic lights sit over the rail. Sable keeps
+   its 2rem drag strip (so the window can still be dragged and nothing
+   clickable sits under the lights), but it is see-through, and the strip of
+   each pane under it takes that pane's colour. */
+@media (width >= 48rem) {
+  :root[data-client-decorations='mac'] .titlebar.titlebar-mac {
+    background: transparent;
+    border-bottom: 0;
+  }
+
+  :root[data-client-decorations='mac'] .titlebar-mac .title {
+    visibility: hidden;
+  }
+
+  :root[data-client-decorations='mac'] .app-shell .sidebar {
+    background: linear-gradient(
+      to right,
+      var(--echo-rail) calc(var(--safe-left) + var(--navigation-rail-width)),
+      var(--echo-roomlist) calc(var(--safe-left) + var(--navigation-rail-width))
+    );
   }
 }
