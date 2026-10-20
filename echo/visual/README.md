@@ -9,7 +9,9 @@ screens without touching a real account. It reuses the e2e suite's fixtures
 2. Seeds it (`seed.ts`): five people with avatars, a "Work" space with general / design /
    random, two rooms outside it (Book club, Weekend plans), two DMs, and a busy #general with a
    reply, an edit, reactions, a mention, a link and a code block. design has an unread mention;
-   general, random, Weekend plans and the DM with Alex are unread. Every message is stamped at
+   general, random, Weekend plans and the DM with Alex are unread. Three more rooms carry the
+   unread states a real account has: Announcements is muted with unread messages, Releases
+   notifies on everything, and Reading list is read but marked unread. Every message is stamped at
    seeding time: backdating needs an appservice, which needs a server admin, and the e2e
    fixture's server never makes one.
 3. Builds the app the way `pnpm test:e2e` does (skipped when `dist/` is newer than `src/`,
@@ -23,12 +25,15 @@ Screenshots land in `echo/visual/out/` (gitignored), replaced on every run:
 | File | View |
 | --- | --- |
 | `desktop-{light,dark}-roomlist.png` | home / room list, 1512×982 @2x |
+| `desktop-{light,dark}-home.png` | Home (all rooms) with echo's parted rail open |
+| `desktop-{light,dark}-home-dms.png` | Home narrowed to direct messages by the rail's sub-filter |
 | `desktop-{light,dark}-space.png` | the Work space's room list |
 | `desktop-{light,dark}-timeline.png` | #general, members panel closed |
 | `desktop-{light,dark}-members.png` | #general with the members panel |
 | `desktop-{light,dark}-profile.png` | Alex Rivera's profile card |
 | `desktop-{light,dark}-settings.png` | settings |
 | `desktop-{light,dark}-modal-room-settings.png` | #general's room settings dialog |
+| `app-{light,dark}-{home,timeline,members}.png` | the same views with the macOS app's chrome (`data-tauri-os`, `data-client-decorations` set on `<html>` by hand): floating panes, no title band |
 | `phone-light-{roomlist,timeline}.png` | 390×844 @3x |
 | `setup-<step>.png`, `setup-<step>-scrolled.png` | each setup step after a fresh sign-in at a short 1280×440 window, before and after a wheel; `out/.setup-scroll.json` records how far each overflowed and scrolled |
 

@@ -231,6 +231,47 @@ const roomSettings: View = {
   close: closeDialogs,
 };
 
+// Home: every room in one list, with echo's parted rail open under its tile.
+const home: View = {
+  name: 'home',
+  open: async (page) => {
+    await page.goto('/home');
+    await expect(page.locator('.echo-rail-band')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('link', { name: /Releases/ }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+  },
+};
+
+// Home narrowed to direct messages by the band's sub-filter.
+const homeDirect: View = {
+  name: 'home-dms',
+  open: async (page) => {
+    await home.open(page);
+    await page.locator('.echo-rail-band').getByRole('button', { name: 'Direct messages' }).click();
+    await expect(page.locator('html[data-echo-filter="dms"]')).toHaveCount(1);
+  },
+  close: async (page) => {
+    await page.locator('.echo-rail-band').getByRole('button', { name: 'All chats' }).click();
+  },
+};
+
+// The macOS app's chrome, which a browser never gets: echo/init.ts and Sable
+// set these on <html> inside the app.
+function inApp(view: View): View {
+  return {
+    name: view.name,
+    open: async (page) => {
+      await view.open(page);
+      await page.evaluate(() => {
+        document.documentElement.dataset.tauriOs = 'macos';
+        document.documentElement.dataset.clientDecorations = 'mac';
+      });
+    },
+    close: view.close,
+  };
+}
+
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1512, height: 982 }, deviceScaleFactor: 2 });
 
@@ -239,10 +280,36 @@ test.describe('desktop', () => {
     await liveCss(context);
     await signIn(page);
     // The room list first, in both themes, while every badge is still unread.
-    for (const view of [roomList, space, timeline, members, profile, settings, roomSettings]) {
+    for (const view of [
+      roomList,
+      home,
+      homeDirect,
+      space,
+      timeline,
+      members,
+      profile,
+      settings,
+      roomSettings,
+    ]) {
       for (const scheme of ['light', 'dark'] satisfies Scheme[]) {
         await page.emulateMedia({ colorScheme: scheme });
         await capture(page, `desktop-${scheme}-${view.name}`, view);
+      }
+    }
+  });
+});
+
+test.describe('app', () => {
+  test.use({ viewport: { width: 1512, height: 982 }, deviceScaleFactor: 2 });
+
+  test('app', async ({ context, page }) => {
+    await holdReadState(context);
+    await liveCss(context);
+    await signIn(page);
+    for (const view of [home, timeline, members]) {
+      for (const scheme of ['light', 'dark'] satisfies Scheme[]) {
+        await page.emulateMedia({ colorScheme: scheme });
+        await capture(page, `app-${scheme}-${view.name}`, inApp(view));
       }
     }
   });

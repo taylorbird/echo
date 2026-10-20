@@ -254,15 +254,58 @@ export async function seedAccount(baseUrl: string): Promise<SeededAccount> {
   await send(sam, rooms['dm:sam'], text('Thanks for the help yesterday!'));
   const samLast = await send(me, rooms['dm:sam'], text('Any time 🙂'));
 
+  // The unread states a real account has beyond those: a muted room with unread
+  // messages, a room set to notify on everything, and one marked unread by hand.
+  rooms.Announcements = await groupRoom('Announcements', 'Office news');
+  rooms.Releases = await groupRoom('Releases', 'Build and release notices');
+  rooms['Reading list'] = await groupRoom('Reading list', 'Books to get to');
+  const announcementsRead = await send(
+    me,
+    rooms.Announcements,
+    text('Posting office hours here from now on.')
+  );
+  await me.request(
+    'PUT',
+    `client/v3/pushrules/global/override/${encodeURIComponent(rooms.Announcements)}`,
+    {
+      conditions: [{ kind: 'event_match', key: 'room_id', pattern: rooms.Announcements }],
+      actions: [],
+    }
+  );
+  await send(priya, rooms.Announcements, text('Office hours move to Thursday.'));
+  await send(jordan, rooms.Announcements, text('Parking lot B is closed next week.'));
+  await me.request('PUT', `client/v3/pushrules/global/room/${encodeURIComponent(rooms.Releases)}`, {
+    actions: ['notify'],
+  });
+  for (const body of ['Nightly 0.9.1 is out.', 'Nightly 0.9.2 is out.', 'RC1 is tagged.']) {
+    await send(sam, rooms.Releases, text(body));
+  }
+  const readingLast = await send(
+    me,
+    rooms['Reading list'],
+    text('Adding The Dispossessed to the list.')
+  );
+
   // Read up to date: Book club and the DM with Sam. Everything else is unread.
   for (const [roomId, eventId] of [
     [rooms['Book club'], bookLast],
     [rooms['dm:sam'], samLast],
+    [rooms.Announcements, announcementsRead],
+    [rooms['Reading list'], readingLast],
   ] as const) {
     await me.request('POST', `client/v3/rooms/${encodeURIComponent(roomId)}/read_markers`, {
       'm.fully_read': eventId,
       'm.read': eventId,
     });
+  }
+
+  // Read, then marked unread by hand.
+  for (const type of ['m.marked_unread', 'com.famedly.marked_unread']) {
+    await me.request(
+      'PUT',
+      `client/v3/user/${encodeURIComponent(me.userId)}/rooms/${encodeURIComponent(rooms['Reading list'])}/account_data/${type}`,
+      { unread: true }
+    );
   }
 
   return { userId: me.userId, rooms };
