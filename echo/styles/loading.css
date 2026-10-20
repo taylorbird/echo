@@ -1,1 +1,62 @@
-/* echo: loading. See echo/design/SPEC.md. */
+/* echo: loading, empty and pre-app screens (sign-in, setup). See
+   echo/design/SPEC.md §10. */
+
+@media (width >= 48rem) {
+  /* The sign-in and setup pages scrolled only with the document, which the
+     desktop app did not do: on a short window the setup steps' buttons were
+     out of reach. The page is its own scroll container instead, so it scrolls
+     whatever the document does. */
+  :root main.auth-page {
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Sable spends the top third of the window above the card; on a short
+     window that pushes the card's buttons below the fold. */
+  :root .auth-page .auth-content {
+    grid-template-rows: clamp(7rem, calc((100dvh - 4rem) / 3), 18rem) auto;
+  }
+}
+
+@media (width >= 48rem) and (height < 45rem) {
+  :root .auth-page .auth-content {
+    grid-template-rows: clamp(5rem, 16dvh, 8rem) auto;
+  }
+}
+
+/* Skeletons (SPEC §10): a faint warm fill with a light band sweeping across,
+   never a pulse. Under reduced motion only the flat fill stays. */
+@media (width >= 48rem) {
+  :root .skeleton.skeleton {
+    --echo-sk-base: rgb(var(--echo-warm-rgb) / 7%);
+    --echo-sk-highlight: rgb(var(--echo-warm-rgb) / 16%);
+
+    background-color: var(--echo-sk-base);
+  }
+}
+
+@media (width >= 48rem) and (prefers-reduced-motion: no-preference) {
+  html:not([data-reduced-motion='on']) .skeleton.skeleton {
+    animation: echo-sk-sweep 1.6s linear infinite;
+    background-image: linear-gradient(
+      90deg,
+      var(--echo-sk-base) 0%,
+      var(--echo-sk-base) 40%,
+      var(--echo-sk-highlight) 50%,
+      var(--echo-sk-base) 60%,
+      var(--echo-sk-base) 100%
+    );
+    background-size: 200% 100%;
+  }
+}
+
+@keyframes echo-sk-sweep {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}

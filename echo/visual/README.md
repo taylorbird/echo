@@ -30,6 +30,7 @@ Screenshots land in `echo/visual/out/` (gitignored), replaced on every run:
 | `desktop-{light,dark}-settings.png` | settings |
 | `desktop-{light,dark}-modal-room-settings.png` | #general's room settings dialog |
 | `phone-light-{roomlist,timeline}.png` | 390×844 @3x |
+| `setup-<step>.png`, `setup-<step>-scrolled.png` | each setup step after a fresh sign-in at a short 1280×440 window, before and after a wheel; `out/.setup-scroll.json` records how far each overflowed and scrolled |
 
 A view that can't be reached is skipped with a warning and the rest still run; what was on
 screen instead goes to `out/.debug/` (a screenshot and an accessibility snapshot).

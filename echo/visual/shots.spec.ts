@@ -264,3 +264,58 @@ test.describe('phone', () => {
     for (const view of [roomList, timeline]) await capture(page, `phone-light-${view.name}`, view);
   });
 });
+
+// The setup screens after a first sign-in, at a short desktop window: each step
+// is screenshotted, and whether a wheel over it scrolls anything is recorded
+// in out/.setup-scroll.json (a short window must be able to reach the
+// buttons at the bottom).
+test.describe('setup', () => {
+  test.use({ viewport: { width: 1280, height: 440 }, deviceScaleFactor: 2 });
+
+  test('setup', async ({ context, page }) => {
+    await holdReadState(context);
+    await liveCss(context);
+    const auth = new AuthFlow(page);
+    await auth.open(state.baseUrl);
+    await expect(auth.moreMethodsButton).toBeVisible({ timeout: 60_000 });
+    await auth.revealPasswordLogin();
+    await auth.signInWithPassword(LOGIN_USERNAME, LOGIN_PASSWORD);
+    const report: Record<string, { overflow: number; scrolled: number }> = {};
+    for (let index = 0; index < 12; index += 1) {
+      await expect(page).toHaveURL(/\/(setup\/[a-z]+|rooms)$/, { timeout: 30_000 });
+      const path = new URL(page.url()).pathname;
+      if (path.endsWith('/rooms')) break;
+      const step = path.split('/').pop() ?? String(index);
+      await settle(page);
+      await page.screenshot({ path: join(OUT_DIR, `setup-${step}.png`) });
+      // How far the page overflows the window, and how far a wheel moved it.
+      const overflow = await page.evaluate(() =>
+        Math.max(
+          ...[document.documentElement, ...document.querySelectorAll('main')].map(
+            (element) => element.scrollHeight - element.clientHeight
+          )
+        )
+      );
+      await page.mouse.move(640, 300);
+      await page.mouse.wheel(0, 2000);
+      await page.waitForTimeout(300);
+      const scrolled = await page.evaluate(() =>
+        Math.max(
+          window.scrollY,
+          ...[...document.querySelectorAll('*')].map((element) => element.scrollTop)
+        )
+      );
+      report[step] = { overflow, scrolled };
+      await page.screenshot({ path: join(OUT_DIR, `setup-${step}-scrolled.png`) });
+      const before = page.url();
+      // AuthFlow's own step picker; private to the e2e suite, reused as is.
+      await expect(async () => {
+        await (await auth['nextSetupAction']()).click({ timeout: 5_000 });
+      }).toPass({ timeout: 30_000 });
+      await page
+        .waitForURL((url) => url.href !== before, { timeout: 5_000 })
+        .catch(() => undefined);
+    }
+    await writeFile(join(OUT_DIR, '.setup-scroll.json'), JSON.stringify(report, null, 2));
+  });
+});
