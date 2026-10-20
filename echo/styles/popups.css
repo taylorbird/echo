@@ -1,1 +1,161 @@
-/* echo: popups. See echo/design/SPEC.md. */
+/* echo: pop-ups, menus, dialogs and settings. See echo/design/SPEC.md §9.
+
+   Panes are square; pop-ups keep a radius (SPEC §0.1). Dialogs are the base
+   colour at a 1rem radius over a dark scrim; buttons come in echo's pair, a
+   ringed ghost and a filled primary, at a .375rem radius. Desktop only, like
+   the rest of echo's layer: phones keep Sable's sheets. */
+
+@media (width >= 48rem) {
+  /* Profile card (SPEC §9.3): a 14px radius, a border strong enough to hold
+     against the dim, a round avatar and echo's name and button type. */
+  :root .profile-card.profile-card-popover {
+    --pill-primary-ground: var(--echo-primary);
+    --pill-primary-ink: var(--echo-on-primary);
+
+    border: 1px solid color-mix(in srgb, var(--echo-text) 32%, var(--echo-chat));
+    border-radius: 14px;
+    box-shadow:
+      0 12px 32px var(--echo-modal-shadow),
+      0 2px 8px var(--echo-modal-shadow);
+  }
+
+  /* echo's card is the base colour, not tinted by the person's avatar. */
+  :root body .profile-card.profile-card-popover:is(.tinted, :not(.tinted)) {
+    --profile-card-ground: var(--echo-chat);
+    --profile-chip-line: var(--echo-button-hover);
+    --profile-hero-muted: var(--echo-text-2);
+    --profile-icon: var(--echo-text-2);
+    --profile-ink: var(--echo-text);
+    --profile-line: var(--echo-hairline);
+    --profile-panel-ground: var(--echo-chat);
+    --profile-text-muted: var(--echo-text-2);
+    --pill-primary-ground: var(--echo-primary);
+    --pill-primary-ink: var(--echo-on-primary);
+    --pill-primary-line: transparent;
+  }
+
+  /* echo had no banners: without one of their own, the card shows no picture
+     behind the avatar. */
+  :root .profile-card .profile-card-banner-fallback {
+    visibility: hidden;
+  }
+
+  /* Sable paints the cover in the person's colour inline; echo's card has no
+     colour block, so the base colour is laid over it. */
+  :root .profile-card .profile-card-cover:not(.has-banner) {
+    position: relative;
+  }
+
+  :root .profile-card .profile-card-cover:not(.has-banner)::after {
+    background: var(--echo-chat);
+    content: '';
+    inset: 0;
+    position: absolute;
+  }
+
+  :root .profile-card .profile-card-avatar-wrap > .profile-card-avatar-button {
+    border-radius: 50%;
+  }
+
+  :root .profile-card .avatar-root.profile-card-avatar {
+    border-radius: 50%;
+  }
+
+  :root .profile-card .profile-card-name {
+    font-size: 1.625rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+
+  :root .profile-card .profile-card-user-id {
+    font-family: var(--font-family-mono);
+    font-size: 0.8125rem;
+  }
+
+  /* echo's card buttons: a ringed ghost, or filled for the primary action. */
+  :root .profile-card button.pill {
+    border: 0;
+    border-radius: 0.375rem;
+    box-shadow: inset 0 0 0 1px var(--echo-button-hover);
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.45rem 0.8rem;
+  }
+
+  :root .profile-card button.pill.pill-icon-only {
+    padding: 0.45rem 0.5rem;
+  }
+
+  :root .profile-card button.pill.pill-primary {
+    background: var(--echo-primary);
+    box-shadow: none;
+    color: var(--echo-on-primary);
+  }
+
+  :root .profile-card button.pill:not(.pill-primary):hover {
+    background: var(--echo-hover);
+  }
+
+  /* Scrim (SPEC §9.1): a plain dim in the browser; in the app, a lighter dim
+     with the window behind it blurred. */
+  :root .dialog-backdrop[data-dialog-overlay] {
+    background: rgb(0 0 0 / 75%);
+  }
+
+  :root[data-tauri-os] .dialog-backdrop[data-dialog-overlay] {
+    backdrop-filter: blur(20px) saturate(115%);
+    background: rgb(0 0 0 / 50%);
+  }
+
+  /* Dialog boxes: the base colour at a 1rem radius. */
+  :root .dialog-content.dialog-content-verification {
+    background: var(--echo-chat);
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 0 1rem var(--echo-modal-shadow);
+    color: var(--echo-text);
+    padding: 1rem;
+  }
+
+  :root .dialog-content.dialog-content-settings {
+    background: var(--echo-chat);
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 0 1rem var(--echo-modal-shadow);
+    color: var(--echo-text);
+  }
+
+  /* Settings: the section list on the room list's colour, the page on the
+     base colour. */
+  :root .dialog-content-settings .settings-shell {
+    background: var(--echo-roomlist);
+    color: var(--echo-text);
+  }
+
+  :root .dialog-content-settings .settings-content {
+    --surface-container: var(--echo-chat);
+    --surface-container-hover: var(--echo-hover);
+
+    background: var(--echo-chat);
+    color: var(--echo-text);
+  }
+
+  /* Menus (SPEC §6.8): a .5rem radius, a 1px border and a soft all-round
+     shadow. */
+  :root .menu-surface {
+    --radius-outer: 0.5rem;
+    --menu-item-hover: var(--echo-hover);
+
+    background: var(--echo-chat);
+    border: 1px solid var(--echo-border);
+    box-shadow: 0 0 1rem var(--echo-modal-shadow);
+    color: var(--echo-text);
+  }
+
+  :root .menu-surface .menu-item {
+    --menu-item-gap: 0.5rem;
+    --menu-item-height: 2.25rem;
+    --menu-item-padding: 0.75rem;
+  }
+}
