@@ -8,6 +8,15 @@
    lets it hold literal colours, which scripts/check/theme-tokens.mjs allows only in
    src/styles.css. */
 
+/* Each area of echo's UI has its own file, so they can be worked on separately. */
+@import url('./styles/frame.css');
+@import url('./styles/rail.css');
+@import url('./styles/roomlist.css');
+@import url('./styles/timeline.css');
+@import url('./styles/panels.css');
+@import url('./styles/popups.css');
+@import url('./styles/loading.css');
+
 @font-face {
   font-display: swap;
   font-family: Inter;
