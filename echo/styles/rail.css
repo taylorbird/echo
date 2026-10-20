@@ -71,10 +71,14 @@
       0 0 14px var(--echo-accent-far);
     display: none;
     height: 1.5625rem;
+
+    /* Centred by its box rather than by a transform, so none of Sable's
+       transforms on this pseudo-element can move it off the tile's middle. */
+    inset-block: 0;
     left: -0.75rem;
-    top: 50%;
+    margin-block: auto;
     transform: none;
-    translate: 0 -50%;
+    translate: none;
     width: 0.1875rem;
   }
 

@@ -207,10 +207,10 @@
       0 0 14px var(--echo-accent-far);
     content: '';
     height: 1.5625rem;
+    inset-block: 0;
     left: calc((var(--navigation-rail-width) - 3.125rem) / 2 - 0.75rem);
+    margin-block: auto;
     position: absolute;
-    top: 50%;
-    translate: 0 -50%;
     width: 0.1875rem;
   }
 

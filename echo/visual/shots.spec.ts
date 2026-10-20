@@ -12,6 +12,8 @@ type View = {
   open: (page: Page) => Promise<void>;
   /** Undoes `open`, so the next view starts from the room. */
   close?: (page: Page) => Promise<void>;
+  /** Records measurements once the view is fully set up. */
+  measure?: (page: Page) => Promise<void>;
 };
 
 const skipped: string[] = [];
@@ -91,6 +93,7 @@ async function capture(page: Page, file: string, view: View): Promise<void> {
   try {
     await view.open(page);
     await settle(page);
+    await view.measure?.(page);
     await page.screenshot({ path: join(OUT_DIR, `${file}.png`) });
     // The rendered markup, to write echo's CSS against Sable's real classes.
     if (process.env.ECHO_SHOTS_DOM === '1') {
@@ -212,7 +215,8 @@ const membersNextRoom: View = {
   name: 'members-next-room',
   open: async (page) => {
     await members.open(page);
-    await page.goto(`/rooms/${encodeURIComponent(state.rooms.design)}`);
+    // Book club is read already, so opening it costs no other shot an unread badge.
+    await page.goto(`/rooms/${encodeURIComponent(state.rooms['Book club'])}`);
     await expect(page.locator('.timeline-viewport:not(.initial)')).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole('complementary', { name: 'Members' })).toHaveCount(0);
   },
@@ -277,6 +281,35 @@ const homeDirect: View = {
   },
 };
 
+// The Work space with each of the band's sub-filters selected. The selected
+// row's box is saved to out/.pill-<view>.json, to check the pill against it.
+function spaceFilter(value: string, label: string): View {
+  return {
+    name: `space-${value}`,
+    open: async (page) => {
+      await space.open(page);
+      await page.locator('.echo-rail-band').getByRole('button', { name: label }).click();
+      await expect(page.locator(`html[data-echo-filter="${value}"]`)).toHaveCount(1);
+    },
+    measure: async (page) => {
+      const row = await page
+        .locator('.echo-rail-band [aria-pressed="true"]')
+        .evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          return { top: box.top, bottom: box.bottom, left: box.left, right: box.right };
+        });
+      await writeFile(join(OUT_DIR, `.pill-space-${value}.json`), JSON.stringify(row));
+    },
+  };
+}
+
+const spaceFilters = [
+  spaceFilter('all', 'All chats'),
+  spaceFilter('rooms', 'Rooms'),
+  spaceFilter('dms', 'Direct messages'),
+  spaceFilter('recent', 'Recent'),
+];
+
 // The macOS app's chrome, which a browser never gets: echo/init.ts and Sable
 // set these on <html> inside the app.
 function inApp(view: View): View {
@@ -290,6 +323,7 @@ function inApp(view: View): View {
       });
     },
     close: view.close,
+    measure: view.measure,
   };
 }
 
@@ -335,6 +369,8 @@ test.describe('app', () => {
         await capture(page, `app-${scheme}-${view.name}`, inApp(view));
       }
     }
+    await page.emulateMedia({ colorScheme: 'dark' });
+    for (const view of spaceFilters) await capture(page, `app-dark-${view.name}`, inApp(view));
   });
 });
 

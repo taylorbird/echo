@@ -31,11 +31,12 @@ Screenshots land in `echo/visual/out/` (gitignored), replaced on every run:
 | `desktop-{light,dark}-timeline.png` | #general, members panel closed |
 | `desktop-{light,dark}-members.png` | #general with the members panel |
 | `desktop-{light,dark}-members-esc.png` | #general after Esc closed the members panel |
-| `desktop-{light,dark}-members-next-room.png` | design, opened with the members panel open in #general: it stays closed |
+| `desktop-{light,dark}-members-next-room.png` | Book club, opened with the members panel open in #general: it stays closed |
 | `desktop-{light,dark}-profile.png` | Alex Rivera's profile card |
 | `desktop-{light,dark}-settings.png` | settings |
 | `desktop-{light,dark}-modal-room-settings.png` | #general's room settings dialog |
 | `app-{light,dark}-{home,timeline,members}.png` | the same views with the macOS app's chrome (`data-tauri-os`, `data-client-decorations` set on `<html>` by hand): floating panes, no title band |
+| `app-dark-space-{all,rooms,dms,recent}.png` | the Work space in the app with each rail sub-filter selected; the selected row's box goes to `out/.pill-space-<filter>.json`, to check the pill against it |
 | `phone-light-{roomlist,timeline}.png` | 390×844 @3x |
 | `setup-<step>.png`, `setup-<step>-scrolled.png` | each setup step after a fresh sign-in at a short 1280×440 window, before and after a wheel; `out/.setup-scroll.json` records how far each overflowed and scrolled |
 
