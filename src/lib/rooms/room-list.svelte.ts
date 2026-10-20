@@ -16,6 +16,7 @@ import { preferences } from '#lib/settings/preferences.svelte.js';
 import { quietTargets } from './quiet-rooms.svelte.js';
 import { readRoomListSnapshot, writeRoomListSnapshot } from './room-list-snapshot.js';
 import { quietRoomIds } from './spaces.js';
+import { echoBadgeCounts } from '../../../echo/unread.js';
 import {
   applyBadgeMode,
   badgeModeFor,
@@ -189,7 +190,7 @@ export class RoomList {
   readonly unreadFor: RoomUnread = roomUnread;
 
   readonly badgeUnreadFor: RoomUnread = (room) => {
-    const counts = roomUnread(room);
+    const counts = echoBadgeCounts(room);
     if (this.quietRoomIds.has(room.room_id)) return quietUnread(counts);
     return applyBadgeMode(
       counts,

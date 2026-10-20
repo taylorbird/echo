@@ -189,7 +189,7 @@
   }
 
   /* A DM's unread is red: someone is waiting on you. */
-  :root .room-list:not(.collapsed) > .room-row-wrap:has(.unread-badge):has([href^='/direct/']) {
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.unread-badge):has(.echo-dm) {
     --echo-bar: var(--echo-unread-highlight);
     --echo-bar-near: var(--echo-red-near);
     --echo-bar-far: var(--echo-red-far);
@@ -197,7 +197,7 @@
 
   :root
     .room-list:not(.collapsed)
-    > .room-row-wrap:has(.unread-badge):has(.unread-badge-highlight) {
+    > .room-row-wrap:has(.unread-badge):has([aria-label$='mentions']) {
     --echo-bar: var(--echo-unread-highlight);
     --echo-bar-near: var(--echo-red-near);
     --echo-bar-far: var(--echo-red-far);
@@ -299,10 +299,6 @@
     width: 0.4375rem;
   }
 
-  :root .room-row[href^='/direct/'] .room-status > .unread-badge-dot {
-    background: var(--echo-unread-highlight);
-  }
-
   :root .room-row .room-status > .unread-badge-count {
     background: var(--echo-unread-notify);
     border-radius: 1rem;
@@ -319,7 +315,10 @@
     padding: 0.5px 0.25rem 0;
   }
 
-  :root .room-row .room-status > .unread-badge-count.unread-badge-highlight {
+  /* Sable's "highlight" covers mentions and notifying rooms alike; only the
+     badge's label tells a mention apart ("N mentions"). In another language a
+     mention falls back to the notified badge. */
+  :root .room-row .room-status > .unread-badge-count[aria-label$='mentions'] {
     background: var(--echo-unread-highlight);
     box-shadow:
       0 0 7px var(--echo-red-near),
@@ -327,9 +326,27 @@
     color: var(--echo-unread-highlight-ink);
   }
 
-  :root .room-row .room-status > .unread-badge-highlight::before {
+  :root .room-row .room-status > .unread-badge-count[aria-label$='mentions']::before {
     content: '@';
     font-weight: 600;
     margin-right: 0.0625rem;
+  }
+
+  /* A DM's unread is a plain red dot, without the count (SPEC §4.4); a real
+     mention keeps the @ count. */
+  :root .room-row:has(.echo-dm) .room-status > .unread-badge:not([aria-label$='mentions']) {
+    background: var(--echo-unread-highlight);
+    box-shadow: none;
+    font-size: 0;
+    height: 0.4375rem;
+    min-width: 0;
+    padding: 0;
+    width: 0.4375rem;
+  }
+
+  /* echo showed no notification-mode icon on a row; the mode lives in the
+     room's menu. */
+  :root .room-row .room-status > .room-mode {
+    display: none;
   }
 }

@@ -16,6 +16,8 @@ can live here instead.
 - `components/` — the few pieces of echo's UI that CSS can't draw, each mounted from Sable's
   markup by a one-line hook (below).
 - `layout.ts` — echo's desktop geometry that lives in Sable's script (the room list's width).
+- `unread.ts` — echo's unread indicators: a muted room with unread messages still gets its dot
+  in the room list and rail (Sable's core clears a muted room's counts). Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
   the Sable project itself keep its name.
 - `brand/logo.svg` — the in-app logo. `icons/` — native app icons, generated with
@@ -37,6 +39,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/ui/SableBrandMark.svelte` | logo import points at `echo/brand/logo.svg` |
 | `src/lib/features/sidebar/AppShell.svelte` | room list starts at `ECHO_ROOM_NAV_WIDTH` (`echo/layout.ts`) instead of 288 |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomPreview>` (`echo/components/RoomPreview.svelte`) after each room's name |
+| `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
 
 ## Running
 

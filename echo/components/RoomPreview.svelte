@@ -1,5 +1,7 @@
 <!-- echo: the one-line "Sender: text" preview under a room's name in the room
-     list (echo/design/SPEC.md §4.3). Hooked into Sable's RoomNav.svelte. -->
+     list (echo/design/SPEC.md §4.3). Hooked into Sable's RoomNav.svelte. It also
+     marks a direct message's row (`.echo-dm`), which the rail's sub-filters
+     and the red DM badge read: a DM's link doesn't always say what it is. -->
 <script lang="ts">
   import type { RoomListItemView } from '#src/generated/protocol';
   import { useCoreClient } from '#lib/core/context.js';
@@ -35,6 +37,7 @@
   });
 </script>
 
+{#if room?.is_direct}<span class="echo-dm" hidden></span>{/if}
 {#if latest && latest.body}
   <span class="echo-room-preview"
     >{#if name}<span class="echo-preview-sender" style:color={senderColor(sender)}>{name}</span
