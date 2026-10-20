@@ -197,26 +197,122 @@
   }
 }
 
-/* macOS app window (SPEC §2.4): echo has no title-bar band; every pane runs to
-   the window's top edge and the traffic lights sit over the rail. Sable keeps
-   its 2rem drag strip (so the window can still be dragged and nothing
-   clickable sits under the lights), but it is see-through, and the strip of
-   each pane under it takes that pane's colour. */
+/* The desktop app (SPEC §2.4). The chat pane floats: a .5rem gap on its right
+   and bottom (the top stays flush) shows the window's ground, the room list is
+   raised over the chat's left edge and the right panel over its right edge,
+   and the chat itself is recessed. Panes stay square (SPEC §0.1). In the dark
+   scheme the chat is echo's cool near-black, the darkest surface. A browser
+   tab keeps the flat frame, as echo's did. */
 @media (width >= 48rem) {
+  :root[data-tauri-os] {
+    --echo-backdrop: #d9d7dc;
+    --echo-pane-gap: 0.5rem;
+  }
+
+  :root[data-tauri-os] body {
+    background: var(--echo-backdrop);
+  }
+
+  :root[data-tauri-os] .drawer-panel.content-panel {
+    background: var(--echo-backdrop);
+    padding-bottom: calc(var(--safe-bottom) + var(--echo-pane-gap));
+    padding-right: calc(var(--safe-right) + var(--echo-pane-gap));
+  }
+
+  :root[data-tauri-os] .content-panel > .content {
+    background: var(--echo-chat);
+    box-shadow:
+      inset 10px 0 10px -10px rgb(0 0 0 / 60%),
+      0 0 0 0.5px rgb(0 0 0 / 45%),
+      0 6px 20px rgb(0 0 0 / 30%);
+  }
+
+  /* Raised from the left, its light edge paired with the dark blur, since a
+     black shadow alone vanishes on the dark chat (SPEC §0.2). */
+  :root[data-tauri-os] .sidebar .room-nav {
+    border-right: 0;
+    box-shadow:
+      1px 0 0 rgb(255 255 255 / 7%),
+      8px 0 24px rgb(0 0 0 / 60%);
+    z-index: 3;
+  }
+
+  :root[data-tauri-os] .room-view aside:not(.member-user-list) {
+    border-left: 0;
+    box-shadow:
+      -1px 0 0 rgb(255 255 255 / 7%),
+      -8px 0 24px rgb(0 0 0 / 60%);
+    z-index: 3;
+  }
+
+  :root[data-tauri-os] .room-view .panel-header.room-header {
+    background: var(--echo-roomlist);
+  }
+}
+
+@media (width >= 48rem) and (prefers-color-scheme: dark) {
+  :root[data-tauri-os]:not(.light) {
+    --echo-backdrop: #42424c;
+    --echo-rail: #1b1a1f;
+    --echo-roomlist: #26262c;
+    --echo-chat: #16181f;
+    --echo-text: #e6eaf2;
+    --echo-text-2: #98a0b0;
+    --echo-composer: #1e212a;
+    --echo-timeline-hover: #212530;
+    --echo-border: #2f3543;
+    --echo-hairline: rgb(230 234 242 / 9%);
+    --echo-hover: rgb(230 234 242 / 8%);
+    --echo-button-hover: rgb(230 234 242 / 18%);
+    --echo-code-bg: rgb(30 33 42 / 85%);
+    --echo-pill-bg: #39404f;
+  }
+}
+
+@media (width >= 48rem) {
+  :root[data-tauri-os].dark {
+    --echo-backdrop: #42424c;
+    --echo-rail: #1b1a1f;
+    --echo-roomlist: #26262c;
+    --echo-chat: #16181f;
+    --echo-text: #e6eaf2;
+    --echo-text-2: #98a0b0;
+    --echo-composer: #1e212a;
+    --echo-timeline-hover: #212530;
+    --echo-border: #2f3543;
+    --echo-hairline: rgb(230 234 242 / 9%);
+    --echo-hover: rgb(230 234 242 / 8%);
+    --echo-button-hover: rgb(230 234 242 / 18%);
+    --echo-code-bg: rgb(30 33 42 / 85%);
+    --echo-pill-bg: #39404f;
+  }
+}
+
+/* macOS (SPEC §2.4). echo/init.ts turns on Sable's own title bar there, which
+   puts the window in overlay style. echo has no title band: every pane runs
+   to the top edge, and only the rail reserves the strip under the traffic
+   lights. Sable's drag strip shrinks to the rail's width, the headers become
+   drag regions instead (echo/init.ts), and the header height grows to echo's
+   in-app 4.75rem. */
+@media (width >= 48rem) {
+  html:root[data-client-decorations='mac'] {
+    --header-height: 4.75rem;
+    --navigation-rail-width: 5.5rem;
+    --safe-top: var(--safe-area-inset-top);
+  }
+
   :root[data-client-decorations='mac'] .titlebar.titlebar-mac {
     background: transparent;
     border-bottom: 0;
+    right: auto;
+    width: calc(var(--safe-left) + var(--navigation-rail-width));
   }
 
   :root[data-client-decorations='mac'] .titlebar-mac .title {
     visibility: hidden;
   }
 
-  :root[data-client-decorations='mac'] .app-shell .sidebar {
-    background: linear-gradient(
-      to right,
-      var(--echo-rail) calc(var(--safe-left) + var(--navigation-rail-width)),
-      var(--echo-roomlist) calc(var(--safe-left) + var(--navigation-rail-width))
-    );
+  :root[data-client-decorations='mac'] .sidebar .rail-scroll {
+    padding-top: calc(var(--titlebar-height) + 0.5rem);
   }
 }

@@ -9,6 +9,7 @@
   import IconContext from 'phosphor-svelte/lib/IconContext';
   import '../styles.css';
   import '../../echo/theme.css';
+  import '../../echo/init.js';
   import { createCoreClient } from '#lib/core/client.svelte.js';
   import { provideCoreClient } from '#lib/core/context.js';
   import TooltipProvider from '#lib/ui/primitives/TooltipProvider.svelte';

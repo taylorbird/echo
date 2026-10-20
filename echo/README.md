@@ -16,6 +16,9 @@ can live here instead.
 - `components/` — the few pieces of echo's UI that CSS can't draw, each mounted from Sable's
   markup by a one-line hook (below).
 - `layout.ts` — echo's desktop geometry that lives in Sable's script (the room list's width).
+- `init.ts` — start-up: echo's defaults where they differ from Sable's (Home on in the rail, and
+  on macOS Sable's own title bar, which puts the window in overlay style so the panes can run to
+  the top edge), and in the macOS app the headers as window drag regions.
 - `unread.ts` — echo's unread indicators: a muted room with unread messages still gets its dot
   in the room list and rail (Sable's core clears a muted room's counts). Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
@@ -34,6 +37,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | File | Hook |
 | --- | --- |
 | `src/routes/+layout.svelte` | `import '../../echo/theme.css'` after `styles.css` |
+| `src/routes/+layout.svelte` | `import '../../echo/init.js'` after the theme |
 | `src/lib/locales.ts` | `brandLocale(...)` around the loaded bundle |
 | `src/lib/i18n.ts` | `brandLocale(en)` for the built-in English fallback |
 | `src/lib/ui/SableBrandMark.svelte` | logo import points at `echo/brand/logo.svg` |
