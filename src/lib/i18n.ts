@@ -1,5 +1,6 @@
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import { brandLocale } from '../../echo/branding';
 import en from '../locales/en.json';
 import {
   currentLanguage,
@@ -37,7 +38,7 @@ i18next
     fallbackLng: 'en',
     partialBundledLanguages: true,
     resources: {
-      en: { translation: en },
+      en: { translation: brandLocale(en) },
     },
     interpolation: {
       escapeValue: false,

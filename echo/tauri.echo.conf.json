@@ -1,0 +1,38 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "echo",
+  "identifier": "dev.tbird.echo.dev",
+  "app": {
+    "windows": [
+      {
+        "title": "echo",
+        "create": false,
+        "hiddenTitle": true,
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "fullscreen": false,
+        "dragDropEnabled": false,
+        "backgroundColor": "#28282d"
+      }
+    ]
+  },
+  "bundle": {
+    "publisher": "taylorbird",
+    "copyright": "Copyright © SableClient contributors and taylorbird",
+    "longDescription": "echo, a Matrix client built on Sable.",
+    "icon": [
+      "../echo/icons/32x32.png",
+      "../echo/icons/128x128.png",
+      "../echo/icons/128x128@2x.png",
+      "../echo/icons/icon.icns",
+      "../echo/icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://github.com/taylorbird/echo/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5OTRFNkExN0RCRkQ0RUIKUldUcjFMOTlvZWFVYVdFN0txVjUybDhGR1FwNFpLa0swSjREVUV3UnFkL0VHbWZZK1h2N1Q5RnAK"
+    }
+  }
+}

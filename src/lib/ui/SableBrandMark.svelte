@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ClassValue } from 'svelte/elements';
 
-  import logo from '#lib/assets/res/svg/logo.svg';
+  import logo from '../../../echo/brand/logo.svg';
 
   interface Props {
     class?: ClassValue;

@@ -1,0 +1,13 @@
+# echo's tasks, beside Sable's in .mise/config.toml (mise reads both). Run the
+# branded app with these instead of `mise run tauri dev`: they add echo's
+# identity, icons and update feed from echo/tauri.echo.conf.json.
+
+[tasks."echo:dev"]
+description = "Run echo for the current desktop OS (branded dev build)"
+run = "mise run tauri dev --config echo/tauri.echo.conf.json"
+raw_args = true
+
+[tasks."echo:build"]
+description = "Build echo for the current desktop OS (branded, unsigned)"
+run = "mise run tauri build --config echo/tauri.echo.conf.json"
+raw_args = true

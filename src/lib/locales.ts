@@ -1,3 +1,5 @@
+import { brandLocale } from '../../echo/branding';
+
 const bundles = import.meta.glob<{ default: Record<string, unknown> }>('../locales/*.json');
 
 export const SYSTEM_LANGUAGE = 'system';
@@ -19,5 +21,5 @@ export function localeLabel(code: string): string {
 
 export async function loadLocaleBundle(code: string): Promise<Record<string, unknown> | null> {
   if (!availableLocales.includes(code)) return null;
-  return (await bundles[`../locales/${code}.json`]()).default;
+  return brandLocale((await bundles[`../locales/${code}.json`]()).default);
 }
