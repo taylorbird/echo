@@ -1,1 +1,370 @@
-/* echo: timeline. See echo/design/SPEC.md. */
+/* echo: the room header, the timeline and the composer. See
+   echo/design/SPEC.md §5–7.
+
+   Sable's "modern" message layout already has echo's shape (avatar, then a
+   sender row over the content), so this mostly retunes its geometry: a 2.5rem
+   round avatar 1rem from the text, 1.5rem between senders, 1.5rem side padding,
+   the time right after the name at .7rem and half opacity, and echo's chips,
+   pills and composer box. */
+
+/* echo's sender palette (SPEC §1.2). Sable picks a sender's colour by hashing
+   them onto --mx-uc-1…8, so these are echo's first eight slots. echo assigned
+   them per room instead of by hash; that needs the timeline's script. */
+@media (width >= 48rem) {
+  html:root {
+    --mx-uc-1: #a4041d;
+    --mx-uc-2: #9b2200;
+    --mx-uc-3: #803f00;
+    --mx-uc-4: #005f00;
+    --mx-uc-5: #005c45;
+    --mx-uc-6: #00548c;
+    --mx-uc-7: #064ab1;
+    --mx-uc-8: #5d26cd;
+  }
+
+  html:root.dark {
+    --mx-uc-1: #ff5d73;
+    --mx-uc-2: #ffa64d;
+    --mx-uc-3: #4dd6a8;
+    --mx-uc-4: #a78bfa;
+    --mx-uc-5: #4db8f5;
+    --mx-uc-6: #f0c674;
+    --mx-uc-7: #ff7ac6;
+    --mx-uc-8: #4de0e0;
+  }
+}
+
+@media (width >= 48rem) and (prefers-color-scheme: dark) {
+  html:root:not(.light) {
+    --mx-uc-1: #ff5d73;
+    --mx-uc-2: #ffa64d;
+    --mx-uc-3: #4dd6a8;
+    --mx-uc-4: #a78bfa;
+    --mx-uc-5: #4db8f5;
+    --mx-uc-6: #f0c674;
+    --mx-uc-7: #ff7ac6;
+    --mx-uc-8: #4de0e0;
+  }
+}
+
+@media (width >= 48rem) {
+  /* Room header (SPEC §5): no rule under it; a soft cast shadow instead. */
+  :root .room-view .panel-header.room-header {
+    background: var(--echo-chat);
+    border-bottom: 0;
+    box-shadow: var(--echo-header-shadow);
+    gap: 0.625rem;
+    padding: 0 0.5rem 0 0.75rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  :root .room-header .prefix > .room-avatar {
+    --avatar-size: 3rem;
+
+    border-radius: 50%;
+    font-size: 1.25rem;
+  }
+
+  :root .room-header .room-identity > h1,
+  :root .room-header .room-identity.with-topic > h1 {
+    color: var(--echo-room-name);
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  :root .room-header .room-identity > .room-topic {
+    color: var(--echo-text-2);
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+
+  :root .room-header .suffix {
+    gap: 0;
+  }
+
+  :root .room-header .suffix > .panel-header-button {
+    --button-height: 2.5rem;
+
+    border-radius: 0.5rem;
+    color: var(--echo-text);
+    position: relative;
+  }
+
+  :root .room-header .panel-header-button > svg {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+
+  /* The open panel's button: a filled square with the yellow pill on its
+     bottom edge (SPEC §5). */
+  :root .room-header .suffix > .panel-header-button[aria-pressed='true'] {
+    background: var(--echo-entry-selected);
+  }
+
+  :root .room-header .suffix > .panel-header-button[aria-pressed='true']::before {
+    background: var(--echo-accent-glow);
+    border-radius: 999px;
+    bottom: 0.25rem;
+    box-shadow:
+      0 0 6px var(--echo-accent-near),
+      0 0 14px var(--echo-accent-far);
+    content: '';
+    height: 0.1875rem;
+    left: 50%;
+    position: absolute;
+    translate: -50% 0;
+    width: 1.25rem;
+  }
+
+  /* Timeline geometry (SPEC §6.1). Set on .items so it outranks the inline
+     values Sable puts on the timeline. */
+  :root .timeline-content .items {
+    --avatar-size-small: 2.5rem;
+    --page-gutter: 1.5rem;
+    --timeline-group-gap: 1.25rem;
+    --timeline-row-gap: 1rem;
+    --timeline-row-padding: 0.125rem;
+  }
+
+  :root .timeline-content .message > .avatar-button,
+  :root .timeline-content .message > .avatar-root.message-avatar {
+    translate: 0 2px;
+  }
+
+  /* People are round (SPEC §1.3). */
+  :root .timeline-content .message .message-avatar {
+    border-radius: 50%;
+    font-size: 1rem;
+  }
+
+  :root .timeline-content .message.layout-modern:hover,
+  :root .timeline-content .message.layout-modern.menu-open {
+    background-color: var(--echo-timeline-hover);
+  }
+
+  :root .timeline-content .message-main {
+    color: var(--echo-text);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  /* Sender row: the name centred on the avatar, the time right after it. */
+  :root .timeline-content .message header {
+    gap: 0.25rem;
+    min-height: calc(2.5rem - 0.25rem);
+  }
+
+  :root .timeline-content header .sender.name-button {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  :root .items header > div.message-details {
+    flex-grow: 1;
+    font-size: 0.7rem;
+    justify-content: flex-start;
+  }
+
+  :root .timeline-content .message-details > time {
+    color: var(--echo-text-2);
+    opacity: 0.5;
+    order: -1;
+  }
+
+  :root .timeline-content .message .edited {
+    color: var(--echo-text-2);
+    font-size: 0.7rem;
+  }
+
+  /* Mentions of you: a gold wash, no side bar (SPEC §6.2). */
+  :root .timeline-content .message.mention-loud,
+  :root .timeline-content .message.mention-silent {
+    background: var(--echo-timeline-highlight);
+    border-inline-start: 0;
+    border-radius: 0;
+    margin-inline: calc(-1 * var(--page-gutter));
+    padding-inline: var(--page-gutter);
+  }
+
+  :root .timeline-content .message.collapsed.mention-loud,
+  :root .timeline-content .message.collapsed.mention-silent {
+    padding-left: calc(var(--page-gutter) + 2.5rem + 1rem);
+  }
+
+  /* Mention pills (SPEC §6.9). */
+  :root .timeline-content .formatted-body a[data-matrix-link],
+  :root .timeline-content .formatted-body [data-mx-room-mention],
+  :root .timeline-content .message.mention-loud a[data-matrix-link] {
+    background: var(--echo-pill-bg);
+    border: 0;
+    border-radius: 0.5rem;
+    color: var(--echo-text);
+    font-weight: 400;
+    max-width: 15rem;
+    overflow: hidden;
+    padding: 0 0.5rem;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+
+  :root .timeline-content .message a[data-matrix-link='user'] {
+    background: color-mix(in oklab, var(--mention-color, var(--echo-text-semi)) 18%, transparent);
+    color: var(--mention-color, var(--echo-text-semi));
+  }
+
+  /* Inline code and code blocks (SPEC §6.9). */
+  :root .message .formatted-body code {
+    background: var(--echo-code-bg);
+    border: 0;
+    border-radius: 0.25rem;
+    color: inherit;
+    padding: 0.125rem 0.25rem;
+  }
+
+  :root .message .code-block code {
+    background: none;
+    padding: 0;
+  }
+
+  :root .timeline-content .formatted-body .code-block {
+    background: var(--echo-code-bg);
+    border: 0;
+    border-radius: 0.25rem;
+    color: var(--echo-text);
+  }
+
+  :root .timeline-content .formatted-body .code-head {
+    background: transparent;
+    border-bottom: 1px solid var(--echo-hairline);
+    color: var(--echo-text-2);
+  }
+
+  :root .timeline-content .formatted-body blockquote {
+    border-left: 2px solid var(--echo-border);
+    padding-left: 0.5rem;
+  }
+
+  /* Replies: a static neutral spine, never per-sender (SPEC §6.4). */
+  :root .timeline-content .reply-preview.reply-connected::before {
+    border-color: var(--echo-reply-border);
+    opacity: 1;
+  }
+
+  :root .timeline-content .reply-preview.reply-connected {
+    font-size: 0.875rem;
+  }
+
+  :root .timeline-content .reply-preview .reply-body {
+    color: var(--echo-text-semi);
+    filter: none;
+  }
+
+  :root .timeline-content .reply-preview:hover .reply-body {
+    color: var(--echo-text);
+  }
+
+  /* Reactions (SPEC §6.5): rounded-square chips on the base colour. */
+  :root .timeline-content .message .reactions {
+    gap: 0.25rem;
+    margin: 0.25rem 0;
+  }
+
+  :root .timeline-content .reactions > .reaction,
+  :root .timeline-content .reactions > .add-reaction {
+    background: var(--echo-chat);
+    border: 1px solid var(--echo-border);
+    border-radius: 0.5rem;
+    color: var(--echo-text);
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0.125rem 0.5rem;
+  }
+
+  :root .timeline-content .reactions > .reaction:hover,
+  :root .timeline-content .reactions > .add-reaction:hover {
+    background: var(--echo-hover);
+  }
+
+  :root .timeline-content .reactions > .reaction[aria-pressed='true'] {
+    background: rgb(var(--echo-warm-rgb) / 12%);
+    border-color: rgb(var(--echo-warm-rgb) / 55%);
+  }
+
+  :root .timeline-content .reaction-key > em {
+    font-size: 1.25rem;
+  }
+
+  /* Read receipts: overlapping 1rem faces (SPEC §6.6). */
+  :root .timeline-content .read-receipt-stack .receipt-face {
+    --avatar-size: 1rem;
+
+    border: 1px solid var(--echo-chat);
+    border-radius: 50%;
+    font-size: 0.5rem;
+  }
+
+  /* Day separator: a faint rule, the date in the body colour (SPEC §6.7). */
+  :root .timeline-content .date-divider {
+    color: var(--echo-text);
+    font-size: 0.875rem;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+  }
+
+  :root .timeline-content .date-divider::before,
+  :root .timeline-content .date-divider::after {
+    border-top-color: currentcolor;
+    opacity: 0.2;
+  }
+
+  :root .timeline-content .date-divider > span {
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  /* Composer (SPEC §7): a raised box with a soft shadow, quiet tools. */
+  :root .room-view .composer-stack {
+    --composer-gutter: 1.5rem;
+
+    margin: 1rem auto 0.25rem;
+  }
+
+  :root .room-view .composer-shell > .composer {
+    background: var(--echo-composer);
+    border: 1px solid var(--echo-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 0 1rem var(--echo-modal-shadow);
+    color: var(--echo-text);
+  }
+
+  :root .room-view .composer-shell > .composer:has([contenteditable='true']:focus) {
+    border-color: var(--echo-border);
+    box-shadow: 0 0 1rem var(--echo-modal-shadow);
+  }
+
+  :root .room-view .composer-row {
+    padding: 0.5rem;
+  }
+
+  :root .room-view .composer-row [contenteditable] {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  :root .composer-row :is(.composer-before, .composer-after) button {
+    opacity: 0.35;
+  }
+
+  :root .composer-row :is(.composer-before, .composer-after) button:hover {
+    opacity: 1;
+  }
+
+  :root .composer-row .composer-after > .composer-send.icon-button {
+    opacity: 0.5;
+  }
+}
