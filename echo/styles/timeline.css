@@ -327,6 +327,26 @@
     text-transform: none;
   }
 
+  /* The hover menu (SPEC §6.8): base colour, a 1px border, .5rem radius,
+     2rem buttons, overlapping the row above at the right. */
+  :root .timeline-content .message .message-actions {
+    background: var(--echo-chat);
+    border: 1px solid var(--echo-border);
+    border-radius: 0.5rem;
+    bottom: calc(100% - 0.75rem);
+    box-shadow: none;
+    color: var(--echo-text);
+    gap: 0.25rem;
+    inset-inline-end: 0.5rem;
+    padding: 0.125rem;
+  }
+
+  :root .message-actions .message-action-button.message-action-button {
+    --button-height: 2rem;
+
+    color: var(--echo-text);
+  }
+
   /* Composer (SPEC §7): a raised box with a soft shadow, quiet tools. */
   :root .room-view .composer-stack {
     --composer-gutter: 1.5rem;
