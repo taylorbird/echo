@@ -16,6 +16,8 @@ can live here instead.
   `pnpm tauri icon /path/to/echo-icon-facet-split-squircle.png --output echo/icons`.
 - `tauri.echo.conf.json` — merged over `src-tauri/tauri.conf.json` by the echo tasks: name,
   bundle ID, window, icons, update feed.
+- `visual/` — `mise run echo:shots`: screenshots of the signed-in web app against a throwaway
+  homeserver with fake data. See `visual/README.md`.
 
 Fonts are in `static/fonts/echo/`, since that's where Vite serves static files from.
 

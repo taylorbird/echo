@@ -11,3 +11,16 @@ raw_args = true
 description = "Build echo for the current desktop OS (branded, unsigned)"
 run = "mise run tauri build --config echo/tauri.echo.conf.json"
 raw_args = true
+
+# Screenshots of the signed-in web app on a throwaway homeserver with seeded,
+# fake data. See echo/visual/README.md (ECHO_SHOTS_KEEP=1 for fast re-runs).
+[tasks."echo:shots"]
+description = "Screenshot the web app against a throwaway, seeded homeserver"
+dir = "{{config_root}}"
+run = "pnpm exec playwright test -c echo/visual/playwright.config.ts"
+raw_args = true
+
+[tasks."echo:shots:down"]
+description = "Remove the homeserver a kept echo:shots run left running"
+dir = "{{config_root}}"
+run = "docker ps -aq --filter publish=18008 | xargs -r docker rm -f && rm -f echo/visual/out/.homeserver.json"
