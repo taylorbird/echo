@@ -1,1 +1,256 @@
-/* echo: rail. See echo/design/SPEC.md. */
+/* echo: the space rail. See echo/design/SPEC.md §3.
+
+   Sable's rail (NavigationRail.svelte) already holds the same things in the same
+   order as echo's: the home and direct-message sections, unread DMs, a divider,
+   one tile per space, and the create button. Its quick tools bar (profile,
+   alerts, jump to room, inbox, settings) runs across the bottom of the whole
+   sidebar; echo keeps those in a footer at the bottom of the rail, so here the
+   bar is lifted out of the flow and stacked into the rail's column. */
+
+@media (width >= 48rem) {
+  :root .sidebar .rail {
+    background: var(--echo-rail);
+    border-right: 1px solid var(--echo-hairline);
+    color: var(--echo-text-2);
+  }
+
+  /* Room for the footer stacked over the rail's bottom (below). */
+  :root .sidebar .rail-scroll {
+    padding-bottom: var(--echo-rail-footer-height);
+  }
+
+  :root .sidebar .rail-stack {
+    gap: 0;
+    padding: 0.3125rem 0;
+  }
+
+  /* Engraved, not drawn: the dark groove with a warm lip below it (SPEC §3.4). */
+  :root .sidebar .rail-separator {
+    background: rgb(0 0 0 / 40%);
+    block-size: 1px;
+    box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
+    margin: 0.5rem auto;
+    width: 2.5rem;
+  }
+
+  /* Tiles: 3.125rem, the avatar inside lands on exactly 2.5rem (SPEC §3.2). */
+  :root .rail .nav-tab.nav-tab-side {
+    border: 0;
+    border-radius: 0.7813rem;
+    color: inherit;
+    height: 3.125rem;
+    margin: 0.3125rem auto;
+    padding: 0.3125rem;
+    transform: none;
+    width: 3.125rem;
+  }
+
+  :root .rail .nav-tab.nav-tab-side:is(:hover, :focus-visible) {
+    background: var(--echo-entry-hover);
+    color: var(--echo-text);
+    outline: none;
+    transform: none;
+  }
+
+  :root .rail .nav-tab.nav-tab-side:is([aria-current='page'], [data-current='true']) {
+    background: var(--echo-entry-selected);
+    color: var(--echo-text);
+  }
+
+  /* Sable's press feedback paints a second fill over the tile. */
+  :root .rail .nav-tab.selection-layer::after {
+    content: none;
+  }
+
+  /* The glow pill: echo's one "you are here" mark (SPEC §0.3, §3.2). */
+  :root .rail .nav-tab.nav-tab-side::before {
+    background: var(--echo-accent-glow);
+    border-radius: 999px;
+    box-shadow:
+      0 0 6px var(--echo-accent-near),
+      0 0 14px var(--echo-accent-far);
+    display: none;
+    height: 1.5625rem;
+    left: -0.75rem;
+    top: 50%;
+    transform: none;
+    translate: 0 -50%;
+    width: 0.1875rem;
+  }
+
+  :root .rail .nav-tab.nav-tab-side:is([aria-current='page'], [data-current='true'])::before {
+    display: block;
+    transform: none;
+  }
+
+  :root .rail .nav-tab.nav-tab-side:hover::before {
+    transform: none;
+  }
+
+  :root
+    .rail
+    .nav-tab.nav-tab-side:not([aria-current='page'], [data-current='true']):hover::before {
+    display: none;
+  }
+
+  /* Footer glyphs, at the rail's glyph size (the footer itself is below). */
+  :root .desktop-tools .desktop-tool > svg,
+  :root .desktop-tools .tool-icon > svg {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+
+  /* Glyphs sit well inside the tile rather than filling it (SPEC §3.2). */
+  :root .rail .icon > svg {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+
+  /* Places are squircles, people are round (SPEC §1.3). */
+  :root .rail .nav-tab .avatar-root {
+    --avatar-size: 2.5rem;
+
+    border-radius: 0.625rem;
+    font-size: 1.125rem;
+  }
+
+  :root .rail .nav-tab[href^='/direct/'] .avatar-root {
+    border-radius: 50%;
+  }
+
+  /* Tile badges ride the tile's lower right corner, in the space palette. */
+  :root .rail .nav-tab .unread-badge {
+    inset: auto -0.0625rem -0.0625rem auto;
+  }
+
+  :root .rail .nav-tab .unread-badge-count {
+    background: var(--echo-space-message);
+    border-radius: 1rem;
+    color: var(--echo-space-ink);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    height: 1rem;
+    line-height: 1;
+    min-width: 1rem;
+    padding: 0.5px 0.25rem 0;
+  }
+
+  :root .rail .nav-tab .unread-badge-dot {
+    background: var(--echo-space-message);
+    height: 0.5rem;
+    width: 0.5rem;
+  }
+
+  :root .rail .nav-tab .unread-badge.unread-badge-highlight {
+    background: var(--echo-space-highlight);
+  }
+
+  /* A DM tile is one room, so it wears the room list's tiers (SPEC §3.6). */
+  :root .rail .nav-tab[href^='/direct/'] .unread-badge-count {
+    background: var(--echo-unread-notify);
+    box-shadow: 0 0 5px var(--echo-blue-near);
+    color: var(--echo-unread-ink);
+  }
+
+  :root .rail .nav-tab[href^='/direct/'] .unread-badge.unread-badge-highlight {
+    background: var(--echo-unread-highlight);
+    box-shadow: 0 0 5px var(--echo-red-near);
+    color: var(--echo-unread-highlight-ink);
+  }
+
+  /* The footer: Sable's quick tools, stacked at the foot of the rail
+     (SPEC §3.7). Sticky in echo; here it is pinned over the rail's bottom, which
+     scrolls clear of it by the padding above. */
+  :root .sidebar .desktop-navigation {
+    position: relative;
+  }
+
+  :root .sidebar nav.desktop-tools {
+    align-items: center;
+    background: var(--echo-rail);
+    border: 0;
+    border-right: 1px solid var(--echo-hairline);
+    bottom: 0;
+    box-shadow: 0 -1px 0 var(--echo-hairline);
+    color: var(--echo-text-2);
+    flex-direction: column;
+    gap: 0.25rem;
+    justify-content: flex-end;
+    left: 0;
+    min-height: 0;
+    padding: 0.5rem 0 0.625rem;
+    position: absolute;
+    width: var(--navigation-rail-width);
+    z-index: 2;
+  }
+
+  /* The profile sits just above settings, as in echo; the other tools go above it. */
+  :root .sidebar .desktop-tools .desktop-tool-actions {
+    display: contents;
+  }
+
+  :root .sidebar .desktop-tools > .quick-tool {
+    order: 1;
+  }
+
+  :root .sidebar .desktop-tools .quick-tool[href='/settings'] {
+    order: 2;
+  }
+
+  :root .sidebar .desktop-tools .nav-tab.desktop-tool {
+    border: 0;
+    border-radius: 0.7813rem;
+    color: inherit;
+    height: 3.125rem;
+    transform: none;
+    width: 3.125rem;
+  }
+
+  :root .sidebar .desktop-tools .nav-tab.desktop-tool:is(:hover, :focus-visible) {
+    background: var(--echo-entry-hover);
+    color: var(--echo-text);
+    outline: none;
+    transform: none;
+  }
+
+  :root .sidebar .desktop-tools .nav-tab.desktop-tool[aria-current='page'] {
+    background: var(--echo-entry-selected);
+    color: var(--echo-text);
+  }
+
+  :root .sidebar .desktop-tools .nav-tab.desktop-tool::before {
+    content: none;
+  }
+
+  :root .desktop-tools .desktop-tool.nav-tab .avatar-root {
+    --avatar-size: 2.1875rem;
+
+    border-radius: 50%;
+  }
+
+  :root .desktop-tools .nav-tab .unread-badge {
+    inset: auto 0.125rem 0.125rem auto;
+  }
+}
+
+/* Tokens only the rail reads. */
+:root {
+  --echo-rail-footer-height: 18.5rem;
+  --echo-space-message: rgb(0 0 0 / 35%);
+  --echo-space-highlight: rgb(200 0 0 / 70%);
+  --echo-space-ink: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --echo-space-message: rgb(209 209 224 / 80%);
+    --echo-space-highlight: #ff9eb5;
+    --echo-space-ink: #17171b;
+  }
+}
+
+:root.dark {
+  --echo-space-message: rgb(209 209 224 / 80%);
+  --echo-space-highlight: #ff9eb5;
+  --echo-space-ink: #17171b;
+}

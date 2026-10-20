@@ -1,1 +1,194 @@
-/* echo: frame. See echo/design/SPEC.md. */
+/* echo: frame. The window, the shared tokens every other echo/styles file reads,
+   and the desktop grid. See echo/design/SPEC.md §1–2.
+
+   Desktop only: everything that changes layout sits under (width >= 48rem),
+   Sable's own desktop breakpoint, so the phone layout stays Sable's until echo
+   gets its own mobile UI.
+
+   Specificity: Svelte scopes a component's rules with an extra class, so
+   `.rail` in Sable is really `.rail.svelte-x`. Echo's rules start with `:root`
+   and keep at least one more class than the rule they override, so they win no
+   matter which order the bundles load in. */
+
+/* Tokens. Names follow echo's own (SPEC §1.2), prefixed so they never collide
+   with Sable's. Light first; dark below. */
+:root {
+  --echo-warm-rgb: 254 205 178;
+  --echo-accent-glow: #ffe484;
+  --echo-accent-near: rgb(255 228 132 / 75%);
+  --echo-accent-far: rgb(255 228 132 / 35%);
+  --echo-room-glow: #85f0a8;
+  --echo-room-near: rgb(133 240 168 / 75%);
+  --echo-room-far: rgb(133 240 168 / 35%);
+  --echo-text: #000;
+  --echo-text-2: #888;
+  --echo-text-3: #9a9a9a;
+  --echo-text-semi: #555;
+  --echo-chat: #fff;
+  --echo-border: #ccc;
+  --echo-hairline: rgb(0 0 0 / 8%);
+  --echo-hover: rgb(0 0 0 / 10%);
+  --echo-button-hover: rgb(0 0 0 / 20%);
+  --echo-composer: #f0f0f0;
+  --echo-timeline-hover: #eee;
+  --echo-timeline-highlight: rgb(255 255 0 / 10%);
+  --echo-code-bg: rgb(0 0 0 / 15%);
+  --echo-pill-bg: #ccc;
+  --echo-modal-shadow: rgb(0 0 0 / 10%);
+  --echo-rail: #cbcbcc;
+  --echo-roomlist: #e0dfe0;
+  --echo-band: hsl(0deg 0% 89% / 95%);
+  --echo-entry-hover: rgb(0 0 0 / 7.5%);
+  --echo-entry-selected: rgb(0 0 0 / 12.5%);
+  --echo-entry-active: rgb(var(--echo-warm-rgb) / 24%);
+  --echo-row-hairline: rgb(var(--echo-warm-rgb) / 8%);
+  --echo-sub-filter-selected: rgb(214 168 0 / 18%);
+  --echo-section-ink: var(--echo-text);
+  --echo-kind-glyph: currentcolor;
+  --echo-room-name: var(--echo-text);
+  --echo-preview: var(--echo-text-semi);
+  --echo-unread-message: rgb(0 0 0 / 35%);
+  --echo-unread-notify: rgb(50 150 0 / 70%);
+  --echo-unread-highlight: rgb(200 0 0 / 70%);
+  --echo-unread-ink: #fff;
+  --echo-unread-highlight-ink: #fff;
+  --echo-unread-wash: transparent;
+  --echo-highlight-wash: transparent;
+  --echo-reply-border: color-mix(in oklab, var(--echo-text-2) 55%, transparent);
+  --echo-primary: #00c853;
+  --echo-primary-dark: #00b24a;
+  --echo-on-primary: #fff;
+  --echo-header-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+  --echo-blue-near: transparent;
+  --echo-blue-far: transparent;
+  --echo-red-near: transparent;
+  --echo-red-far: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --echo-warm-rgb: 240 226 216;
+    --echo-text: #efe7e1;
+    --echo-text-2: #b0acaa;
+    --echo-text-3: #6d7686;
+    --echo-text-semi: #ffb59a;
+    --echo-chat: #28282d;
+    --echo-border: #46464e;
+    --echo-hairline: rgb(var(--echo-warm-rgb) / 9%);
+    --echo-hover: rgb(var(--echo-warm-rgb) / 10%);
+    --echo-button-hover: rgb(var(--echo-warm-rgb) / 20%);
+    --echo-composer: #35353a;
+    --echo-timeline-hover: #35353a;
+    --echo-timeline-highlight: rgb(255 228 132 / 15%);
+    --echo-code-bg: rgb(53 53 58 / 80%);
+    --echo-pill-bg: #64646e;
+    --echo-modal-shadow: rgb(0 0 0 / 30%);
+    --echo-rail: #17171b;
+    --echo-roomlist: #202024;
+    --echo-band: color-mix(in oklab, #2b2b33 85%, rgb(var(--echo-warm-rgb)));
+    --echo-entry-hover: rgb(var(--echo-warm-rgb) / 10%);
+    --echo-entry-selected: rgb(var(--echo-warm-rgb) / 15%);
+    --echo-sub-filter-selected: rgb(255 228 132 / 16%);
+    --echo-section-ink: color-mix(in oklab, #bd93f9 45%, var(--echo-text));
+    --echo-kind-glyph: #bd93f9;
+    --echo-room-name: #fff;
+    --echo-preview: #b9b3ae;
+    --echo-unread-message: #5cbbff;
+    --echo-unread-notify: #85d6ff;
+    --echo-unread-highlight: #ff4d6d;
+    --echo-unread-ink: #10233a;
+    --echo-unread-highlight-ink: #fff2f4;
+    --echo-unread-wash: rgb(92 187 255 / 6%);
+    --echo-highlight-wash: rgb(255 77 109 / 6%);
+    --echo-primary: #f0e2d8;
+    --echo-primary-dark: #dcc9bc;
+    --echo-on-primary: #28282d;
+    --echo-header-shadow: 0 4px 12px rgb(0 0 0 / 28%);
+    --echo-blue-near: rgb(92 187 255 / 75%);
+    --echo-blue-far: rgb(92 187 255 / 40%);
+    --echo-red-near: rgb(255 77 109 / 90%);
+    --echo-red-far: rgb(255 77 109 / 45%);
+  }
+}
+
+/* A pinned dark theme must win even when the operating system is light. */
+:root.dark {
+  --echo-warm-rgb: 240 226 216;
+  --echo-text: #efe7e1;
+  --echo-text-2: #b0acaa;
+  --echo-text-3: #6d7686;
+  --echo-text-semi: #ffb59a;
+  --echo-chat: #28282d;
+  --echo-border: #46464e;
+  --echo-hairline: rgb(var(--echo-warm-rgb) / 9%);
+  --echo-hover: rgb(var(--echo-warm-rgb) / 10%);
+  --echo-button-hover: rgb(var(--echo-warm-rgb) / 20%);
+  --echo-composer: #35353a;
+  --echo-timeline-hover: #35353a;
+  --echo-timeline-highlight: rgb(255 228 132 / 15%);
+  --echo-code-bg: rgb(53 53 58 / 80%);
+  --echo-pill-bg: #64646e;
+  --echo-modal-shadow: rgb(0 0 0 / 30%);
+  --echo-rail: #17171b;
+  --echo-roomlist: #202024;
+  --echo-band: color-mix(in oklab, #2b2b33 85%, rgb(var(--echo-warm-rgb)));
+  --echo-entry-hover: rgb(var(--echo-warm-rgb) / 10%);
+  --echo-entry-selected: rgb(var(--echo-warm-rgb) / 15%);
+  --echo-sub-filter-selected: rgb(255 228 132 / 16%);
+  --echo-section-ink: color-mix(in oklab, #bd93f9 45%, var(--echo-text));
+  --echo-kind-glyph: #bd93f9;
+  --echo-room-name: #fff;
+  --echo-preview: #b9b3ae;
+  --echo-unread-message: #5cbbff;
+  --echo-unread-notify: #85d6ff;
+  --echo-unread-highlight: #ff4d6d;
+  --echo-unread-ink: #10233a;
+  --echo-unread-highlight-ink: #fff2f4;
+  --echo-unread-wash: rgb(92 187 255 / 6%);
+  --echo-highlight-wash: rgb(255 77 109 / 6%);
+  --echo-primary: #f0e2d8;
+  --echo-primary-dark: #dcc9bc;
+  --echo-on-primary: #28282d;
+  --echo-header-shadow: 0 4px 12px rgb(0 0 0 / 28%);
+  --echo-blue-near: rgb(92 187 255 / 75%);
+  --echo-blue-far: rgb(92 187 255 / 40%);
+  --echo-red-near: rgb(255 77 109 / 90%);
+  --echo-red-far: rgb(255 77 109 / 45%);
+}
+
+/* Desktop frame. */
+@media (width >= 48rem) {
+  /* echo's type and geometry are drawn on a 14px root (SPEC §1.1); Sable's are on
+     16px. Moving the root makes every rem in both line up, so echo's sizes below
+     are written exactly as echo wrote them. The page-zoom preference still
+     scales it. */
+  html:root {
+    --navigation-rail-width: 5.25rem;
+    --header-height: 3.5rem;
+    --font-size-body: calc(1rem * var(--text-scale));
+    --font-size-label: calc(0.875rem * var(--text-scale));
+    --font-size-small: calc(0.8125rem * var(--text-scale));
+    --font-size-x-small: calc(0.75rem * var(--text-scale));
+    --font-size-editor: calc(1rem * var(--text-scale));
+    --font-size-heading: calc(1.125rem * var(--text-scale));
+    --radius: 0.5rem;
+
+    font-size: calc(14px * var(--font-scale));
+  }
+
+  :root body {
+    background: var(--echo-chat);
+    color: var(--echo-text);
+  }
+
+  /* The reading surface: opaque, square, the chat colour (SPEC §0.6). */
+  :root .drawer-panel.content-panel {
+    background: var(--echo-chat);
+    color: var(--echo-text);
+  }
+
+  /* Hand cursors are a web idiom; echo is a desktop app (SPEC §1.3). */
+  :root .app-shell :is(a, button, [role='button']) {
+    cursor: default;
+  }
+}
