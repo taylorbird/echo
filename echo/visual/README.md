@@ -63,6 +63,8 @@ for days drifts from "yesterday and today".
 | `ECHO_SHOTS_BUILD=1` / `0` | Always / never rebuild the app, instead of checking timestamps. |
 | `ECHO_SHOTS_BROWSER=chromium` | Chromium instead of WebKit. |
 | `ECHO_SHOTS_PORT` | Port for `vite preview` (default 4199). |
+| `ECHO_SHOTS_LIVE_CSS=1` | Layer `echo/theme.css` as it is on disk over the built app, so CSS-only changes skip the rebuild (pair with `ECHO_SHOTS_BUILD=0`). Rules deleted since the last build still apply until the next one. |
+| `ECHO_SHOTS_DOM=1` | Also save each view's rendered HTML next to its screenshot, to write CSS against Sable's real markup. |
 
 Playwright arguments pass through, e.g. `mise run echo:shots --grep phone`.
 

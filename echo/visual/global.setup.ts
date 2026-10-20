@@ -9,7 +9,7 @@ import { OUT_DIR, containerRunning, readState, writeState } from './state';
 export default async function globalSetup(): Promise<void> {
   await mkdir(OUT_DIR, { recursive: true });
   for (const name of await readdir(OUT_DIR)) {
-    if (name.endsWith('.png')) await rm(join(OUT_DIR, name));
+    if (name.endsWith('.png') || name.endsWith('.html')) await rm(join(OUT_DIR, name));
   }
   await rm(join(OUT_DIR, '.skipped.json'), { force: true });
   await rm(join(OUT_DIR, '.debug'), { recursive: true, force: true });

@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { LOGIN_PASSWORD, LOGIN_USERNAME } from '../../tests/e2e/fixtures/loginAccount';
 import { AuthFlow } from '../../tests/e2e/pages/AuthFlow';
@@ -35,6 +35,35 @@ async function holdReadState(context: BrowserContext): Promise<void> {
   );
 }
 
+// ECHO_SHOTS_LIVE_CSS=1 layers echo/theme.css as it is on disk over the built
+// app, so CSS-only changes can be checked without the minutes-long rebuild.
+// Rules deleted since the last build still apply until the next one.
+async function inlineCss(path: string): Promise<string> {
+  const css = await readFile(path, 'utf8');
+  const parts = css.split(/@import url\('([^']+)'\);/);
+  let out = '';
+  for (const [index, part] of parts.entries()) {
+    out += index % 2 === 0 ? part : await inlineCss(resolve(dirname(path), part));
+  }
+  return out;
+}
+
+async function liveCss(context: BrowserContext): Promise<void> {
+  if (process.env.ECHO_SHOTS_LIVE_CSS !== '1') return;
+  const css = await inlineCss(resolve(import.meta.dirname, '../theme.css'));
+  await context.addInitScript((text) => {
+    const add = () => {
+      const style = document.createElement('style');
+      style.dataset.echoLive = '';
+      style.textContent = text;
+      document.head.append(style);
+    };
+    // Init scripts can run before <head> exists.
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add);
+    else add();
+  }, css);
+}
+
 async function signIn(page: Page): Promise<void> {
   const auth = new AuthFlow(page);
   await auth.open(state.baseUrl);
@@ -63,6 +92,10 @@ async function capture(page: Page, file: string, view: View): Promise<void> {
     await view.open(page);
     await settle(page);
     await page.screenshot({ path: join(OUT_DIR, `${file}.png`) });
+    // The rendered markup, to write echo's CSS against Sable's real classes.
+    if (process.env.ECHO_SHOTS_DOM === '1') {
+      await writeFile(join(OUT_DIR, `${file}.html`), await page.content());
+    }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     // oxlint-disable-next-line no-control-regex -- stripping terminal colours
@@ -203,6 +236,7 @@ test.describe('desktop', () => {
 
   test('desktop', async ({ context, page }) => {
     await holdReadState(context);
+    await liveCss(context);
     await signIn(page);
     // The room list first, in both themes, while every badge is still unread.
     for (const view of [roomList, space, timeline, members, profile, settings, roomSettings]) {
@@ -225,6 +259,7 @@ test.describe('phone', () => {
 
   test('phone', async ({ context, page }) => {
     await holdReadState(context);
+    await liveCss(context);
     await signIn(page);
     for (const view of [roomList, timeline]) await capture(page, `phone-light-${view.name}`, view);
   });
