@@ -5,9 +5,11 @@ import { type as osType } from '@tauri-apps/plugin-os';
 import { supportsDesktopWindow } from '#lib/platform/window-decorations.js';
 import { applyDeploymentDefaults } from '#lib/settings/preferences.svelte.js';
 import { BREAKPOINTS } from '#lib/ui/breakpoints.js';
+import { startEcho } from './active.js';
 import { closePanelOnEscape } from './panels.js';
 
 const browser = typeof document !== 'undefined';
+if (browser) startEcho();
 const macApp = browser && supportsDesktopWindow() && osType() === 'macos';
 // Phones keep Sable's UI until echo has its own (echo/README.md).
 const desktop = browser && matchMedia(BREAKPOINTS.appLayout).matches;

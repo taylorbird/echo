@@ -32,6 +32,13 @@
   import StackIcon from 'phosphor-svelte/lib/StackIcon';
   import UserIcon from 'phosphor-svelte/lib/UserIcon';
   import type { Component } from 'svelte';
+  import { resolve } from '$app/paths';
+  import { page } from '$app/state';
+  import { findRoomByPathId, roomPathParam, useRoomList } from '#lib/rooms/room-list.svelte.js';
+  import { hasUnread } from '#lib/rooms/unread.js';
+  import Avatar from '#lib/ui/primitives/Avatar.svelte';
+  import UnreadBadge from '#lib/ui/primitives/UnreadBadge.svelte';
+  import { echoActive } from '../active.js';
 
   interface Props {
     /** The rail tile this follows; only the fields that say what it is. */
@@ -48,16 +55,39 @@
   const DMS: Filter = { value: 'dms', label: 'Direct messages', icon: UserIcon };
   const RECENT: Filter = { value: 'recent', label: 'Recent', icon: ClockIcon };
 
-  // Only home lists rooms and direct messages together, so only there can the
-  // list be narrowed to one or the other.
-  let filters = $derived<Filter[] | null>(
-    item.section === 'home'
-      ? [ALL, ROOMS, DMS, RECENT]
-      : item.section === 'unspaced' || (item.initial !== undefined && item.dm !== true)
-        ? [ALL, RECENT]
-        : null
+  // Every place that parts the rail gets the same four (SPEC §3.5): home, the
+  // rooms outside spaces, and each space, whose DMs echo/space-dms.ts adds.
+  let partable = $derived(
+    item.section === 'home' ||
+      item.section === 'unspaced' ||
+      (item.initial !== undefined && item.dm !== true)
   );
-  let open = $derived(active && filters !== null);
+  const filters: Filter[] = [ALL, ROOMS, DMS, RECENT];
+  let open = $derived(active && partable && echoActive());
+
+  // Up to three unread one-to-one DMs, newest first, sit at the top of the open
+  // band (SPEC §3.6); Sable's own unread-DM tiles hide while it is open
+  // (echo/styles/rail.css). The open room is left out, as Sable does.
+  const roomList = useRoomList();
+  let openRoomId = $derived(findRoomByPathId(roomList.rooms, page.params.roomId)?.room_id);
+  let unreadDms = $derived(
+    open
+      ? roomList.rooms
+          .filter(
+            (room) =>
+              room.state === 'joined' &&
+              room.is_direct &&
+              room.direct_targets.length === 1 &&
+              room.room_id !== openRoomId &&
+              hasUnread(roomList.badgeUnreadFor(room))
+          )
+          .sort(
+            (left, right) =>
+              (right.latest_event?.timestamp ?? 0) - (left.latest_event?.timestamp ?? 0)
+          )
+          .slice(0, 3)
+      : []
+  );
 
   // A newly opened place starts unfiltered.
   $effect(() => {
@@ -73,10 +103,27 @@
   });
 </script>
 
-{#if open && filters}
+{#if open}
   <div class="echo-rail-band" role="group" aria-label="Show">
     <div class="echo-rail-band-inner">
       <div class="echo-sub-divider" role="separator"></div>
+      {#if unreadDms.length > 0}
+        {#each unreadDms as room (room.room_id)}
+          {@const name = room.name ?? room.room_id}
+          <a
+            class="rail-item nav-tab nav-tab-side space-item echo-rail-dm"
+            href={resolve('/(app)/direct/[roomId]', {
+              roomId: roomPathParam(room, roomList.rooms),
+            })}
+            aria-label={name}
+            title={name}
+          >
+            <Avatar class="space-initial" id={room.room_id} src={room.avatar_url} {name} uniform />
+            <UnreadBadge counts={roomList.badgeUnreadFor(room)} dm />
+          </a>
+        {/each}
+        <div class="echo-sub-divider" role="separator"></div>
+      {/if}
       {#each filters as filter (filter.value)}
         <button
           type="button"

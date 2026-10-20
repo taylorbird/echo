@@ -119,6 +119,11 @@
     flex-direction: column;
   }
 
+  /* While a band is open its own unread-DM tiles stand in for Sable's. */
+  :root .rail:has(.echo-rail-band) li:has(> a.space-item[href^='/direct/']) {
+    display: none;
+  }
+
   /* In the band the selected sub-filter carries the pill, not the tile. */
   :root .rail li:has(.echo-rail-band) .nav-tab.nav-tab-side[aria-current='page']::before {
     display: none;

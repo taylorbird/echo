@@ -4,6 +4,7 @@
 // every room, open from the first start.
 
 import { BREAKPOINTS } from '#lib/ui/breakpoints.js';
+import { echoActive } from './active.js';
 
 import type { RoomPanels } from '#lib/features/room/room-panels.svelte.js';
 
@@ -14,7 +15,7 @@ import type { RoomPanels } from '#lib/features/room/room-panels.svelte.js';
  * own handling stays.
  */
 export function echoRoomPanels(panels: RoomPanels): RoomPanels {
-  if (matchMedia(BREAKPOINTS.appLayout).matches) panels.desktopMembersOpen = false;
+  if (echoActive() && matchMedia(BREAKPOINTS.appLayout).matches) panels.desktopMembersOpen = false;
   return panels;
 }
 

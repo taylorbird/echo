@@ -80,6 +80,7 @@
   } from './nav-rows.js';
   import { PeerProfiles } from './peer-profiles.svelte.js';
   import EchoRoomPreview from '../../../../echo/components/RoomPreview.svelte';
+  import { echoSectionRooms } from '../../../../echo/space-dms.js';
   import { publishVisibleRoomOrder } from './visible-rooms.svelte.js';
   import { navSectionKind, navSectionLabels, type NavSectionKind } from './nav-section.js';
   import {
@@ -308,7 +309,10 @@
       .sort(compareRooms);
   });
   let rooms = $derived(
-    groupFavourites ? listedRooms.filter((row) => !isFavourite(row)) : listedRooms
+    echoSectionRooms(
+      groupFavourites ? listedRooms.filter((row) => !isFavourite(row)) : listedRooms,
+      { section, space: activeSpace, rooms: roomList.rooms, core, compare: compareRooms }
+    )
   );
   let sectionRooms = $derived([...favourites, ...rooms]);
   let invites = $derived.by<RoomListItemView[]>(() => {
