@@ -1,1 +1,104 @@
-/* echo: panels. See echo/design/SPEC.md. */
+/* echo: right panels (members, threads, search, media). See
+   echo/design/SPEC.md §8.
+
+   Sable floats these over the timeline's right edge with a drop shadow. echo's
+   right panel is a column of its own with a rule down its left edge, the room
+   list's colour, and a header the same height as the room header. */
+
+@media (width >= 48rem) {
+  :root .room-view aside:not(.member-user-list) {
+    background: var(--echo-roomlist);
+    border-left: 1px solid var(--echo-border);
+    box-shadow: none;
+    color: var(--echo-text);
+  }
+
+  /* The header lines up with the room header (SPEC §0.7). */
+  :root .room-view aside > .panel-header {
+    background: transparent;
+    border-bottom: 1px solid var(--echo-border);
+    min-height: var(--header-height);
+    padding: 0 0.25rem 0 0.5rem;
+  }
+
+  :root .room-view aside h2.title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-left: 0.25rem;
+  }
+
+  :root .room-view aside p.subtitle {
+    margin-left: 0.25rem;
+  }
+
+  :root .room-view aside .panel-header-button {
+    --button-height: 2.5rem;
+  }
+
+  /* Members (SPEC §8). The filter field is a borderless row with a rule
+     under it. */
+  :root .members-drawer > .controls {
+    background: var(--echo-roomlist);
+    border-bottom: 1px solid var(--echo-border);
+    gap: 0;
+    padding: 0;
+  }
+
+  :root .members-drawer .filters {
+    padding: 0.25rem 0.5rem 0;
+  }
+
+  :root .members-drawer .controls > .member-search-input {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 0;
+    padding: 0.75rem 1rem 1rem;
+  }
+
+  :root .members-drawer .member-groups {
+    padding: 0.25rem 0;
+  }
+
+  :root .members-drawer .member-groups > .group-label {
+    color: var(--echo-section-ink);
+    font-size: 0.875rem;
+    font-weight: 700;
+    padding: 0.75rem 0.75rem 0.25rem;
+  }
+
+  /* Rows: a 2.5rem round avatar and the name, 3rem tall. */
+  :root .members-drawer .member-identity-row.member-identity-button {
+    border-radius: 0;
+    font-size: 1rem;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  :root .members-drawer .member-identity-row.member-identity-button:hover {
+    background: var(--echo-hover);
+    color: var(--echo-text);
+  }
+
+  :root .members-drawer .member-identity-avatar > .avatar-root {
+    --avatar-size: 2.5rem;
+
+    border-radius: 50%;
+    font-size: 1rem;
+  }
+}
+
+/* Light mode names are body-coloured (SPEC §8); dark keeps each person's colour. */
+@media (width >= 48rem) and (prefers-color-scheme: light) {
+  :root:not(.dark) .members-drawer .member-name {
+    color: var(--echo-text);
+  }
+}
+
+@media (width >= 48rem) {
+  :root.light .members-drawer .member-name {
+    color: var(--echo-text);
+  }
+}
