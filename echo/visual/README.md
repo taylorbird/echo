@@ -30,6 +30,8 @@ Screenshots land in `echo/visual/out/` (gitignored), replaced on every run:
 | `desktop-{light,dark}-space.png` | the Work space's room list |
 | `desktop-{light,dark}-timeline.png` | #general, members panel closed |
 | `desktop-{light,dark}-members.png` | #general with the members panel |
+| `desktop-{light,dark}-members-esc.png` | #general after Esc closed the members panel |
+| `desktop-{light,dark}-members-next-room.png` | design, opened with the members panel open in #general: it stays closed |
 | `desktop-{light,dark}-profile.png` | Alex Rivera's profile card |
 | `desktop-{light,dark}-settings.png` | settings |
 | `desktop-{light,dark}-modal-room-settings.png` | #general's room settings dialog |

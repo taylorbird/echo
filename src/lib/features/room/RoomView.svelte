@@ -72,6 +72,7 @@
   import { RoomSession } from './room-session.svelte.js';
   import { MemberProfile } from './members/member-profile.svelte.js';
   import { RoomPanels } from './room-panels.svelte.js';
+  import { echoRoomPanels } from '../../../../echo/panels.js';
   import { RoomMediaViewer } from './room-media-viewer.svelte.js';
   import { TombstoneJoin } from './room-tombstone-join.svelte.js';
   import RoomCallStage from './RoomCallStage.svelte';
@@ -90,7 +91,7 @@
 
   let { roomId, eventId = null, notifiedEventId = null, room }: Props = $props();
   const core = useCoreClient();
-  const panels = new RoomPanels();
+  const panels = echoRoomPanels(new RoomPanels());
   const memberProfile = new MemberProfile(core);
   onDestroy(() => memberProfile.close());
   trackRoomEntry();

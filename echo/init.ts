@@ -5,6 +5,7 @@ import { type as osType } from '@tauri-apps/plugin-os';
 import { supportsDesktopWindow } from '#lib/platform/window-decorations.js';
 import { applyDeploymentDefaults } from '#lib/settings/preferences.svelte.js';
 import { BREAKPOINTS } from '#lib/ui/breakpoints.js';
+import { closePanelOnEscape } from './panels.js';
 
 const browser = typeof document !== 'undefined';
 const macApp = browser && supportsDesktopWindow() && osType() === 'macos';
@@ -59,3 +60,5 @@ if (macApp) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 }
+
+if (browser) closePanelOnEscape();

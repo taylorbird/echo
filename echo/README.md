@@ -19,6 +19,8 @@ can live here instead.
 - `init.ts` — start-up: echo's defaults where they differ from Sable's (Home on in the rail, and
   on macOS Sable's own title bar, which puts the window in overlay style so the panes can run to
   the top edge), and in the macOS app the headers as window drag regions.
+- `panels.ts` — echo's right panel: each room opens with it closed (Sable reopened a
+  remembered members panel in every room), and Esc closes it. Desktop only.
 - `unread.ts` — echo's unread indicators: a muted room with unread messages still gets its dot
   in the room list and rail (Sable's core clears a muted room's counts). Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
@@ -44,6 +46,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/features/sidebar/AppShell.svelte` | room list starts at `ECHO_ROOM_NAV_WIDTH` (`echo/layout.ts`) instead of 288 |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomPreview>` (`echo/components/RoomPreview.svelte`) after each room's name |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `<EchoRailBand>` (`echo/components/RailBand.svelte`) after each rail tile: the parted band under the open one |
+| `src/lib/features/room/RoomView.svelte` | `const panels = echoRoomPanels(new RoomPanels())` (`echo/panels.ts`) |
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
 
 ## Running

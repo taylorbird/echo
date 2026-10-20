@@ -197,6 +197,27 @@ const members: View = {
   close: (page) => membersPanel(page, false),
 };
 
+// echo's right panel closes with Esc, and stays closed in the next room.
+const membersEscape: View = {
+  name: 'members-esc',
+  open: async (page) => {
+    await members.open(page);
+    await page.mouse.move(-1, -1);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('complementary', { name: 'Members' })).toHaveCount(0);
+  },
+};
+
+const membersNextRoom: View = {
+  name: 'members-next-room',
+  open: async (page) => {
+    await members.open(page);
+    await page.goto(`/rooms/${encodeURIComponent(state.rooms.design)}`);
+    await expect(page.locator('.timeline-viewport:not(.initial)')).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByRole('complementary', { name: 'Members' })).toHaveCount(0);
+  },
+};
+
 const profile: View = {
   name: 'profile',
   open: async (page) => {
@@ -287,6 +308,8 @@ test.describe('desktop', () => {
       space,
       timeline,
       members,
+      membersEscape,
+      membersNextRoom,
       profile,
       settings,
       roomSettings,
