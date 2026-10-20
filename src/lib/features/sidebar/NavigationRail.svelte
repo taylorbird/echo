@@ -44,6 +44,7 @@
   import { resolveUnreadBadge } from '#lib/ui/primitives/unread-badge.js';
   import '#lib/ui/primitives/nav-tab.css';
   import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
+  import EchoRailBand from '../../../../echo/components/RailBand.svelte';
   import ChecksIcon from 'phosphor-svelte/lib/ChecksIcon';
   import CompassIcon from 'phosphor-svelte/lib/CompassIcon';
   import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
@@ -590,6 +591,7 @@
     {/snippet}
     <Tooltip {label} side="right" {trigger} />
   {/if}
+  <EchoRailBand {item} active={!mobile && isActive(item)} />
 {/snippet}
 
 {#snippet createButton(props: Record<string, unknown>)}

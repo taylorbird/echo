@@ -349,4 +349,18 @@
   :root .room-row .room-status > .room-mode {
     display: none;
   }
+
+  /* The rail band's sub-filters (SPEC §3.5; echo/components/RailBand.svelte).
+     Rooms and Direct messages narrow the list to one kind; Recent drops the
+     headings for one list, newest first, which is Sable's default order.
+     Only `display` is set here and nothing above sets it, so the order
+     against the rules above doesn't matter. */
+  /* stylelint-disable no-descending-specificity */
+  :root[data-echo-filter='rooms'] .room-list > .room-row-wrap:has(.echo-dm),
+  :root[data-echo-filter='dms'] .room-list > .room-row-wrap:not(:has(.echo-dm)),
+  :root[data-echo-filter='recent'] .room-nav .rooms-heading,
+  :root[data-echo-filter='recent'] .room-list > .room-row-wrap:has(.room-category) {
+    display: none;
+  }
+  /* stylelint-enable no-descending-specificity */
 }

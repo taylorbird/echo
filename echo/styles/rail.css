@@ -100,6 +100,30 @@
     width: 1.75rem;
   }
 
+  /* The parted rail (SPEC §3.3; echo/components/RailBand.svelte): the open
+     tile and its sub-filters sit on a lighter band, and the dark rail above
+     and below casts onto it. The band's square cut is deliberate. */
+  :root .rail .rail-stack > li:has(.echo-rail-band) {
+    align-self: stretch;
+    background: var(--echo-band);
+    box-shadow:
+      inset 0 2px 5px rgb(0 0 0 / 45%),
+      inset 0 -2px 5px rgb(0 0 0 / 45%);
+    display: flex;
+    flex-direction: column;
+    padding: 0.375rem 0 0.5rem;
+  }
+
+  :root .rail .rail-slot:has(.echo-rail-band) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* In the band the selected sub-filter carries the pill, not the tile. */
+  :root .rail li:has(.echo-rail-band) .nav-tab.nav-tab-side[aria-current='page']::before {
+    display: none;
+  }
+
   /* Glyphs sit well inside the tile rather than filling it (SPEC §3.2). */
   :root .rail .icon > svg {
     height: 1.75rem;
