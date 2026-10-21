@@ -197,34 +197,32 @@
   }
 }
 
-/* The desktop app (SPEC §2.4). The chat pane floats: a .5rem gap on its right
-   and bottom (the top stays flush) shows the window's ground, the room list is
-   raised over the chat's left edge and the right panel over its right edge,
-   and the chat itself is recessed. Panes stay square (SPEC §0.1). In the dark
-   scheme the chat is echo's cool near-black, the darkest surface. A browser
-   tab keeps the flat frame, as echo's did. */
+/* The desktop app (SPEC §2.4). Every pane runs flush to the window's edges,
+   which macOS rounds at the corners: an inset gap there read as a second,
+   square frame inside the rounded one. The panes float only against each
+   other: the room list is raised over the chat's left edge and the right panel
+   over its right edge, and the chat is recessed. Nothing at the window's edge
+   is a different colour from the pane it belongs to. Panes stay square
+   (SPEC §0.1). In the dark scheme the chat is echo's cool near-black, the
+   darkest surface. A browser tab keeps the flat frame, as echo's did. */
 @media (width >= 48rem) {
-  :root[data-tauri-os] {
-    --echo-backdrop: #d9d7dc;
-    --echo-pane-gap: 0.5rem;
-  }
-
+  /* Whatever shows past a pane's edge, at a corner or a fractional pixel,
+     is the chat's own colour. */
+  :root[data-tauri-os],
   :root[data-tauri-os] body {
-    background: var(--echo-backdrop);
-  }
-
-  :root[data-tauri-os] .drawer-panel.content-panel {
-    background: var(--echo-backdrop);
-    padding-bottom: calc(var(--safe-bottom) + var(--echo-pane-gap));
-    padding-right: calc(var(--safe-right) + var(--echo-pane-gap));
+    background: var(--echo-chat);
   }
 
   :root[data-tauri-os] .content-panel > .content {
     background: var(--echo-chat);
-    box-shadow:
-      inset 10px 0 10px -10px rgb(0 0 0 / 60%),
-      0 0 0 0.5px rgb(0 0 0 / 45%),
-      0 6px 20px rgb(0 0 0 / 30%);
+    box-shadow: inset 10px 0 10px -10px rgb(0 0 0 / 60%);
+  }
+
+  /* Down to the window's bottom edge whatever 100dvh works out to, so no
+     sliver of the ground shows under the room list. */
+  :root[data-tauri-os] .app-shell .sidebar {
+    bottom: 0;
+    height: auto;
   }
 
   /* Raised from the left, its light edge paired with the dark blur, since a
@@ -252,7 +250,6 @@
 
 @media (width >= 48rem) and (prefers-color-scheme: dark) {
   :root[data-tauri-os]:not(.light) {
-    --echo-backdrop: #42424c;
     --echo-rail: #1b1a1f;
     --echo-roomlist: #26262c;
     --echo-chat: #16181f;
@@ -271,7 +268,6 @@
 
 @media (width >= 48rem) {
   :root[data-tauri-os].dark {
-    --echo-backdrop: #42424c;
     --echo-rail: #1b1a1f;
     --echo-roomlist: #26262c;
     --echo-chat: #16181f;
