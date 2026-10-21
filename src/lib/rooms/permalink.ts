@@ -9,6 +9,7 @@ import { splitVia } from '#lib/rooms/join-address.js';
 import { parseMatrixLink } from '#lib/rooms/matrix-link.js';
 
 import { findRoomByPathId, roomPathParam, roomPathParamFromId } from './room-list.svelte';
+import { echoRoomPath } from '../../../echo/places.js';
 
 function parentSpaceOf(
   rooms: readonly RoomListItemView[],
@@ -46,6 +47,8 @@ function sectionPath(
   room: RoomListItemView | undefined,
   roomParam: string
 ): string {
+  const echoPath = echoRoomPath(rooms, room?.room_id ?? '');
+  if (echoPath !== null) return echoPath;
   if (room?.room_kind === 'space')
     return resolve('/(app)/space/[spaceId]/lobby', { spaceId: roomParam });
   if (room?.is_direct) return resolve('/(app)/direct/[roomId]', { roomId: roomParam });

@@ -24,6 +24,7 @@
     flex-basis: var(--header-height);
     min-height: var(--header-height);
     padding: 0 0.5rem 0 1rem;
+    position: relative;
   }
 
   :root .sidebar .room-nav-header h2 {
@@ -31,15 +32,21 @@
     font-weight: 600;
   }
 
-  /* Leave the header's right side to the actions lifted into it below. */
-  :root .room-nav:has(.room-nav-actions:not(.collapsed)) .room-nav-header {
-    padding-right: calc(0.5rem + 4 * 2.5rem);
-  }
-
+  /* Every header icon sits at the right edge: the list menu takes the last
+     slot, the actions below sit just left of it. The lock stays by the title. */
   :root .sidebar .room-nav-header .room-nav-menu {
     color: var(--echo-text);
     height: 2.5rem;
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    translate: 0 -50%;
     width: 2.5rem;
+  }
+
+  /* Leave the header's right side to the actions lifted into it below. */
+  :root .room-nav:has(.room-nav-actions:not(.collapsed)) .room-nav-header {
+    padding-right: calc(0.5rem + 4 * 2.5rem);
   }
 
   /* Create room, explore and search: echo keeps these as square icon buttons
@@ -87,7 +94,8 @@
     width: 1.25rem;
   }
 
-  /* Sections (SPEC §4.2). */
+  /* Sections (SPEC §4.2). No box on hover or focus: it read as a selection.
+     The caret answers hover instead, and keyboard focus gets a ring. */
   :root .sidebar .room-nav .rooms-heading {
     border-radius: 0.5rem;
     color: var(--echo-section-ink);
@@ -99,8 +107,73 @@
     width: calc(100% - 1rem);
   }
 
-  :root .sidebar .room-nav .rooms-heading:is(:hover, :focus-visible) {
-    background: var(--echo-entry-hover);
+  :root .sidebar .room-nav .rooms-heading.rooms-heading:is(:hover, :focus-visible) {
+    background: none;
+  }
+
+  :root .sidebar .room-nav .rooms-heading:focus-visible {
+    outline: 2px solid var(--echo-section-ink);
+    outline-offset: -2px;
+  }
+
+  /* A collapsed section reads as put away: dimmed, caret pointing right. */
+  :root .sidebar .room-nav .rooms-heading[data-state='closed'] {
+    opacity: 0.6;
+  }
+
+  /* A kind glyph before each heading (Lucide, as echo draws its icons):
+     a star for Favourites, two people for Rooms, one for direct messages. */
+  :root .room-nav .rooms-heading::before {
+    --echo-heading-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E");
+
+    background: currentcolor;
+    content: '';
+    flex: none;
+    height: 1.125rem;
+    mask: var(--echo-heading-glyph) center / contain no-repeat;
+    opacity: 0.85;
+    width: 1.125rem;
+  }
+
+  :root .rooms-heading:has(+ .favourites)::before {
+    --echo-heading-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
+  }
+
+  :root[data-echo-filter='dms'] .rooms-heading:not(:has(+ .favourites))::before,
+  :root
+    .room-nav:has(a.nav-action[href$='direct'])
+    .rooms-heading:not(:has(+ .favourites))::before {
+    --echo-heading-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
+  }
+
+  /* A collapsed section still shows its open and unread rooms. A quiet,
+     centred "Expand for more" under them says the rest are folded away;
+     clicking it opens the section (echo/sections.ts). */
+  :root
+    .rooms-heading[data-state='closed']
+    + .room-list:has(.room-row-wrap:not(.closed-row))::after,
+  :root
+    .rooms-heading[data-state='closed']
+    + div
+    > .room-list:has(.room-row-wrap:not(.closed-row))::after {
+    color: var(--echo-text);
+    content: '\00B7\00B7\00B7\2002 Expand for more';
+    cursor: default;
+    display: block;
+    font-size: 0.75rem;
+    line-height: 2rem;
+    opacity: 0.4;
+    text-align: center;
+  }
+
+  :root
+    .rooms-heading[data-state='closed']
+    + .room-list:has(.room-row-wrap:not(.closed-row)):hover::after,
+  :root
+    .rooms-heading[data-state='closed']
+    + div
+    > .room-list:has(.room-row-wrap:not(.closed-row)):hover::after {
+    opacity: 0.7;
   }
 
   :root .sidebar .room-nav .rooms-heading-label {
@@ -117,6 +190,10 @@
     margin-left: auto;
     opacity: 0.45;
     width: 1.125rem;
+  }
+
+  :root .room-nav .rooms-heading:hover > .category-caret {
+    opacity: 1;
   }
 
   :root .room-nav .category-caret > svg {
@@ -140,7 +217,7 @@
   /* Rows (SPEC §4.3): full-bleed and square. */
   :root .room-list:not(.collapsed) > .room-row-wrap {
     border-radius: 0;
-    contain-intrinsic-size: auto 4rem;
+    contain-intrinsic-size: auto 5rem;
   }
 
   :root .room-list:not(.collapsed) > .room-row-wrap:is(:hover, :focus-within) {
@@ -150,11 +227,6 @@
   /* A light hairline between rows. */
   :root .room-list:not(.collapsed) > .room-row-wrap + .room-row-wrap {
     box-shadow: inset 0 1px 0 var(--echo-row-hairline);
-  }
-
-  /* The row under the open one drops its hairline. */
-  :root .room-list > .room-row-wrap:has([aria-current='page']) + .room-row-wrap {
-    box-shadow: none;
   }
 
   /* The glow bar's lane, centred in the first 1rem (SPEC §4.3). */
@@ -205,7 +277,7 @@
     background: var(--echo-highlight-wash);
   }
 
-  /* The open room: a warm wash with a lit top edge and a dark seam, and the
+  /* The open room: a flat warm wash, like the unread tiers' washes, and the
      green bar. Outranks the unread tiers above. */
   :root
     .room-list:not(.collapsed)
@@ -215,19 +287,33 @@
     --echo-bar-far: var(--echo-room-far);
 
     background: var(--echo-entry-active);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 8%),
-      inset 0 -1px 0 rgb(0 0 0 / 35%);
   }
 
+  /* echo drew the row as a 4rem content box plus padding; Sable's global
+     border-box makes the height the outer edge, so it carries the padding. */
   :root .room-list:not(.collapsed) .room-row.selection-layer {
     align-items: center;
     background: transparent;
     border-radius: 0;
     font-weight: 400;
     gap: 0.25rem;
-    height: 4rem;
+    height: 5rem;
     padding: 0.5rem 0.5rem 0.5rem calc(1rem + 10px + var(--room-depth, 0) * 1rem);
+  }
+
+  /* No ⋮ on rows: right-click (or a long press) opens the same room menu,
+     as in echo. The badge stays put on hover and the row doesn't reflow. */
+  :root .room-list:not(.collapsed) .room-options-slot {
+    display: none;
+  }
+
+  :root .room-list:not(.collapsed) > .room-row-wrap .room-status.room-status {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  :root .room-list:not(.collapsed) > .room-row-wrap .room-row.selection-layer.selection-layer {
+    padding-right: 0.5rem;
   }
 
   /* The avatar lane: 3.5rem holding a 2.5rem round avatar. */
@@ -263,8 +349,27 @@
     content: none;
   }
 
+  /* Name and kind glyph share the first line; the name truncates, the glyph
+     stays visible after it. Everything else spans the row below. */
   :root .room-list:not(.collapsed) .room-text {
-    gap: 0.125rem;
+    display: grid;
+    gap: 0.125rem 0.625rem;
+    grid-template-columns: minmax(0, max-content) 1fr;
+  }
+
+  :root .room-list:not(.collapsed) .room-text > * {
+    grid-column: 1 / -1;
+  }
+
+  :root .room-list:not(.collapsed) .room-text > .room-name {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  :root .room-list:not(.collapsed) .room-text > .echo-room-kind {
+    align-self: center;
+    grid-column: 2;
+    grid-row: 1;
   }
 
   /* Room names are one colour; a room's state is its wash, bar and badge
@@ -309,10 +414,12 @@
     font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
-    height: 1rem;
+
+    /* A 1rem content box plus .125rem a side in echo (content-box there). */
+    height: 1.25rem;
     line-height: 1;
-    min-width: 1rem;
-    padding: 0.5px 0.25rem 0;
+    min-width: 1.25rem;
+    padding: calc(0.125rem + 0.5px) 0.25rem calc(0.125rem - 0.5px);
   }
 
   /* Sable's "highlight" covers mentions and notifying rooms alike; only the

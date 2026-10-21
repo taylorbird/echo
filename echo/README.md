@@ -10,7 +10,7 @@ can live here instead.
 - `theme.css` — echo's look (palette, Inter / Fira Code) over Sable's design tokens, loaded
   right after `src/styles.css`. Outside `src/` because Sable's theme check allows literal
   colours only in `src/styles.css`. It imports one file per UI area from `styles/`
-  (frame, rail, roomlist, timeline, panels, popups, loading), each targeting Sable's own
+  (frame, rail, roomlist, timeline, panels, popups, profile, loading), each targeting Sable's own
   markup and written against `design/SPEC.md`. Layout rules are desktop only
   (`width >= 48rem`); the phone layout stays Sable's until echo has its own.
 - `components/` — the few pieces of echo's UI that CSS can't draw, each mounted from Sable's
@@ -27,6 +27,13 @@ can live here instead.
   remembered members panel in every room), and Esc closes it. Desktop only.
 - `space-dms.ts` — which DMs a place lists, as echo decided: a space lists DMs with members of
   it or a space below it, the rooms outside spaces list every DM. Desktop only.
+- `places.ts` — where a room opens, as echo-gomuks did it: Home is one more place in the rail,
+  so a room opens in the place that's open when it lists the room (Home lists every chat, a
+  space its rooms and the DMs `space-dms.ts` adds), otherwise in its space or Home, never in the
+  rooms outside spaces or direct messages, whose rail tiles echo hides (`styles/rail.css`).
+  Start-up with no room to restore lands in Home. Desktop only.
+- `create-menu.ts` — "New chat" in the rail's create (+) menu, since the direct messages section
+  that offered it has no tile. Desktop only.
 - `unread.ts` — echo's unread indicators: a muted room with unread messages still gets its dot
   in the room list and rail (Sable's core clears a muted room's counts). Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
@@ -54,6 +61,17 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/features/sidebar/RoomNav.svelte` | `rooms` wrapped in `echoSectionRooms(…)` (`echo/space-dms.ts`): a space's and the unspaced list's DMs |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `<EchoRailBand>` (`echo/components/RailBand.svelte`) after each rail tile: the parted band under the open one |
 | `src/lib/features/room/RoomView.svelte` | `const panels = echoRoomPanels(new RoomPanels())` (`echo/panels.ts`) |
+| `src/lib/features/room/RoomView.svelte` | `MentionProfile` imported from `echo/components/ProfileModal.svelte`: echo's centred profile modal on desktop, Sable's popover otherwise |
+| `src/lib/features/sidebar/RoomNav.svelte` | `MentionProfile` imported from `echo/components/ProfileModal.svelte`, as in `RoomView.svelte` (call participants) |
+| `src/lib/ui/primitives/identity-color.ts` | `senderColor` returns through `echoSenderColor(…)` (`echo/sender-color.ts`): echo-gomuks's ten colours and formula |
+| `src/lib/features/room/members/members.ts` | your own name takes `echoSenderColor(…)` instead of the plain text colour (two call sites) |
+| `src/lib/ui/motion.ts` | `shouldReduceMotion` passes the system query through `echoSystemReducedMotion(…)` (`echo/motion.ts`): Sable's own setting decides |
+| `src/lib/rooms/permalink.ts` | `sectionPath` returns `echoRoomPath(…)` (`echo/places.ts`) when echo picks the place (two lines) |
+| `src/routes/(app)/+page.svelte` | start-up fallback is `echoStartPath() ?? resolve('/(app)/rooms')` (`echo/places.ts`): Home |
+| `src/lib/features/sidebar/RoomNav.svelte` | `roomHref`'s last fallback is `echoRoomPath(…) ?? …/home/…` (`echo/places.ts`): a space's DMs open in the space |
+| `src/routes/(app)/home/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`: an empty pane on desktop |
+| `src/routes/(app)/rooms/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`, as for Home |
+| `src/lib/features/sidebar/NavigationRail.svelte` | `...echoCreateEntries()` (`echo/create-menu.ts`) first in the create menu: New chat |
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
 
 ## Running

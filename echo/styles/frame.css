@@ -42,9 +42,9 @@
   --echo-entry-selected: rgb(0 0 0 / 12.5%);
   --echo-entry-active: rgb(var(--echo-warm-rgb) / 24%);
   --echo-row-hairline: rgb(var(--echo-warm-rgb) / 8%);
-  --echo-sub-filter-selected: rgb(214 168 0 / 18%);
   --echo-section-ink: var(--echo-text);
   --echo-kind-glyph: currentcolor;
+  --echo-kind-glyph-opacity: 0.65;
   --echo-room-name: var(--echo-text);
   --echo-preview: var(--echo-text-semi);
   --echo-unread-message: rgb(0 0 0 / 35%);
@@ -88,9 +88,9 @@
     --echo-band: color-mix(in oklab, #2b2b33 85%, rgb(var(--echo-warm-rgb)));
     --echo-entry-hover: rgb(var(--echo-warm-rgb) / 10%);
     --echo-entry-selected: rgb(var(--echo-warm-rgb) / 15%);
-    --echo-sub-filter-selected: rgb(255 228 132 / 16%);
     --echo-section-ink: color-mix(in oklab, #bd93f9 45%, var(--echo-text));
     --echo-kind-glyph: #bd93f9;
+    --echo-kind-glyph-opacity: 0.9;
     --echo-room-name: #fff;
     --echo-preview: #b9b3ae;
     --echo-unread-message: #5cbbff;
@@ -134,9 +134,9 @@
   --echo-band: color-mix(in oklab, #2b2b33 85%, rgb(var(--echo-warm-rgb)));
   --echo-entry-hover: rgb(var(--echo-warm-rgb) / 10%);
   --echo-entry-selected: rgb(var(--echo-warm-rgb) / 15%);
-  --echo-sub-filter-selected: rgb(255 228 132 / 16%);
   --echo-section-ink: color-mix(in oklab, #bd93f9 45%, var(--echo-text));
   --echo-kind-glyph: #bd93f9;
+  --echo-kind-glyph-opacity: 0.9;
   --echo-room-name: #fff;
   --echo-preview: #b9b3ae;
   --echo-unread-message: #5cbbff;

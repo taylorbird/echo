@@ -39,6 +39,7 @@
   import Avatar from '#lib/ui/primitives/Avatar.svelte';
   import UnreadBadge from '#lib/ui/primitives/UnreadBadge.svelte';
   import { echoActive } from '../active.js';
+  import { echoRoomPath } from '../places.js';
 
   interface Props {
     /** The rail tile this follows; only the fields that say what it is. */
@@ -67,7 +68,8 @@
 
   // Up to three unread one-to-one DMs, newest first, sit at the top of the open
   // band (SPEC §3.6); Sable's own unread-DM tiles hide while it is open
-  // (echo/styles/rail.css). The open room is left out, as Sable does.
+  // (echo/styles/rail.css). The open room is left out, as Sable does. Each
+  // opens in the place that is open, as any room does (echo/places.ts).
   const roomList = useRoomList();
   let openRoomId = $derived(findRoomByPathId(roomList.rooms, page.params.roomId)?.room_id);
   let unreadDms = $derived(
@@ -110,17 +112,20 @@
       {#if unreadDms.length > 0}
         {#each unreadDms as room (room.room_id)}
           {@const name = room.name ?? room.room_id}
+          <!-- eslint-disable svelte/no-navigation-without-resolve -- echoRoomPath() resolves the route itself -->
           <a
             class="rail-item nav-tab nav-tab-side space-item echo-rail-dm"
-            href={resolve('/(app)/direct/[roomId]', {
-              roomId: roomPathParam(room, roomList.rooms),
-            })}
+            href={echoRoomPath(roomList.rooms, room.room_id, page.url.pathname) ??
+              resolve('/(app)/direct/[roomId]', {
+                roomId: roomPathParam(room, roomList.rooms),
+              })}
             aria-label={name}
             title={name}
           >
             <Avatar class="space-initial" id={room.room_id} src={room.avatar_url} {name} uniform />
             <UnreadBadge counts={roomList.badgeUnreadFor(room)} dm />
           </a>
+          <!-- eslint-enable svelte/no-navigation-without-resolve -->
         {/each}
         <div class="echo-sub-divider" role="separator"></div>
       {/if}
@@ -135,7 +140,7 @@
             railFilter.value = filter.value;
           }}
         >
-          <filter.icon weight={railFilter.value === filter.value ? 'fill' : 'regular'} />
+          <filter.icon />
         </button>
       {/each}
     </div>
@@ -193,12 +198,8 @@
     outline: none;
   }
 
-  .echo-sub-filter[aria-pressed='true'] {
-    background: var(--echo-sub-filter-selected);
-    color: var(--echo-text);
-  }
-
-  /* The same pill as the tiles', at the same x. */
+  /* The selected one is marked by the pill alone: the same pill as the
+     tiles', at the same x. Its glyph and ground stay as they are. */
   .echo-sub-filter[aria-pressed='true']::before {
     background: var(--echo-accent-glow);
     border-radius: 999px;
@@ -237,13 +238,14 @@
     }
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    :global(html:not([data-reduced-motion='on'])) .echo-rail-band {
-      animation: echo-band-part 0.42s cubic-bezier(0.32, 0.72, 0, 1);
-    }
+  /* Gated on Sable's setting only, not the system query (echo/motion.ts). */
+  :global(html:not([data-reduced-motion='on'])) .echo-rail-band {
+    /* stylelint-disable-next-line defensive-css/require-prefers-reduced-motion */
+    animation: echo-band-part 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  }
 
-    :global(html:not([data-reduced-motion='on'])) .echo-rail-band-inner {
-      animation: echo-band-fade 0.42s cubic-bezier(0.32, 0.72, 0, 1);
-    }
+  :global(html:not([data-reduced-motion='on'])) .echo-rail-band-inner {
+    /* stylelint-disable-next-line defensive-css/require-prefers-reduced-motion */
+    animation: echo-band-fade 0.42s cubic-bezier(0.32, 0.72, 0, 1);
   }
 </style>

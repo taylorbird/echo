@@ -123,7 +123,7 @@ const message = (page: Page, text: string) => page.getByText(text, { exact: fals
 
 async function openGeneral(page: Page): Promise<void> {
   if (!new URL(page.url()).pathname.endsWith(encodeURIComponent(state.rooms.general))) {
-    await page.goto(`/rooms/${encodeURIComponent(state.rooms.general)}`);
+    await page.goto(`/home/${encodeURIComponent(state.rooms.general)}`);
   }
   await expect(page.locator('.timeline-viewport:not(.initial)')).toBeVisible({ timeout: 45_000 });
   await expect(message(page, 'great week')).toBeVisible({ timeout: 20_000 });
@@ -157,7 +157,7 @@ const roomList: View = {
 const space: View = {
   name: 'space',
   open: async (page) => {
-    await page.goto('/rooms');
+    await page.goto('/home');
     await page
       .getByRole('navigation', { name: 'Primary navigation' })
       .getByRole('link', { name: /Work/ })
@@ -211,12 +211,41 @@ const membersEscape: View = {
   },
 };
 
+// #general open with its section collapsed: the open room stays, with the
+// faint marker under it that says the rest are folded away.
+const collapsedSection: View = {
+  name: 'collapsed',
+  open: async (page) => {
+    await openGeneral(page);
+    const heading = page.locator('.room-nav .rooms-heading[aria-expanded="true"]').last();
+    await heading.click();
+    await expect(page.locator('.room-nav .rooms-heading[data-state="closed"]')).toHaveCount(1);
+    await page.mouse.move(-1, -1);
+  },
+  close: async (page) => {
+    await page.locator('.room-nav .rooms-heading[data-state="closed"]').first().click();
+  },
+};
+
+// The Cmd-K quick switcher over #general, drawn as echo's.
+const palette: View = {
+  name: 'palette',
+  open: async (page) => {
+    await openGeneral(page);
+    await page.keyboard.press('ControlOrMeta+k');
+    await expect(page.locator('.dialog-content .palette')).toBeVisible({ timeout: 5_000 });
+  },
+  close: async (page) => {
+    await page.keyboard.press('Escape');
+  },
+};
+
 const membersNextRoom: View = {
   name: 'members-next-room',
   open: async (page) => {
     await members.open(page);
     // Book club is read already, so opening it costs no other shot an unread badge.
-    await page.goto(`/rooms/${encodeURIComponent(state.rooms['Book club'])}`);
+    await page.goto(`/home/${encodeURIComponent(state.rooms['Book club'])}`);
     await expect(page.locator('.timeline-viewport:not(.initial)')).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole('complementary', { name: 'Members' })).toHaveCount(0);
   },
@@ -227,7 +256,14 @@ const profile: View = {
   open: async (page) => {
     await openGeneral(page);
     await page.getByRole('button', { name: "Open Alex Rivera's profile" }).last().click();
-    await expect(page.locator('.profile-card').first()).toBeVisible({ timeout: 10_000 });
+    // echo's modal on desktop (echo/components/ProfileModal.svelte), Sable's card on phones.
+    await expect(page.locator('.profile-card, .echo-profile').first()).toBeVisible({
+      timeout: 10_000,
+    });
+    // The folded rows fill in from the server; let them land.
+    await expect(page.locator('.echo-profile .echo-card-row .skeleton')).toHaveCount(0, {
+      timeout: 10_000,
+    });
   },
   close: closeDialogs,
 };
@@ -265,6 +301,52 @@ const home: View = {
     await expect(page.getByRole('link', { name: /Releases/ }).first()).toBeVisible({
       timeout: 15_000,
     });
+  },
+};
+
+// Home with no room open: an empty pane, as echo-gomuks had (echo/components/EmptyPane.svelte).
+// The DM tiles in the band open in Home, not under /direct (echo/places.ts).
+const homeEmpty: View = {
+  name: 'home-empty',
+  open: async (page) => {
+    await home.open(page);
+    await expect(page.locator('.echo-empty-pane')).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('.home-page')).toHaveCount(0);
+    const dm = page.locator('.echo-rail-band a.echo-rail-dm').first();
+    await expect(dm).toHaveAttribute('href', /^\/home\//, { timeout: 10_000 });
+  },
+};
+
+// The rail's create menu, with New chat (echo/create-menu.ts).
+const createMenu: View = {
+  name: 'create-menu',
+  open: async (page) => {
+    await home.open(page);
+    await page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('button', { name: 'Add a room or space', exact: true })
+      .click();
+    await expect(page.getByRole('menuitem', { name: 'New chat' })).toBeVisible({ timeout: 5_000 });
+  },
+  close: closeDialogs,
+};
+
+// A DM the Work space lists only because echo added it opens in the space.
+const spaceDm: View = {
+  name: 'space-dm-open',
+  open: async (page) => {
+    await space.open(page);
+    await page.locator('.echo-rail-band').getByRole('button', { name: 'Direct messages' }).click();
+    await page
+      .locator('.room-nav')
+      .getByRole('link', { name: /Alex Rivera/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/space\/[^/]+\/[^/]+$/, { timeout: 10_000 });
+    await expect(page.locator('.timeline-viewport:not(.initial)')).toBeVisible({ timeout: 45_000 });
+  },
+  close: async (page) => {
+    await page.locator('.echo-rail-band').getByRole('button', { name: 'All chats' }).click();
   },
 };
 
@@ -371,6 +453,12 @@ test.describe('app', () => {
     }
     await page.emulateMedia({ colorScheme: 'dark' });
     for (const view of spaceFilters) await capture(page, `app-dark-${view.name}`, inApp(view));
+    await capture(page, 'app-dark-home-empty', inApp(homeEmpty));
+    await capture(page, 'app-dark-create-menu', inApp(createMenu));
+    await capture(page, 'app-dark-space-dm-open', inApp(spaceDm));
+    await capture(page, 'app-dark-collapsed', inApp(collapsedSection));
+    await capture(page, 'app-dark-palette', inApp(palette));
+    await capture(page, 'app-dark-profile', inApp(profile));
   });
 });
 

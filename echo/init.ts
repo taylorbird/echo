@@ -7,6 +7,7 @@ import { applyDeploymentDefaults } from '#lib/settings/preferences.svelte.js';
 import { BREAKPOINTS } from '#lib/ui/breakpoints.js';
 import { startEcho } from './active.js';
 import { closePanelOnEscape } from './panels.js';
+import { expandOnMarkerClick } from './sections.js';
 
 const browser = typeof document !== 'undefined';
 if (browser) startEcho();
@@ -64,3 +65,4 @@ if (macApp) {
 }
 
 if (browser) closePanelOnEscape();
+if (browser) expandOnMarkerClick();

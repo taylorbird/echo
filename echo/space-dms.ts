@@ -21,6 +21,13 @@ const desktop = new MediaQuery(BREAKPOINTS.appLayout);
 // Joined and invited members of each space, fetched once a session.
 const spaceMembers = new SvelteMap<string, ReadonlySet<string>>();
 const requested = new Set<string>();
+// The DMs each space's list last gained here, for echo/places.ts.
+const listedDms = new Map<string, ReadonlySet<string>>();
+
+/** Whether the space's list, when last shown, held this DM because of echo. */
+export function spaceListsDm(spaceId: string, roomId: string): boolean {
+  return listedDms.get(spaceId)?.has(roomId) ?? false;
+}
 
 function membersOf(core: CoreClient, spaceId: string): ReadonlySet<string> | undefined {
   if (!requested.has(spaceId)) {
@@ -99,6 +106,7 @@ export function echoSectionRooms(rows: RoomNavRow[], context: Section): RoomNavR
         !listed.has(room.room_id) &&
         room.direct_targets.some((target) => target !== own && people.has(target))
     );
+    listedDms.set(space.room_id, new Set(shared.map((room) => room.room_id)));
     return [...rows, ...shared.map(roomRow).sort(compare)];
   }
 

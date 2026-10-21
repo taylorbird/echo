@@ -9,6 +9,7 @@
   import { roomSectionPath } from '#lib/rooms/permalink.js';
   import { useRoomList } from '#lib/rooms/room-list.svelte.js';
   import { preferences } from '#lib/settings/preferences.svelte.js';
+  import { echoStartPath } from '../../../echo/places.js';
 
   const core = useCoreClient();
   const roomList = useRoomList();
@@ -27,7 +28,7 @@
     const target =
       room?.state === 'joined' && room?.room_kind !== 'space' && !room.is_tombstoned
         ? roomSectionPath(roomList.rooms, room.room_id)
-        : resolve('/(app)/rooms');
+        : (echoStartPath() ?? resolve('/(app)/rooms'));
     redirected = true;
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- takeAfterLogin() and roomSectionPath() resolve their routes
     void goto(requestedPath || target, { replace: true });

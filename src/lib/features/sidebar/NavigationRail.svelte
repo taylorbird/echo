@@ -45,6 +45,7 @@
   import '#lib/ui/primitives/nav-tab.css';
   import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
   import EchoRailBand from '../../../../echo/components/RailBand.svelte';
+  import { echoCreateEntries } from '../../../../echo/create-menu.js';
   import ChecksIcon from 'phosphor-svelte/lib/ChecksIcon';
   import CompassIcon from 'phosphor-svelte/lib/CompassIcon';
   import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
@@ -232,6 +233,7 @@
   );
 
   const createEntries = [
+    ...echoCreateEntries(),
     { href: resolve('create-room'), label: 'common.createRoom', icon: PlusIcon },
     { href: resolve('create-space'), label: 'common.createSpace', icon: HouseIcon },
     {

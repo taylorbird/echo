@@ -1,8 +1,9 @@
 /* echo: the space rail. See echo/design/SPEC.md §3.
 
    Sable's rail (NavigationRail.svelte) already holds the same things in the same
-   order as echo's: the home and direct-message sections, unread DMs, a divider,
-   one tile per space, and the create button. Its quick tools bar (profile,
+   order as echo's: home, unread DMs, a divider, one tile per space, and the
+   create button; its rooms-outside-spaces and direct-message tiles are hidden
+   (below). Its quick tools bar (profile,
    alerts, jump to room, inbox, settings) runs across the bottom of the whole
    sidebar; echo keeps those in a footer at the bottom of the rail, so here the
    bar is lifted out of the flow and stacked into the rail's column. */
@@ -128,6 +129,15 @@
     display: none;
   }
 
+  /* Home is every chat, as in echo-gomuks: the rooms outside spaces and the
+     direct messages are no places of their own, so their tiles go while Home
+     has one. Their routes still work; rooms open in Home (echo/places.ts). */
+  :root[data-echo='on']
+    .rail-stack:has(a[href^='/home'])
+    .rail-section-anchor:has(a:is([href^='/rooms'], [href^='/direct'])) {
+    display: none;
+  }
+
   /* In the band the selected sub-filter carries the pill, not the tile. */
   :root .rail li:has(.echo-rail-band) .nav-tab.nav-tab-side[aria-current='page']::before {
     display: none;
@@ -147,7 +157,7 @@
     font-size: 1.125rem;
   }
 
-  :root .rail .nav-tab[href^='/direct/'] .avatar-root {
+  :root .rail .nav-tab:is([href^='/direct/'], .echo-rail-dm) .avatar-root {
     border-radius: 50%;
   }
 
@@ -179,13 +189,13 @@
   }
 
   /* A DM tile is one room, so it wears the room list's tiers (SPEC §3.6). */
-  :root .rail .nav-tab[href^='/direct/'] .unread-badge-count {
+  :root .rail .nav-tab:is([href^='/direct/'], .echo-rail-dm) .unread-badge-count {
     background: var(--echo-unread-notify);
     box-shadow: 0 0 5px var(--echo-blue-near);
     color: var(--echo-unread-ink);
   }
 
-  :root .rail .nav-tab[href^='/direct/'] .unread-badge.unread-badge-highlight {
+  :root .rail .nav-tab:is([href^='/direct/'], .echo-rail-dm) .unread-badge.unread-badge-highlight {
     background: var(--echo-unread-highlight);
     box-shadow: 0 0 5px var(--echo-red-near);
     color: var(--echo-unread-highlight-ink);

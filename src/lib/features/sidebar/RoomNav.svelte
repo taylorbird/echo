@@ -56,7 +56,7 @@
 
   import type { CallVoiceState } from '#lib/features/call/call-session.svelte.js';
   import CallVolumePopover from '#lib/features/call/CallVolumePopover.svelte';
-  import MentionProfile from '#lib/features/room/members/MentionProfile.svelte';
+  import MentionProfile from '../../../../echo/components/ProfileModal.svelte';
   import { participantKeys } from '#lib/features/call/participant-keys.js';
   import CallParticipantList from './CallParticipantList.svelte';
   import ReplacedRooms from './ReplacedRooms.svelte';
@@ -81,6 +81,7 @@
   import { PeerProfiles } from './peer-profiles.svelte.js';
   import EchoRoomPreview from '../../../../echo/components/RoomPreview.svelte';
   import { echoSectionRooms } from '../../../../echo/space-dms.js';
+  import { echoRoomPath } from '../../../../echo/places.js';
   import { publishVisibleRoomOrder } from './visible-rooms.svelte.js';
   import { navSectionKind, navSectionLabels, type NavSectionKind } from './nav-section.js';
   import {
@@ -385,7 +386,10 @@
       return resolve('/(app)/rooms/[roomId]', { roomId: routeId });
     }
 
-    return resolve('/(app)/home/[roomId]', { roomId: routeId });
+    return (
+      echoRoomPath(roomList.rooms, row.roomId, pathname) ??
+      resolve('/(app)/home/[roomId]', { roomId: routeId })
+    );
   }
 
   function notificationChip(mode: NotificationModeView): { icon: Component; label: string } {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import HomeLanding from '#lib/features/home/HomeLanding.svelte';
+  import HomeLanding from '../../../../echo/components/EmptyPane.svelte';
 </script>
 
 <HomeLanding titleKey="nav.unspaced" />
