@@ -6,11 +6,10 @@ import {
   ipcMain,
   Menu,
   protocol,
+  screen,
   session,
   shell,
   systemPreferences,
-  Tray,
-  nativeImage,
   utilityProcess,
   webContents,
   type DesktopCapturerSource,
@@ -23,8 +22,14 @@ import { createReadStream } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
-import { extname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { Readable } from 'node:stream';
+
+import type {
+  PickedFile,
+  PickFilesRequest,
+  SaveFileRequest,
+} from '../../src/lib/platform/file-dialog-types';
 
 import { claimSchemes } from './linux-schemes';
 import { enforcePermissions } from './permissions';
@@ -32,11 +37,21 @@ import * as screenAudio from './screen-audio';
 import { initSentry, setTelemetryConsent } from './sentry';
 import { readSettings, sanitize } from './settings';
 import { ignoreBrokenPipes } from './stdio';
+import { importTauriConfig } from './tauri-import';
+import { DesktopTray, hideToTray } from './tray';
 import { registerUpdater, setUpdateChannel } from './updater';
+import {
+  MIN_HEIGHT,
+  MIN_WIDTH,
+  readWindowState,
+  windowStateOnScreen,
+  writeWindowState,
+} from './window-state';
 
 declare const __SABLE_CSP__: Record<string, string>;
+declare const __SABLE_IDENTIFIER__: string;
 
-const IDENTIFIER = process.env.SABLE_IDENTIFIER ?? 'moe.sable.next';
+const IDENTIFIER = process.env.SABLE_IDENTIFIER ?? __SABLE_IDENTIFIER__;
 const SCHEME = 'sable-app';
 const DEEP_LINK_SCHEMES =
   IDENTIFIER === 'moe.sable.client' ? ['moe.sable.app', 'sable'] : ['moe.sable.next'];
@@ -56,9 +71,22 @@ function xdgDataHome(): string {
 
 const dataDir = join(isLinux ? xdgDataHome() : app.getPath('appData'), IDENTIFIER);
 app.setPath('userData', join(app.getPath('appData'), `${IDENTIFIER}.electron`));
+importTauriConfig(
+  [
+    join(
+      process.env.XDG_CONFIG_HOME && isAbsolute(process.env.XDG_CONFIG_HOME)
+        ? process.env.XDG_CONFIG_HOME
+        : join(homedir(), '.config'),
+      IDENTIFIER
+    ),
+    join(app.getPath('appData'), IDENTIFIER),
+  ],
+  app.getPath('userData')
+);
 initSentry(app.getPath('userData'));
 const settingsPath = join(app.getPath('userData'), 'settings.json');
 let settings = readSettings(settingsPath);
+const windowStatePath = join(app.getPath('userData'), 'window-state.json');
 
 function setFeatures(enable: string[], disable: string[]): void {
   const read = (name: string) =>
@@ -190,10 +218,23 @@ async function serveApp(request: Request): Promise<Response> {
 }
 
 let mainWindow: BrowserWindow | null = null;
-let tray: Tray | null = null;
 let core: UtilityProcess | null = null;
 let quitting = false;
 let pageListening = false;
+let savedWindowState = readWindowState(windowStatePath);
+
+function rememberWindowState(window: BrowserWindow): void {
+  if (window.isDestroyed()) return;
+  savedWindowState = {
+    ...window.getNormalBounds(),
+    maximized: window.isMaximized(),
+    fullscreen: window.isFullScreen(),
+  };
+}
+
+function persistWindowState(): void {
+  if (savedWindowState) writeWindowState(windowStatePath, savedWindowState);
+}
 
 interface DesktopWindowSettings {
   closeToTray: boolean;
@@ -208,44 +249,17 @@ let desktopWindowSettings: DesktopWindowSettings = {
 };
 
 function showMainWindow(): void {
-  if (!mainWindow) return;
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
+  desktopTray.showWindow();
 }
 
 function trayIconPath(): string {
+  const extension = process.platform === 'win32' ? 'ico' : 'png';
   return app.isPackaged
-    ? join(process.resourcesPath, 'sable-tray.png')
-    : join(app.getAppPath(), '../src-tauri/icons/icon.png');
+    ? join(process.resourcesPath, `sable-tray.${extension}`)
+    : join(app.getAppPath(), `../src-tauri/icons/icon.${extension}`);
 }
 
-function updateTray(show: boolean): boolean {
-  if (!isLinux) return false;
-  if (!show) {
-    tray?.destroy();
-    tray = null;
-    return false;
-  }
-  if (tray) return true;
-
-  const icon = nativeImage.createFromPath(trayIconPath());
-  if (icon.isEmpty()) {
-    console.error('[sable tray] could not load the tray icon', trayIconPath());
-    return false;
-  }
-  tray = new Tray(icon);
-  tray.setToolTip('Sable');
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Show Sable', click: showMainWindow },
-      { type: 'separator' },
-      { role: 'quit' },
-    ])
-  );
-  tray.on('click', showMainWindow);
-  return true;
-}
+const desktopTray = new DesktopTray(trayIconPath(), () => mainWindow);
 
 function sanitizeDesktopWindowSettings(value: unknown): DesktopWindowSettings {
   const stored = (typeof value === 'object' && value !== null ? value : {}) as Record<
@@ -270,11 +284,8 @@ function setCustomTitleBar(custom: boolean): void {
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
   const previous = mainWindow;
-  const bounds = previous.getBounds();
-  const maximized = previous.isMaximized();
+  rememberWindowState(previous);
   mainWindow = createWindow();
-  mainWindow.setBounds(bounds);
-  if (maximized) mainWindow.maximize();
   previous.destroy();
 }
 
@@ -301,8 +312,13 @@ ipcMain.on('sable-deep-links-listening', (event) => {
 function startCore(): UtilityProcess {
   const child = utilityProcess.fork(join(__dirname, 'core-host.cjs'), [], {
     serviceName: 'Sable Core',
-    stdio: ['ignore', 'inherit', 'pipe'],
+    // Explorer launches on Windows have no stdout handle for Chromium to inherit.
+    stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, SABLE_DATA_DIR: dataDir },
+  });
+
+  child.stdout?.on('data', (chunk: Buffer) => {
+    process.stdout.write(chunk);
   });
 
   let panic: string | undefined;
@@ -350,7 +366,7 @@ ipcMain.handle('sable-apply-window-settings', (event, value: unknown) => {
   if (!isAppFrame(event.senderFrame)) return null;
   desktopWindowSettings = sanitizeDesktopWindowSettings(value);
   setCustomTitleBar(isCustomTitleBarRequested(value));
-  return { trayAvailable: updateTray(desktopWindowSettings.showSystemTrayIcon) };
+  return { trayAvailable: desktopTray.update(desktopWindowSettings.showSystemTrayIcon) };
 });
 
 function windowOf(event: IpcMainEvent | IpcMainInvokeEvent): BrowserWindow | null {
@@ -374,11 +390,18 @@ ipcMain.on('sable-core-connect', (event) => {
 });
 
 function createWindow(): BrowserWindow {
+  const restored = savedWindowState
+    ? windowStateOnScreen(
+        savedWindowState,
+        screen.getAllDisplays().map((display) => display.workArea)
+      )
+    : undefined;
   const window = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 400,
-    minHeight: 500,
+    width: restored?.width ?? 1280,
+    height: restored?.height ?? 800,
+    ...(restored ? { x: restored.x, y: restored.y } : {}),
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
     show: false,
     autoHideMenuBar: true,
     ...(settings.customTitleBar &&
@@ -390,7 +413,15 @@ function createWindow(): BrowserWindow {
     },
   });
 
+  const remember = () => {
+    rememberWindowState(window);
+  };
+  window.on('move', remember);
+  window.on('resize', remember);
+
   window.once('ready-to-show', () => {
+    if (restored?.fullscreen) window.setFullScreen(true);
+    else if (restored?.maximized) window.maximize();
     window.show();
   });
   window.on('closed', () => {
@@ -399,9 +430,11 @@ function createWindow(): BrowserWindow {
     pageListening = false;
   });
   window.on('close', (event) => {
-    if (!quitting && desktopWindowSettings.closeToTray && tray) {
+    rememberWindowState(window);
+    persistWindowState();
+    if (!quitting && desktopWindowSettings.closeToTray && desktopTray.available) {
       event.preventDefault();
-      window.hide();
+      hideToTray(window);
     }
   });
   const reportMaximized = () => {
@@ -410,8 +443,8 @@ function createWindow(): BrowserWindow {
   window.on('maximize', reportMaximized);
   window.on('unmaximize', reportMaximized);
   window.on('minimize', () => {
-    if (!quitting && desktopWindowSettings.minimizeToTray && tray) {
-      window.hide();
+    if (!quitting && desktopWindowSettings.minimizeToTray && desktopTray.available) {
+      hideToTray(window);
     }
   });
   window.webContents.on('before-input-event', (event, input) => {
@@ -470,6 +503,62 @@ ipcMain.handle('sable-screen-audio-stop', (event) => {
 ipcMain.handle('sable-screen-audio-unmute', (event) => {
   if (isAppFrame(event.senderFrame)) screenAudio.unmute();
 });
+
+ipcMain.handle('sable-pick-files', async (event, request: unknown) => {
+  if (!isAppFrame(event.senderFrame)) return null;
+  const { filters, multiple } = (request ?? {}) as Partial<PickFilesRequest>;
+  const window = BrowserWindow.fromWebContents(event.sender);
+  const properties: ('openFile' | 'multiSelections')[] = multiple
+    ? ['openFile', 'multiSelections']
+    : ['openFile'];
+  const options = { properties, filters };
+  const { canceled, filePaths } = window
+    ? await dialog.showOpenDialog(window, options)
+    : await dialog.showOpenDialog(options);
+  if (canceled) return [];
+
+  const picked: PickedFile[] = [];
+  for (const filePath of filePaths) {
+    picked.push({ name: basename(filePath), bytes: new Uint8Array(await readFile(filePath)) });
+  }
+  return picked;
+});
+
+ipcMain.handle('sable-save-file', async (event, request: unknown) => {
+  if (!isAppFrame(event.senderFrame)) return null;
+  const { name, bytes, filters, askLocation } = (request ?? {}) as Partial<SaveFileRequest>;
+  if (typeof name !== 'string' || !(bytes instanceof Uint8Array)) return null;
+
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (!askLocation) {
+    const path = await writeWithoutClobbering(join(app.getPath('downloads'), name), bytes);
+    return { path };
+  }
+
+  const options = { defaultPath: name, filters };
+  const { canceled, filePath } = window
+    ? await dialog.showSaveDialog(window, options)
+    : await dialog.showSaveDialog(options);
+  if (canceled) return null;
+
+  await writeFile(filePath, bytes);
+  return { path: filePath };
+});
+
+async function writeWithoutClobbering(path: string, bytes: Uint8Array): Promise<string> {
+  try {
+    await writeFile(path, bytes, { flag: 'wx' });
+    return path;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    const dot = path.lastIndexOf('.');
+    const stamp = `-${String(Date.now())}`;
+    const candidate =
+      dot > 0 ? `${path.slice(0, dot)}${stamp}${path.slice(dot)}` : `${path}${stamp}`;
+    await writeFile(candidate, bytes, { flag: 'wx' });
+    return candidate;
+  }
+}
 
 function cancelPicks(): void {
   for (const resolve of pendingPicks.values()) resolve(null);
@@ -570,8 +659,9 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('before-quit', () => {
     quitting = true;
-    tray?.destroy();
-    tray = null;
+    if (mainWindow && !mainWindow.isDestroyed()) rememberWindowState(mainWindow);
+    persistWindowState();
+    desktopTray.destroy();
   });
 
   app.on('window-all-closed', () => {
@@ -585,7 +675,7 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     registerDeepLinks();
-    updateTray(desktopWindowSettings.showSystemTrayIcon);
+    desktopTray.update(desktopWindowSettings.showSystemTrayIcon);
     core = startCore();
     protocol.handle(SCHEME, serveApp);
     enforcePermissions(

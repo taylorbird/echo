@@ -103,6 +103,38 @@ test('MFM time and color keep their source body in both composer modes', () => {
   }
 });
 
+test('typed LaTeX is sent as data-mx-maths with the source as body', () => {
+  const expected = 'so <span data-mx-maths="x^2"><code>x^2</code></span> holds';
+  const plain = serializePlain(textDoc('so $x^2$ holds'));
+  expect(plain.body).toBe('so $x^2$ holds');
+  expect(plain.formatted).toBe(expected);
+
+  const rich = serializeComposer(
+    docOf(
+      para([
+        composerSchema.text('so '),
+        composerSchema.nodes.math_inline.create({ latex: 'x^2' }),
+        composerSchema.text(' holds'),
+      ])
+    )
+  );
+  expect(rich.body).toBe('so $x^2$ holds');
+  expect(rich.formatted).toBe(expected);
+});
+
+test('plain mode turns a $$ block into display math', () => {
+  const source = '$$\n\\int_0^1 f\n$$';
+  const message = serializePlain(textDoc(source));
+  expect(message.body).toBe(source);
+  expect(message.formatted).toBe('<div data-mx-maths="\\int_0^1 f"><code>\\int_0^1 f</code></div>');
+});
+
+test('prices and escapes are not LaTeX', () => {
+  for (const source of ['costs $5 and $6', '\\$x$', 'a$x$', '$ x $', '$x$5', '$$']) {
+    expect(serializePlain(textDoc(source)).formatted ?? '').not.toContain('data-mx-maths');
+  }
+});
+
 test('an existing time element survives a rich-text edit', () => {
   const message = serializeComposer(
     parseMatrixHtml('<time datetime="1970-01-01T00:00:00Z">old label</time>')
@@ -257,7 +289,7 @@ test('a plain-mode edit keeps pills between markdown and across paragraphs', () 
   const html =
     '<p><strong>hey</strong> <a href="https://matrix.to/#/@one:example.org">@_one</a></p>' +
     '<p><a href="https://matrix.to/#/!room:example.org?via=example.org">#Room</a> ' +
-    '<img data-mx-emoticon="" src="mxc://other.org/wave" alt=":wave:" title=":wave:" height="32"></p>';
+    '<img data-mx-emoticon="" src="mxc://other.org/wave" alt="wave" title="wave" height="32"></p>';
   const edited = plainEditDoc('**hey** @_one\n\n#Room :wave:', html);
 
   expect(plainTextOf(edited)).toBe('**hey** @_one\n\n#Room :wave:');
@@ -490,7 +522,7 @@ test('an emote keeps its shortcode in the body and an image in the formatted bod
 
   expect(message.body).toBe(':wave:');
   expect(message.formatted).toBe(
-    '<img data-mx-emoticon="" src="mxc://example.org/wave" alt=":wave:" title=":wave:" height="32">'
+    '<img data-mx-emoticon="" src="mxc://example.org/wave" alt="wave" title="wave" height="32">'
   );
 });
 
@@ -673,7 +705,7 @@ describe('plain text mode', () => {
 
     expect(message.body).toBe('hey :wave:');
     expect(message.formatted).toBe(
-      'hey <img data-mx-emoticon="" src="mxc://example.org/wave" alt=":wave:" title=":wave:" height="32">'
+      'hey <img data-mx-emoticon="" src="mxc://example.org/wave" alt="wave" title="wave" height="32">'
     );
   });
 

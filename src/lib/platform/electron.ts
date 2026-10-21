@@ -1,4 +1,5 @@
 import type { UpdateChannel, WebRtcIpPolicy } from '#lib/settings/preferences.svelte.js';
+import type { PickedFile, PickFilesRequest, SaveFileRequest } from './file-dialog-types';
 import type { ScreenAudioChoice } from './screen-audio-stream';
 import type { ScreenAudioListing } from './screen-audio-types';
 import type { DesktopWindowSettings, DesktopWindowState } from './window-decorations';
@@ -25,6 +26,7 @@ export interface ElectronBridge {
   closeWindow(): void;
   isWindowMaximized(): Promise<boolean>;
   onWindowMaximized(callback: (maximized: boolean) => void): () => void;
+  onWindowHiddenToTray(callback: () => void): () => void;
   applySettings(settings: ElectronSettings): void;
   setTelemetryConsent(enabled: boolean): void;
   takeDeepLinks(): Promise<string[]>;
@@ -33,6 +35,8 @@ export interface ElectronBridge {
   startScreenAudio(selection: Exclude<ScreenAudioChoice, { kind: 'none' }>): Promise<string>;
   stopScreenAudio(): Promise<void>;
   unmuteScreenAudio(): Promise<void>;
+  pickFiles(request: PickFilesRequest): Promise<PickedFile[] | null>;
+  saveFile(request: SaveFileRequest): Promise<{ path: string } | null>;
   checkForUpdate(): Promise<{ version: string; notes: string | undefined } | null>;
   downloadUpdate(onProgress: (percent: number) => void): Promise<void>;
   installUpdate(): Promise<void>;
