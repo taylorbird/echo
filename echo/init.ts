@@ -64,5 +64,22 @@ if (macApp) {
   else start();
 }
 
+// Sable's pages title themselves "… - Sable"; the window menu and Mission
+// Control show that, so the suffix is swapped here rather than in each page.
+function brandTitle(): void {
+  if (document.title.endsWith(' - Sable')) {
+    document.title = `${document.title.slice(0, -' - Sable'.length)} - echo`;
+  }
+}
+
+if (browser) {
+  brandTitle();
+  new MutationObserver(brandTitle).observe(document.head, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+}
+
 if (browser) closePanelOnEscape();
 if (browser) expandOnMarkerClick();

@@ -79,20 +79,17 @@ pub fn configure(app: &AppHandle<BrowserEngine>) {
                 .downcast_ref::<UserMediaPermissionRequest>()
                 .is_some()
             {
-                Some(("media", "Sable wants to use your camera and microphone."))
+                Some(("media", "echo wants to use your camera and microphone."))
             } else if request
                 .downcast_ref::<NotificationPermissionRequest>()
                 .is_some()
             {
-                Some((
-                    "notifications",
-                    "Sable wants to show desktop notifications.",
-                ))
+                Some(("notifications", "echo wants to show desktop notifications."))
             } else if request
                 .downcast_ref::<GeolocationPermissionRequest>()
                 .is_some()
             {
-                Some(("location", "Sable wants to access your location."))
+                Some(("location", "echo wants to access your location."))
             } else {
                 None
             };

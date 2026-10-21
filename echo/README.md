@@ -42,6 +42,10 @@ can live here instead.
   `pnpm tauri icon /path/to/echo-icon-facet-split-squircle.png --output echo/icons`.
 - `tauri.echo.conf.json` — merged over `src-tauri/tauri.conf.json` by the echo tasks: name,
   bundle ID, window, icons, update feed.
+- `tauri.echo.release.conf.json` — merged on top for releases: bundle ID `dev.tbird.echo`, echo's
+  version, Developer ID signing and updater artifacts. `release.sh` builds with it.
+- `legacy.rs` — removes echo-gomuks's leftover files (its database, config, media cache and logs)
+  at start-up, for installs that updated from it.
 - `visual/` — `mise run echo:shots`: screenshots of the signed-in web app against a throwaway
   homeserver with fake data. See `visual/README.md`.
 
@@ -65,6 +69,8 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/features/sidebar/RoomNav.svelte` | `MentionProfile` imported from `echo/components/ProfileModal.svelte`, as in `RoomView.svelte` (call participants) |
 | `src/lib/ui/primitives/identity-color.ts` | `senderColor` returns through `echoSenderColor(…)` (`echo/sender-color.ts`): echo-gomuks's ten colours and formula |
 | `src/lib/features/room/members/members.ts` | your own name takes `echoSenderColor(…)` instead of the plain text colour (two call sites) |
+| `src-tauri/src/lib.rs` | `#[path] mod echo_legacy;` and `echo_legacy::remove_gomuks_leftovers(…)` first in `setup` (`echo/legacy.rs`) |
+| `src-tauri/src/lib.rs`, `tray.rs`, `webkit.rs`, `Info.plist` | "Sable" → "echo" in the macOS permission prompts, the tray tooltip and the proxy error dialog |
 | `src/lib/ui/motion.ts` | `shouldReduceMotion` passes the system query through `echoSystemReducedMotion(…)` (`echo/motion.ts`): Sable's own setting decides |
 | `src/lib/rooms/permalink.ts` | `sectionPath` returns `echoRoomPath(…)` (`echo/places.ts`) when echo picks the place (two lines) |
 | `src/routes/(app)/+page.svelte` | start-up fallback is `echoStartPath() ?? resolve('/(app)/rooms')` (`echo/places.ts`): Home |
@@ -78,16 +84,20 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 
 - `mise run echo:dev` — the branded app for this desktop, with live reload.
 - `mise run echo:build` — a branded, unsigned build.
+- `echo/release.sh <version|patch|minor>` — a signed, notarized release published to
+  `taylorbird/echo` with its updater feed (`latest.json`). Write `echo/RELEASE_NOTES.md` first.
 
 Plain `mise run tauri dev` still runs unbranded Sable.
 
 ## Identity and updates
 
 Dev and test builds use the bundle ID `dev.tbird.echo.dev`, so they don't collide with an
-installed echo. (Not `dev.tbird.echo-dev`: that was echo-gomuks's dev data folder.) Releases will use `dev.tbird.echo`, which the gomuks-based echo (now
-[echo-gomuks](https://github.com/taylorbird/echo-gomuks)) used: installed copies of that app
-check `taylorbird/echo` for updates, so **don't publish a release with a `latest.json` here until
-this app can replace it.**
+installed echo. (Not `dev.tbird.echo-dev`: that was echo-gomuks's dev data folder.) Releases use
+`dev.tbird.echo`, which the gomuks-based echo (now
+[echo-gomuks](https://github.com/taylorbird/echo-gomuks)) used, with the same updater key. Its
+installed copies check `taylorbird/echo` for updates, so **every release published here with a
+`latest.json` updates echo-gomuks 0.7.x installs into this app.** They sign in again and recover
+their keys; `legacy.rs` clears the old app's files.
 
 ## Upstream
 

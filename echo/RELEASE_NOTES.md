@@ -1,0 +1,7 @@
+<!-- Notes for the release being cut; echo/release.sh reads this and archives it in echo/release-notes/. -->
+
+echo 1.0 is a new app: echo rebuilt on Sable, with echo's look and feel.
+
+- Faster, native Matrix core (matrix-rust-sdk), with the same rail, room list, timeline and composer you know from echo.
+- After this update, sign in again and enter your recovery key (or verify from another session) to unlock your encrypted history. The old app's local data is cleaned up automatically.
+- New: Cmd-K quick switcher, two-column profile cards, per-sender colours as before, and Home with Rooms, Direct messages and Recent filters.

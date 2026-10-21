@@ -8,6 +8,8 @@ mod app_dirs;
 mod deep_link_delivery;
 #[cfg(any(all(feature = "cef", target_os = "linux"), all(test, unix)))]
 pub mod deep_link_ipc;
+#[path = "../../echo/legacy.rs"]
+mod echo_legacy;
 #[cfg(target_os = "ios")]
 // Objective-C bindings expose PhotoKit calls as unsafe; keep that exception out
 // of the Rust-only application code.
@@ -421,6 +423,7 @@ async fn set_notification_encrypted_content(
 }
 
 fn setup(app: &mut tauri::App<BrowserEngine>) -> Result<(), Box<dyn std::error::Error>> {
+    echo_legacy::remove_gomuks_leftovers(app.handle());
     #[cfg(desktop)]
     proxy::apply_to_core();
     #[cfg(desktop)]
@@ -428,7 +431,7 @@ fn setup(app: &mut tauri::App<BrowserEngine>) -> Result<(), Box<dyn std::error::
         use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
         app.dialog()
             .message(error)
-            .title("Sable")
+            .title("echo")
             .kind(MessageDialogKind::Error)
             .show(|_| std::process::exit(2));
         return Ok(());

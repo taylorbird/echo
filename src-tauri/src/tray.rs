@@ -292,7 +292,7 @@ fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
     let mut builder = configure_interactions(
         TrayIconBuilder::with_id(MAIN_TRAY_ID)
-            .tooltip("Sable")
+            .tooltip("echo")
             .menu(&menu)
             .on_menu_event(|app, event| match event.id().as_ref() {
                 TRAY_MENU_SHOW_ID => {
