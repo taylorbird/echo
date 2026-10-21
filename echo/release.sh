@@ -78,7 +78,9 @@ fi
 # preflight instead of after the build and two notarization round trips.
 RELEASE_NOTES_FILE="$REPO_ROOT/echo/RELEASE_NOTES.md"
 [[ -f "$RELEASE_NOTES_FILE" ]] || die "no release notes at $RELEASE_NOTES_FILE"
-RELEASE_NOTES="$(sed -e '/<!--/,/-->/d' -e 's/[[:space:]]*$//' "$RELEASE_NOTES_FILE" \
+# Comments are stripped by a non-greedy match: a sed line range would read a one-line
+# <!-- … --> as an unclosed comment and drop everything after it.
+RELEASE_NOTES="$(perl -0pe 's/<!--.*?-->//gs; s/[ \t]+$//mg' "$RELEASE_NOTES_FILE" \
 	| awk 'NF {found = 1} found')"
 [[ -n "$(printf '%s' "$RELEASE_NOTES" | tr -d '[:space:]')" ]] \
 	|| die "$RELEASE_NOTES_FILE is empty — write what changed before releasing"
