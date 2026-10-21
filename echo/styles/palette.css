@@ -1,0 +1,166 @@
+/* echo: the Cmd-K quick switcher, drawn as echo's (echo-gomuks
+   QuickSwitcher.css; SPEC §9.1): a 48rem box hung 11vh from the top, a bare
+   search field over a hairline, small caps labels and 2rem round avatars.
+   Sable's palette is a dialog like any other, so everything here is scoped to
+   the dialog that holds `.palette`. */
+
+@media (width >= 48rem) {
+  :root .dialog-content.dialog-content-verification:has(> .palette) {
+    --palette-divider: color-mix(in srgb, var(--echo-text-semi) 40%, transparent);
+
+    animation: none;
+    background: var(--echo-composer);
+    border-radius: 0.5rem;
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 18%),
+      0 0 0 1px rgb(0 0 0 / 60%),
+      0 18px 40px rgb(0 0 0 / 45%),
+      0 55px 120px rgb(0 0 0 / 40%),
+      0 36px 100px rgb(255 228 132 / 6%);
+    max-width: min(48rem, 92vw);
+    padding: 0;
+    top: 11vh;
+    transform: translateX(-50%);
+    width: 48rem;
+  }
+
+  /* Gated on Sable's Reduce motion setting, not the system query: in echo that
+     setting decides (echo/motion.ts). */
+  :root:not([data-reduced-motion='on'])
+    .dialog-content.dialog-content-verification:has(> .palette)[data-state='open'] {
+    /* stylelint-disable-next-line defensive-css/require-prefers-reduced-motion */
+    animation: echo-palette-in 0.16s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+
+  /* Echo's scrim here is barely there: the room stays readable behind it. */
+  :root body:has(.dialog-content > .palette) .dialog-backdrop[data-dialog-overlay] {
+    backdrop-filter: blur(3px) saturate(105%);
+    background: rgb(0 0 0 / 12%);
+  }
+
+  :root .dialog-content > .palette {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: 56vh;
+    width: 100%;
+  }
+
+  :root .palette > .jump-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0;
+    min-height: 0;
+  }
+
+  /* The field: no box, 1.375rem type, a search glyph before it. */
+  :root .palette .jump-list > .text-input.form-control {
+    background: transparent
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b0acaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E")
+      1.25rem center / 1.375rem no-repeat;
+    border: 0;
+    border-bottom: 1px solid var(--palette-divider);
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--echo-text);
+    font-size: 1.375rem;
+    min-height: 0;
+    padding: 1.125rem 1.25rem 0.875rem 3.5rem;
+  }
+
+  :root .palette .jump-list > .text-input.form-control::placeholder {
+    color: var(--echo-text-2);
+  }
+
+  :root .palette .jump-list > .text-input.form-control:focus {
+    box-shadow: none;
+    outline: none;
+  }
+
+  /* echo-gomuks had no hint line. */
+  :root .palette .jump-list > .hint {
+    display: none;
+  }
+
+  /* "Recent", as echo's small caps section label. */
+  :root .palette .jump-list > .heading {
+    color: var(--echo-text-semi);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.5rem 1.25rem 0.25rem;
+    text-transform: uppercase;
+  }
+
+  :root .palette .jump-list > .empty {
+    color: var(--echo-text-2);
+    margin: 0;
+    padding: 1.25rem;
+    text-align: center;
+  }
+
+  :root .palette .jump-list > ul {
+    gap: 0;
+    max-height: none;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 0.5rem 0.375rem;
+  }
+
+  :root .palette .jump-list .option {
+    --menu-item-gap: 0.75rem;
+    --menu-item-height: 0;
+
+    border-radius: 0.375rem;
+    font-size: 0.9375rem;
+    padding: 0.5625rem 0.75rem;
+  }
+
+  :root .palette .jump-list .option:hover {
+    background: var(--echo-entry-hover);
+  }
+
+  :root .palette .jump-list .option.option[aria-selected='true'] {
+    background: var(--echo-entry-selected);
+  }
+
+  :root .palette .option .avatar-root.jump-avatar {
+    --avatar-size: 2rem;
+
+    border-radius: 50%;
+  }
+
+  /* Rooms without a picture: their kind glyph on a quiet disc, as in the list. */
+  :root .palette .option .avatar-root.jump-avatar.glyph {
+    background: var(--echo-entry-hover);
+    opacity: 1;
+  }
+
+  :root .palette .option .name {
+    color: var(--echo-text);
+  }
+
+  :root .palette .option .parent {
+    color: var(--echo-text-2);
+  }
+
+  :root .palette .option mark {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  /* The pinned footer, under its own hairline. */
+  :root .dialog-content > .palette > footer {
+    border-top: 1px solid var(--palette-divider);
+    padding: 0.375rem 0.5rem 0.5rem;
+  }
+}
+
+@keyframes echo-palette-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0.375rem) scale(0.98);
+  }
+}

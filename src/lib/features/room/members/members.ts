@@ -6,6 +6,7 @@ import type { SenderCosmetics } from '#lib/rooms/room-cosmetics.svelte.js';
 import { nameColorOnDark, nameColorOnLight } from '#lib/ui/primitives/readable-color.js';
 
 import { senderColor } from '../timeline/timeline-format';
+import { echoSenderColor } from '../../../../../echo/sender-color.js';
 
 export interface SenderDisplayColors {
   nameColor: string;
@@ -24,7 +25,9 @@ export function senderDisplayColors(
 ): SenderDisplayColors {
   const override = profileOverrides.colors(userId);
   if (override === null) {
-    const nameColor = isOwn ? 'var(--surface-on-container)' : senderColor(userId);
+    const nameColor = isOwn
+      ? echoSenderColor(userId, 'var(--surface-on-container)')
+      : senderColor(userId);
     return { nameColor, nameColorLight: null, nameColorDark: null, tinted: false };
   }
   const personaTint = personaWithColor(persona);
@@ -48,7 +51,9 @@ export function senderDisplayColors(
     roleColor ??
     null;
   const tinted = nameColorLight !== null || nameColorDark !== null;
-  const nameColor = isOwn ? 'var(--surface-on-container)' : senderColor(userId);
+  const nameColor = isOwn
+    ? echoSenderColor(userId, 'var(--surface-on-container)')
+    : senderColor(userId);
 
   return {
     nameColor,

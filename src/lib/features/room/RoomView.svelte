@@ -48,7 +48,7 @@
     RoomMediaPreviews,
   } from './media/room-media-previews.svelte.js';
   import ThreadView from './conversation/ThreadView.svelte';
-  import MentionProfile from './members/MentionProfile.svelte';
+  import MentionProfile from '../../../../echo/components/ProfileModal.svelte';
   import RoomHeader from './RoomHeader.svelte';
   import RoomHeaderActions from './RoomHeaderActions.svelte';
   import { openSettingsOver } from '#lib/features/settings/settings-navigation.js';

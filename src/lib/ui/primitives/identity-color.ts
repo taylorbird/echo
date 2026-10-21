@@ -1,3 +1,5 @@
+import { echoSenderColor } from '../../../../echo/sender-color.js';
+
 function hashCode(id: string | null | undefined): number {
   let hash = 0;
   if (id === null || id === undefined || id.length === 0) return hash;
@@ -24,5 +26,5 @@ export function senderColor(sender: string | null): string {
   for (const character of sender ?? '') hash = (hash * 31 + character.charCodeAt(0)) | 0;
   const fallback = senderColors[Math.abs(hash) % senderColors.length];
   const variable = `--mx-uc-${(hashCode(sender) % 8) + 1}`;
-  return `var(${variable}, ${fallback})`;
+  return echoSenderColor(sender, `var(${variable}, ${fallback})`);
 }
