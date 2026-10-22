@@ -80,15 +80,21 @@ echo "==> Packaging echo $VERSION as $IDENTIFIER"
 # The packaged echo.app is the input to every check after this, so a stale one must not survive a
 # failed build.
 rm -rf "$REPO_ROOT/electron/release/mac-arm64"
-# electron-builder names the updater's cache folder (app-update.yml's updaterCacheDirName,
-# ~/Library/Caches/<name>) after package.json's name and ignores publish.updaterCacheDirName,
-# so echo renames the packaged package.json: echo-updater instead of Sable's
-# @sableelectron-updater. The name is also the app's name in Electron (the default window
-# title, the keychain's "… Safe Storage" item); its data folder is set by the identifier.
+# The packaged package.json's name is the app's name in Electron, and two things are keyed on it
+# rather than on the identifier:
+# - the keychain item Chromium encrypts its storage with ("<name> Safe Storage"). An app that
+#   reads an item another app created gets a keychain prompt, and start-up waits on the answer
+#   with a blank window. Sable's name (@sable/electron) would share the item with Sable, and one
+#   name for all echo builds would share it between the release and every dev or test build.
+# - the updater's cache folder (~/Library/Caches/<name>-updater): electron-builder writes
+#   app-update.yml's updaterCacheDirName from the name and ignores publish.updaterCacheDirName.
+# So each identifier gets its own name: echo for dev.tbird.echo, echo-dev for dev.tbird.echo.dev.
+APP_NAME="echo${IDENTIFIER#dev.tbird.echo}"
+APP_NAME="${APP_NAME//./-}"
 pnpm --dir "$REPO_ROOT/electron" run package --mac --arm64 \
 	"-c.appId=$IDENTIFIER" \
 	"-c.productName=echo" \
-	"-c.extraMetadata.name=echo" \
+	"-c.extraMetadata.name=$APP_NAME" \
 	"-c.copyright=Copyright © SableClient contributors and taylorbird" \
 	"-c.publish.provider=generic" \
 	"-c.publish.url=https://github.com/taylorbird/echo/releases/latest/download/" \
@@ -107,6 +113,6 @@ BUILT_ID="$(defaults read "$APP/Contents/Info.plist" CFBundleIdentifier)"
 [[ "$BUILT_ID" == "$IDENTIFIER" ]] || die "built bundle ID is $BUILT_ID, expected $IDENTIFIER"
 BUILT_VERSION="$(defaults read "$APP/Contents/Info.plist" CFBundleShortVersionString)"
 [[ "$BUILT_VERSION" == "$VERSION" ]] || die "built version is $BUILT_VERSION, expected $VERSION"
-grep -Eq "^updaterCacheDirName: '?echo-updater'?$" "$APP/Contents/Resources/app-update.yml" \
-	|| die "app-update.yml does not name echo's updater cache (echo-updater)"
+grep -Eq "^updaterCacheDirName: '?$APP_NAME-updater'?$" "$APP/Contents/Resources/app-update.yml" \
+	|| die "app-update.yml does not name echo's updater cache ($APP_NAME-updater)"
 echo "==> Built $APP ($BUILT_ID $BUILT_VERSION)"
