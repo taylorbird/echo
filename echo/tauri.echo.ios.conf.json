@@ -1,0 +1,14 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "identifier": "dev.tbird.echo.dev",
+  "build": {
+    "devUrl": "http://localhost:3027",
+    "beforeDevCommand": "pnpm dev --port 3027"
+  },
+  "bundle": {
+    "iOS": {
+      "template": "echo/ios/build/project.yml",
+      "developmentTeam": null
+    }
+  }
+}

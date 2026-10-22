@@ -12,6 +12,43 @@ description = "Build echo for the current desktop OS (branded, unsigned)"
 run = "mise run tauri build --config echo/tauri.echo.conf.json"
 raw_args = true
 
+# The iOS app: Sable's Tauri iOS project under echo's name, icon and dev bundle ID
+# (echo/tauri.echo.ios.conf.json, echo/ios/prepare.mjs). Run echo:ios:init once, and
+# again after Sable's src-tauri/ios-project.yml changes. Simulator builds need no
+# signing. Vite serves on 3027 for these, not Sable's 3000.
+[tasks."echo:ios:init"]
+description = "Generate echo's iOS Xcode project (src-tauri/gen/apple)"
+dir = "{{config_root}}"
+run = [
+  # The LiveKit plugin's build script needs llvm-tools to export its init symbol.
+  "rustup target add aarch64-apple-ios aarch64-apple-ios-sim",
+  "rustup component add llvm-tools",
+  "node echo/ios/prepare.mjs template",
+  "pnpm ios:frameworks",
+  "pnpm tauri ios init --ci --config echo/tauri.echo.conf.json --config echo/tauri.echo.ios.conf.json",
+  "node echo/ios/prepare.mjs icons",
+]
+
+[tasks."echo:ios"]
+description = "Run echo in the iOS Simulator with live reload (pass a simulator name)"
+dir = "{{config_root}}"
+run = "pnpm tauri ios dev --config echo/tauri.echo.conf.json --config echo/tauri.echo.ios.conf.json"
+raw_args = true
+
+# When no simulator runs Xcode's own iOS version, `tauri ios dev` opens Xcode instead;
+# this builds and launches in the named simulator anyway (echo/ios/sim.sh).
+[tasks."echo:ios:sim"]
+description = "Run echo in a named iOS Simulator with live reload, via xcodebuild"
+dir = "{{config_root}}"
+run = "echo/ios/sim.sh"
+raw_args = true
+
+[tasks."echo:ios:build"]
+description = "Build echo for the iOS Simulator (debug, unsigned)"
+dir = "{{config_root}}"
+run = "pnpm tauri ios build --debug --target aarch64-sim --config echo/tauri.echo.conf.json --config echo/tauri.echo.ios.conf.json"
+raw_args = true
+
 # Screenshots of the signed-in web app on a throwaway homeserver with seeded,
 # fake data. See echo/visual/README.md (ECHO_SHOTS_KEEP=1 for fast re-runs).
 [tasks."echo:shots"]
