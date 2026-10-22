@@ -80,13 +80,18 @@ echo "==> Packaging echo $VERSION as $IDENTIFIER"
 # The packaged echo.app is the input to every check after this, so a stale one must not survive a
 # failed build.
 rm -rf "$REPO_ROOT/electron/release/mac-arm64"
+# electron-builder names the updater's cache folder (app-update.yml's updaterCacheDirName,
+# ~/Library/Caches/<name>) after package.json's name and ignores publish.updaterCacheDirName,
+# so echo renames the packaged package.json: echo-updater instead of Sable's
+# @sableelectron-updater. The name is also the app's name in Electron (the default window
+# title, the keychain's "… Safe Storage" item); its data folder is set by the identifier.
 pnpm --dir "$REPO_ROOT/electron" run package --mac --arm64 \
 	"-c.appId=$IDENTIFIER" \
 	"-c.productName=echo" \
+	"-c.extraMetadata.name=echo" \
 	"-c.copyright=Copyright © SableClient contributors and taylorbird" \
 	"-c.publish.provider=generic" \
 	"-c.publish.url=https://github.com/taylorbird/echo/releases/latest/download/" \
-	"-c.publish.updaterCacheDirName=echo-updater" \
 	"-c.mac.artifactName=echo-\${version}-\${arch}.\${ext}" \
 	"-c.mac.icon=../echo/icons/echo.icon" \
 	"-c.mac.extendInfo.NSCameraUsageDescription=echo needs camera access for video calls, photos and videos." \
@@ -102,4 +107,6 @@ BUILT_ID="$(defaults read "$APP/Contents/Info.plist" CFBundleIdentifier)"
 [[ "$BUILT_ID" == "$IDENTIFIER" ]] || die "built bundle ID is $BUILT_ID, expected $IDENTIFIER"
 BUILT_VERSION="$(defaults read "$APP/Contents/Info.plist" CFBundleShortVersionString)"
 [[ "$BUILT_VERSION" == "$VERSION" ]] || die "built version is $BUILT_VERSION, expected $VERSION"
+grep -Eq "^updaterCacheDirName: '?echo-updater'?$" "$APP/Contents/Resources/app-update.yml" \
+	|| die "app-update.yml does not name echo's updater cache (echo-updater)"
 echo "==> Built $APP ($BUILT_ID $BUILT_VERSION)"
