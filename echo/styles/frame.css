@@ -208,26 +208,26 @@
 @media (width >= 48rem) {
   /* Whatever shows past a pane's edge, at a corner or a fractional pixel,
      is the chat's own colour. */
-  :root[data-tauri-os],
-  :root[data-tauri-os] body {
+  :root[data-echo-app],
+  :root[data-echo-app] body {
     background: var(--echo-chat);
   }
 
-  :root[data-tauri-os] .content-panel > .content {
+  :root[data-echo-app] .content-panel > .content {
     background: var(--echo-chat);
     box-shadow: inset 10px 0 10px -10px rgb(0 0 0 / 60%);
   }
 
   /* Down to the window's bottom edge whatever 100dvh works out to, so no
      sliver of the ground shows under the room list. */
-  :root[data-tauri-os] .app-shell .sidebar {
+  :root[data-echo-app] .app-shell .sidebar {
     bottom: 0;
     height: auto;
   }
 
   /* Raised from the left, its light edge paired with the dark blur, since a
      black shadow alone vanishes on the dark chat (SPEC §0.2). */
-  :root[data-tauri-os] .sidebar .room-nav {
+  :root[data-echo-app] .sidebar .room-nav {
     border-right: 0;
     box-shadow:
       1px 0 0 rgb(255 255 255 / 7%),
@@ -235,7 +235,7 @@
     z-index: 3;
   }
 
-  :root[data-tauri-os] .room-view aside:not(.member-user-list) {
+  :root[data-echo-app] .room-view aside:not(.member-user-list) {
     border-left: 0;
     box-shadow:
       -1px 0 0 rgb(255 255 255 / 7%),
@@ -243,13 +243,13 @@
     z-index: 3;
   }
 
-  :root[data-tauri-os] .room-view .panel-header.room-header {
+  :root[data-echo-app] .room-view .panel-header.room-header {
     background: var(--echo-roomlist);
   }
 }
 
 @media (width >= 48rem) and (prefers-color-scheme: dark) {
-  :root[data-tauri-os]:not(.light) {
+  :root[data-echo-app]:not(.light) {
     --echo-rail: #1b1a1f;
     --echo-roomlist: #26262c;
     --echo-chat: #16181f;
@@ -267,7 +267,7 @@
 }
 
 @media (width >= 48rem) {
-  :root[data-tauri-os].dark {
+  :root[data-echo-app].dark {
     --echo-rail: #1b1a1f;
     --echo-roomlist: #26262c;
     --echo-chat: #16181f;
@@ -311,4 +311,50 @@
   :root[data-client-decorations='mac'] .sidebar .rail-scroll {
     padding-top: calc(var(--titlebar-height) + 0.5rem);
   }
+}
+
+/* The same bands as drag regions in the Electron app (echo/init.ts marks them
+   for Tauri). Electron drags from a region's whole box and swallows clicks
+   and hovers inside it, so every control in a band, and every popup that can
+   open over one, is cut back out. Tauri ignores these properties. */
+:root[data-echo-app='macos'][data-client-decorations='mac']
+  :is(.room-nav-header, .room-header, .room-view aside > .panel-header) {
+  -webkit-app-region: drag;
+}
+
+/* Any panel header's controls: cutting from a band that isn't a region is
+   harmless. */
+:root[data-echo-app='macos'][data-client-decorations='mac']
+  :is(.room-nav-header, .panel-header)
+  :is(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    label,
+    [contenteditable],
+    [role='button'],
+    [role='img'],
+    [tabindex],
+    [data-tooltip-trigger]
+  ),
+:root[data-echo-app='macos'][data-client-decorations='mac']
+  :is(
+    [role='dialog'],
+    [role='alertdialog'],
+    [role='menu'],
+    [role='listbox'],
+    [role='tooltip'],
+    [data-dialog-overlay],
+    [data-popover-content],
+    [data-menu-content]
+  ) {
+  -webkit-app-region: no-drag;
+}
+
+/* The app has one update feed (echo/electron/updater.ts), so Sable's stable or
+   nightly channel in Settings → About has nothing to choose. */
+:root[data-echo-app] .setting-row[id='update-channel'] {
+  display: none;
 }

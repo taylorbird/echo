@@ -103,7 +103,7 @@
     background: rgb(0 0 0 / 75%);
   }
 
-  :root[data-tauri-os] .dialog-backdrop[data-dialog-overlay] {
+  :root[data-echo-app] .dialog-backdrop[data-dialog-overlay] {
     backdrop-filter: blur(20px) saturate(115%);
     background: rgb(0 0 0 / 50%);
   }

@@ -35,7 +35,7 @@ Screenshots land in `echo/visual/out/` (gitignored), replaced on every run:
 | `desktop-{light,dark}-profile.png` | Alex Rivera's profile card |
 | `desktop-{light,dark}-settings.png` | settings |
 | `desktop-{light,dark}-modal-room-settings.png` | #general's room settings dialog |
-| `app-{light,dark}-{home,timeline,members}.png` | the same views with the macOS app's chrome (`data-tauri-os`, `data-client-decorations` set on `<html>` by hand): floating panes, no title band |
+| `app-{light,dark}-{home,timeline,members}.png` | the same views with the macOS app's chrome (`data-echo-app`, `data-tauri-os`, `data-client-decorations` set on `<html>` by hand): floating panes, no title band |
 | `app-dark-space-{all,rooms,dms,recent}.png` | the Work space in the app with each rail sub-filter selected; the selected row's box goes to `out/.pill-space-<filter>.json`, to check the pill against it |
 | `app-dark-home-empty.png` | Home with no room open: echo's empty pane; checks the band's DM tiles open in Home |
 | `app-dark-create-menu.png` | the rail's create (+) menu, with New chat |

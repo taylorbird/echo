@@ -255,7 +255,10 @@ const profile: View = {
   name: 'profile',
   open: async (page) => {
     await openGeneral(page);
-    await page.getByRole('button', { name: "Open Alex Rivera's profile" }).last().click();
+    await page
+      .getByRole('button', { name: /^Open Alex Rivera['’]s profile$/ })
+      .last()
+      .click();
     // echo's modal on desktop (echo/components/ProfileModal.svelte), Sable's card on phones.
     await expect(page.locator('.profile-card, .echo-profile').first()).toBeVisible({
       timeout: 10_000,
@@ -401,6 +404,7 @@ function inApp(view: View): View {
       await view.open(page);
       await page.evaluate(() => {
         document.documentElement.dataset.tauriOs = 'macos';
+        document.documentElement.dataset.echoApp = 'macos';
         document.documentElement.dataset.clientDecorations = 'mac';
       });
     },
