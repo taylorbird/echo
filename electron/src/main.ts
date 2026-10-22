@@ -31,6 +31,8 @@ import type {
   SaveFileRequest,
 } from '../../src/lib/platform/file-dialog-types';
 
+import { echoBranded } from '../../echo/electron/app';
+import { cleanGomuksLeftovers } from '../../echo/electron/legacy';
 import { claimSchemes } from './linux-schemes';
 import { enforcePermissions } from './permissions';
 import * as screenAudio from './screen-audio';
@@ -83,6 +85,7 @@ importTauriConfig(
   ],
   app.getPath('userData')
 );
+cleanGomuksLeftovers(process.platform, homedir(), app.getPath('appData'), IDENTIFIER);
 initSentry(app.getPath('userData'));
 const settingsPath = join(app.getPath('userData'), 'settings.json');
 let settings = readSettings(settingsPath);
@@ -311,7 +314,7 @@ ipcMain.on('sable-deep-links-listening', (event) => {
 
 function startCore(): UtilityProcess {
   const child = utilityProcess.fork(join(__dirname, 'core-host.cjs'), [], {
-    serviceName: 'Sable Core',
+    serviceName: echoBranded('Sable Core'),
     // Explorer launches on Windows have no stdout handle for Chromium to inherit.
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, SABLE_DATA_DIR: dataDir },
@@ -594,8 +597,9 @@ async function chooseShareSource(): Promise<DesktopCapturerSource | undefined> {
       const { response } = await dialog.showMessageBox({
         type: 'warning',
         message: 'Screen recording access is required to share your screen.',
-        detail:
-          'Allow Sable in System Settings → Privacy & Security → Screen Recording, then restart Sable.',
+        detail: echoBranded(
+          'Allow Sable in System Settings → Privacy & Security → Screen Recording, then restart Sable.'
+        ),
         buttons: ['Open System Settings', 'Cancel'],
         defaultId: 0,
         cancelId: 1,

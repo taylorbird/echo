@@ -24,3 +24,18 @@ raw_args = true
 description = "Remove the homeserver a kept echo:shots run left running"
 dir = "{{config_root}}"
 run = "docker ps -aq --filter publish=18008 | xargs -r docker rm -f && rm -f echo/visual/out/.homeserver.json"
+
+# The desktop app on Electron (Sable's desktop shell since 2026-10-21). See
+# echo/electron/build.sh; arguments pass through, e.g.
+# `mise run echo:electron:build -- --identifier dev.tbird.echo.test`.
+[tasks."echo:electron:build"]
+description = "Build echo's macOS app on Electron (branded, ad-hoc signed; dev.tbird.echo.dev)"
+dir = "{{config_root}}"
+run = "echo/electron/build.sh"
+raw_args = true
+
+[tasks."echo:electron:dev"]
+description = "Run echo on Electron against the Vite dev server (dev.tbird.echo.dev)"
+dir = "{{config_root}}"
+run = "echo/electron/dev.sh"
+raw_args = true
