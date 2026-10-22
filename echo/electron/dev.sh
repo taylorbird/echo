@@ -31,11 +31,6 @@ while [[ $# -gt 0 ]]; do
 		PORT="${2:?--port needs a value}"
 		shift 2
 		;;
-	--fake-spaces)
-		# TEMPORARY: echo/dev-fake-spaces.ts.
-		export VITE_ECHO_FAKE_SPACES=1
-		shift
-		;;
 	*) die "unknown argument: $1" ;;
 	esac
 done
