@@ -192,6 +192,36 @@
     margin-block: 0.1875rem;
   }
 
+  /* A space inside the folder is open: the whole folder is the parted band
+     (the li around it already draws it), full rail width and square, its card
+     outline gone. The open space's filters sit under it, then a divider, then
+     the folder's other spaces. */
+  :root .rail .folder-open:has(.echo-rail-band) {
+    align-self: stretch;
+    width: auto;
+  }
+
+  :root .rail .folder-open:has(.echo-rail-band) .folder-card {
+    border-color: transparent;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  :root .rail .folder-card .rail-slot.nested:has(.echo-rail-band) {
+    align-self: stretch;
+  }
+
+  :root .rail .folder-card .echo-rail-band-inner::after {
+    align-self: center;
+    background: rgb(0 0 0 / 40%);
+    box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
+    content: '';
+    flex: none;
+    height: 1px;
+    margin: 0.3125rem 0 0.4375rem;
+    width: 2.5rem;
+  }
+
   /* Tile badges ride the tile's lower right corner, in the space palette. */
   :root .rail .nav-tab .unread-badge {
     inset: auto -0.0625rem -0.0625rem auto;

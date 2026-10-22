@@ -411,6 +411,22 @@ const folderOpen: View = {
   },
 };
 
+// A space inside the open folder, opened: the folder becomes the parted band.
+const folderSpace: View = {
+  name: 'folder-space',
+  open: async (page) => {
+    await folderOpen.open(page);
+    await page.locator('.rail .folder-card .rail-slot.nested a').first().click();
+    await expect(page.locator('.rail .folder-card .echo-rail-band')).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.mouse.move(-1, -1);
+  },
+  close: async (page) => {
+    await page.goto('/home');
+  },
+};
+
 const spaceFilters = [
   spaceFilter('all', 'All chats'),
   spaceFilter('rooms', 'Rooms'),
@@ -487,6 +503,7 @@ test.describe('app', () => {
     await capture(page, 'app-dark-palette', inApp(palette));
     await capture(page, 'app-dark-folder-closed', inApp(folderClosed));
     await capture(page, 'app-dark-folder-open', inApp(folderOpen));
+    await capture(page, 'app-dark-folder-space', inApp(folderSpace));
     await capture(page, 'app-dark-profile', inApp(profile));
   });
 });
