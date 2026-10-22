@@ -31,6 +31,11 @@ while [[ $# -gt 0 ]]; do
 		PORT="${2:?--port needs a value}"
 		shift 2
 		;;
+	--fake-spaces)
+		# TEMPORARY: echo/dev-fake-spaces.ts.
+		export VITE_ECHO_FAKE_SPACES=1
+		shift
+		;;
 	*) die "unknown argument: $1" ;;
 	esac
 done
@@ -42,10 +47,18 @@ export SABLE_IDENTIFIER="$IDENTIFIER"
 echo "==> Building the main process ($IDENTIFIER)"
 pnpm --dir "$REPO_ROOT/electron" run build
 
+# A server already on the port would answer the readiness check below in place of
+# ours, and the window would load whatever that older server has (it doesn't
+# watch echo/, see vite.config.ts), so refuse rather than reuse it.
+if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+	die "port $PORT is already in use; stop that server (lsof -nP -iTCP:$PORT -sTCP:LISTEN) or pass --port"
+fi
+
 echo "==> Starting Vite on port $PORT"
 pnpm --dir "$REPO_ROOT" dev --port "$PORT" --strictPort &
 VITE_PID=$!
-trap 'kill "$VITE_PID" 2>/dev/null || true' EXIT
+# pnpm runs Vite as a child; stopping only pnpm left Vite serving on the port.
+trap 'pkill -P "$VITE_PID" 2>/dev/null; kill "$VITE_PID" 2>/dev/null || true' EXIT
 
 # Up to 20 minutes: `pnpm dev` builds the wasm core before Vite listens, and a cold build of
 # it has taken over 5 minutes.
