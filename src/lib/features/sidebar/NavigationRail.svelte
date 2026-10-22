@@ -46,6 +46,7 @@
   import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
   import EchoRailBand from '../../../../echo/components/RailBand.svelte';
   import { echoCreateEntries } from '../../../../echo/create-menu.js';
+  import { echoEnterFolder, echoFolderOpen, echoLeaveFolder } from '../../../../echo/folders.js';
   import ChecksIcon from 'phosphor-svelte/lib/ChecksIcon';
   import CompassIcon from 'phosphor-svelte/lib/CompassIcon';
   import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
@@ -444,7 +445,12 @@
   }
 
   function folderOpen(folder: SidebarFolder): boolean {
-    return openFolders.has(folder.id);
+    return (
+      echoFolderOpen(folder, (id) => {
+        const item = spaceItem(id);
+        return item !== null && isActive(item);
+      }) ?? openFolders.has(folder.id)
+    );
   }
 
   function isActive(item: RailItem): boolean {
@@ -712,7 +718,13 @@
     aria-label={i18n.t('nav.folderExpand', { name: folderLabel(folder) })}
     aria-describedby={describedBy(props, unreadId(folder.id))}
     onclick={() => {
-      onToggleFolder?.(folder.id);
+      if (
+        !echoEnterFolder(folder, knownContent(folder), (id) => {
+          const item = spaceItem(id);
+          if (item) navigateTo(item.navigateHref ?? item.href);
+        })
+      )
+        onToggleFolder?.(folder.id);
     }}
   >
     {@render folderTiles(folder)}
@@ -772,7 +784,7 @@
         aria-expanded="true"
         aria-label={i18n.t('nav.folderCollapse', { name: folderLabel(folder) })}
         onclick={() => {
-          onToggleFolder?.(folder.id);
+          if (!echoLeaveFolder(navigateTo)) onToggleFolder?.(folder.id);
         }}
         oncontextmenu={mouseContextMenu((event) => {
           openFolderMenu(event, folder);

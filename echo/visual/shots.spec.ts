@@ -398,32 +398,22 @@ const folderClosed: View = {
   },
 };
 
-const folderOpen: View = {
-  name: 'folder-open',
-  open: async (page) => {
-    await folderClosed.open(page);
-    await page.locator('.rail .folder-preview').click();
-    await expect(page.locator('.rail .folder-card')).toBeVisible();
-    await page.mouse.move(-1, -1);
-  },
-  close: async (page) => {
-    await page.locator('.rail .folder-collapse').click();
-  },
-};
-
-// A space inside the open folder, opened: the folder becomes the parted band.
+// Clicking the closed folder opens a space in it (echo/folders.ts), and the
+// folder becomes the parted band; its caret goes Home, closing it again.
 const folderSpace: View = {
   name: 'folder-space',
   open: async (page) => {
-    await folderOpen.open(page);
-    await page.locator('.rail .folder-card .rail-slot.nested a').first().click();
+    await folderClosed.open(page);
+    await page.locator('.rail .folder-preview').click();
     await expect(page.locator('.rail .folder-card .echo-rail-band')).toBeVisible({
       timeout: 10_000,
     });
     await page.mouse.move(-1, -1);
   },
   close: async (page) => {
-    await page.goto('/home');
+    await page.locator('.rail .folder-collapse').click();
+    await expect(page.locator('.rail .folder-preview')).toBeVisible();
+    await expect(page).toHaveURL(/\/home$/);
   },
 };
 
@@ -502,7 +492,6 @@ test.describe('app', () => {
     await capture(page, 'app-dark-collapsed', inApp(collapsedSection));
     await capture(page, 'app-dark-palette', inApp(palette));
     await capture(page, 'app-dark-folder-closed', inApp(folderClosed));
-    await capture(page, 'app-dark-folder-open', inApp(folderOpen));
     await capture(page, 'app-dark-folder-space', inApp(folderSpace));
     await capture(page, 'app-dark-profile', inApp(profile));
   });

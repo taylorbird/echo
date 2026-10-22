@@ -35,6 +35,9 @@ can live here instead.
   Start-up with no room to restore lands in Home. Desktop only.
 - `create-menu.ts` — "New chat" in the rail's create (+) menu, since the direct messages section
   that offered it has no tile. Desktop only.
+- `folders.ts` — a space folder in the rail is open exactly while one of its spaces is: clicking
+  a closed folder opens its last space (or its first), and its caret goes Home. Sable's
+  expanded-with-nothing-open step is gone. Desktop only.
 - `unread.ts` — echo's unread indicators: a muted room with unread messages still gets its dot
   in the room list and rail (Sable's core clears a muted room's counts). Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
@@ -87,6 +90,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/features/sidebar/RoomNav.svelte` | `roomHref`'s last fallback is `echoRoomPath(…) ?? …/home/…` (`echo/places.ts`): a space's DMs open in the space |
 | `src/routes/(app)/home/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`: an empty pane on desktop |
 | `src/routes/(app)/rooms/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`, as for Home |
+| `src/lib/features/sidebar/NavigationRail.svelte` | `folderOpen` returns `echoFolderOpen(…) ?? …`, and the folder's tile and caret try `echoEnterFolder(…)` / `echoLeaveFolder(…)` before Sable's toggle (`echo/folders.ts`) |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `...echoCreateEntries()` (`echo/create-menu.ts`) first in the create menu: New chat |
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
 | `electron/src/updater.ts` | `echoUseUpdateFeed(autoUpdater)` after Sable's `setFeedURL` (`echo/electron/updater.ts`): echo's feed in echo builds |
