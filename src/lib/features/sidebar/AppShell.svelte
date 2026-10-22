@@ -1,7 +1,7 @@
 <script lang="ts">
   import { MediaQuery } from 'svelte/reactivity';
   import type { Snippet } from 'svelte';
-  import MobileNavDrawer from '#lib/features/sidebar/MobileNavDrawer.svelte';
+  import MobileNavDrawer from '../../../../echo/mobile/Shell.svelte';
   import SidebarNav from '#lib/features/sidebar/SidebarNav.svelte';
   import DeviceVerificationDialog from '#lib/features/settings/DeviceVerificationDialog.svelte';
   import { BREAKPOINTS } from '#lib/ui/breakpoints.js';

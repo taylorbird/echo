@@ -15,8 +15,9 @@ function echoSenderIndex(userId: string): number {
   return sum % PALETTE_SIZE;
 }
 
-// The palette is defined for the desktop layout only; elsewhere the colour
-// Sable would have used shows through as the var() fallback.
+// The palette is defined for the desktop layout (timeline.css) and phones
+// (mobile-timeline.css); anywhere else the colour Sable would have used shows
+// through as the var() fallback.
 export function echoSenderColor(userId: string | null, sable: string): string {
   if (!echoActive() || !userId) return sable;
   return `var(--echo-sender-${echoSenderIndex(userId)}, ${sable})`;

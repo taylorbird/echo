@@ -18,6 +18,8 @@
 @import url('./styles/profile.css');
 @import url('./styles/palette.css');
 @import url('./styles/loading.css');
+@import url('./styles/mobile.css');
+@import url('./styles/mobile-timeline.css');
 
 @font-face {
   font-display: swap;

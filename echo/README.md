@@ -11,8 +11,18 @@ can live here instead.
   right after `src/styles.css`. Outside `src/` because Sable's theme check allows literal
   colours only in `src/styles.css`. It imports one file per UI area from `styles/`
   (frame, rail, roomlist, timeline, panels, popups, profile, loading), each targeting Sable's own
-  markup and written against `design/SPEC.md`. Layout rules are desktop only
-  (`width >= 48rem`); the phone layout stays Sable's until echo has its own.
+  markup and written against `design/SPEC.md`. Those layout rules are desktop only
+  (`width >= 48rem`); `mobile.css` and `mobile-timeline.css` are the phone's (`width < 48rem`).
+- `mobile/` — echo's own phone UI, separate from the desktop's (decided 2026-10-20: phones get
+  their own screens, sharing Sable's core and stores). `Shell.svelte` is where Sable mounts its
+  phone drawer: on a phone with echo on it mounts `PhoneShell.svelte` instead — the room list
+  screen (`RoomListScreen.svelte`) with the open page pushed over it, swiped back from the left
+  edge — and anywhere else Sable's drawer as before. The list switches places (all, DMs, rooms,
+  a space) with chips under its title; Sable's bottom bar stays for search, inbox and account.
+- `ios/` — the iOS app: `prepare.mjs` writes echo's copy of Sable's Xcode template and icon
+  catalog before `tauri ios init`; `sim.sh` runs the dev build in a named simulator.
+- `tauri.echo.ios.conf.json` — merged after `tauri.echo.conf.json` for iOS: the dev bundle ID,
+  echo's Xcode template, no development team, Vite on port 3027.
 - `components/` — the few pieces of echo's UI that CSS can't draw, each mounted from Sable's
   markup by a one-line hook (below).
 - `layout.ts` — echo's desktop geometry that lives in Sable's script (the room list's width).
@@ -61,6 +71,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/i18n.ts` | `brandLocale(en)` for the built-in English fallback |
 | `src/lib/ui/SableBrandMark.svelte` | logo import points at `echo/brand/logo.svg` |
 | `src/lib/features/sidebar/AppShell.svelte` | room list starts at `ECHO_ROOM_NAV_WIDTH` (`echo/layout.ts`) instead of 288 |
+| `src/lib/features/sidebar/AppShell.svelte` | `MobileNavDrawer` imported from `echo/mobile/Shell.svelte`: echo's phone shell on a phone, Sable's drawer otherwise |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomPreview>` (`echo/components/RoomPreview.svelte`) after each room's name |
 | `src/lib/features/sidebar/RoomNav.svelte` | `rooms` wrapped in `echoSectionRooms(…)` (`echo/space-dms.ts`): a space's and the unspaced list's DMs |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `<EchoRailBand>` (`echo/components/RailBand.svelte`) after each rail tile: the parted band under the open one |
@@ -84,6 +95,14 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 
 - `mise run echo:dev` — the branded app for this desktop, with live reload.
 - `mise run echo:build` — a branded, unsigned build.
+- `mise run echo:ios:init` — generate the iOS Xcode project (`src-tauri/gen/apple`, gitignored)
+  with echo's name, icon and dev bundle ID. Again after Sable's `src-tauri/ios-project.yml`
+  changes.
+- `mise run echo:ios "iPhone 16 Pro"` — the iOS app in the Simulator with live reload
+  (`tauri ios dev`). Tauri only runs it on a simulator with Xcode's own iOS version; with an
+  older runtime it opens Xcode instead. Then use `mise run echo:ios:sim "iPhone 16 Pro"`, which
+  builds with xcodebuild and launches it there itself (`ios/sim.sh`).
+- `mise run echo:ios:build` — an unsigned debug build for the simulator (same runtime caveat).
 - `echo/release.sh <version|patch|minor>` — a signed, notarized release published to
   `taylorbird/echo` with its updater feed (`latest.json`). Write `echo/RELEASE_NOTES.md` first.
 

@@ -1,0 +1,333 @@
+/* echo: a room on a phone — the header, the timeline and the composer, in
+   echo's look (SPEC §5–7) at phone size. Sable's room view draws the page;
+   this retunes it, scoped to echo's phone shell (echo/mobile/PhoneShell.svelte),
+   so the desktop rules in timeline.css are untouched. Geometry follows
+   echo-gomuks's narrow layout: .5rem timeline padding, smaller avatars. */
+
+/* echo's sender palette for phones; the desktop's is in timeline.css. Same
+   ten colours, picked by echo/sender-color.ts. */
+@media (width < 48rem) {
+  html:root {
+    --echo-sender-0: #a4041d;
+    --echo-sender-1: #9b2200;
+    --echo-sender-2: #803f00;
+    --echo-sender-3: #005f00;
+    --echo-sender-4: #005c45;
+    --echo-sender-5: #00548c;
+    --echo-sender-6: #064ab1;
+    --echo-sender-7: #5d26cd;
+    --echo-sender-8: #822198;
+    --echo-sender-9: #9f0850;
+  }
+
+  html:root.dark {
+    --echo-sender-0: #ff5d73;
+    --echo-sender-1: #ffa64d;
+    --echo-sender-2: #4dd6a8;
+    --echo-sender-3: #a78bfa;
+    --echo-sender-4: #4db8f5;
+    --echo-sender-5: #f0c674;
+    --echo-sender-6: #ff7ac6;
+    --echo-sender-7: #4de0e0;
+    --echo-sender-8: #ff8a65;
+    --echo-sender-9: #a3e635;
+  }
+}
+
+@media (width < 48rem) and (prefers-color-scheme: dark) {
+  html:root:not(.light) {
+    --echo-sender-0: #ff5d73;
+    --echo-sender-1: #ffa64d;
+    --echo-sender-2: #4dd6a8;
+    --echo-sender-3: #a78bfa;
+    --echo-sender-4: #4db8f5;
+    --echo-sender-5: #f0c674;
+    --echo-sender-6: #ff7ac6;
+    --echo-sender-7: #4de0e0;
+    --echo-sender-8: #ff8a65;
+    --echo-sender-9: #a3e635;
+  }
+}
+
+@media (width < 48rem) {
+  /* Room header (SPEC §5): the room list's ground, no rule, a soft shadow. */
+  .echo-m-content .room-view .panel-header.room-header {
+    background: var(--echo-roomlist);
+    border-bottom: 0;
+    box-shadow: var(--echo-header-shadow);
+    gap: 0.5rem;
+    padding-inline: 0.25rem 0.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .echo-m-content .room-header .prefix > .room-avatar {
+    --avatar-size: 2.25rem;
+
+    border-radius: 50%;
+    font-size: 1rem;
+  }
+
+  .echo-m-content .room-header .room-identity > h1 {
+    color: var(--echo-room-name);
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .echo-m-content .room-header .room-identity > .room-topic {
+    color: var(--echo-text-2);
+    font-size: 0.8125rem;
+  }
+
+  .echo-m-content .room-header .panel-header-button {
+    --button-height: 2.75rem;
+
+    color: var(--echo-text);
+  }
+
+  .echo-m-content .room-header .panel-header-button > svg {
+    height: 1.375rem;
+    width: 1.375rem;
+  }
+
+  /* Timeline geometry (SPEC §6.1, §2.3 at the narrow breakpoint). Set on
+     .items so it outranks the inline values Sable puts on the timeline. */
+  .echo-m-content .timeline-content .items {
+    --avatar-size-small: 2.25rem;
+    --page-gutter: 0.75rem;
+    --timeline-group-gap: 1rem;
+    --timeline-row-gap: 0.75rem;
+    --timeline-row-padding: 0.125rem;
+  }
+
+  /* People are round (SPEC §1.3). */
+  .echo-m-content .timeline-content .message .message-avatar {
+    border-radius: 50%;
+    font-size: 0.9375rem;
+  }
+
+  .echo-m-content .timeline-content .message-main {
+    color: var(--echo-text);
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  /* Sender row: the name, then the time right after it, small and quiet. */
+  .echo-m-content .timeline-content .message header {
+    gap: 0.375rem;
+  }
+
+  .echo-m-content .timeline-content header .sender.name-button {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .echo-m-content .items header > div.message-details {
+    flex-grow: 1;
+    font-size: 0.75rem;
+    justify-content: flex-start;
+  }
+
+  .echo-m-content .timeline-content .message-details > time {
+    color: var(--echo-text-2);
+    opacity: 0.6;
+    order: -1;
+  }
+
+  .echo-m-content .timeline-content .message .edited {
+    color: var(--echo-text-2);
+    font-size: 0.75rem;
+  }
+
+  .echo-m-content .timeline-content .message.layout-modern:active {
+    background-color: var(--echo-timeline-hover);
+  }
+
+  /* Mentions of you: a gold wash, no side bar (SPEC §6.2). */
+  .echo-m-content .timeline-content .message.mention-loud,
+  .echo-m-content .timeline-content .message.mention-silent {
+    background: var(--echo-timeline-highlight);
+    border-inline-start: 0;
+    border-radius: 0;
+    margin-inline: calc(-1 * var(--page-gutter));
+    padding-inline: var(--page-gutter);
+  }
+
+  /* Mention pills (SPEC §6.9). */
+  .echo-m-content .timeline-content .formatted-body a[data-matrix-link],
+  .echo-m-content .timeline-content .formatted-body [data-mx-room-mention],
+  .echo-m-content .timeline-content .message.mention-loud a[data-matrix-link] {
+    background: var(--echo-pill-bg);
+    border: 0;
+    border-radius: 0.5rem;
+    color: var(--echo-text);
+    font-weight: 400;
+    max-width: 12rem;
+    overflow: hidden;
+    padding: 0 0.4375rem;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+
+  .echo-m-content .timeline-content .message a[data-matrix-link='user'] {
+    background: color-mix(in oklab, var(--mention-color, var(--echo-text-semi)) 18%, transparent);
+    color: var(--mention-color, var(--echo-text-semi));
+  }
+
+  /* Code (SPEC §6.9). */
+  .echo-m-content .message .formatted-body code {
+    background: var(--echo-code-bg);
+    border: 0;
+    border-radius: 0.25rem;
+    color: inherit;
+    padding: 0.125rem 0.25rem;
+  }
+
+  .echo-m-content .message .code-block code {
+    background: none;
+    padding: 0;
+  }
+
+  .echo-m-content .timeline-content .formatted-body .code-block {
+    background: var(--echo-code-bg);
+    border: 0;
+    border-radius: 0.25rem;
+    color: var(--echo-text);
+  }
+
+  /* Replies: a static neutral spine (SPEC §6.4). */
+  .echo-m-content .timeline-content .reply-preview.reply-connected::before {
+    border-color: var(--echo-reply-border);
+    opacity: 1;
+  }
+
+  .echo-m-content .timeline-content .reply-preview .reply-body {
+    color: var(--echo-text-semi);
+    filter: none;
+  }
+
+  /* Reactions (SPEC §6.5): rounded-square chips on the base colour. */
+  .echo-m-content .timeline-content .message .reactions {
+    gap: 0.25rem;
+    margin: 0.25rem 0;
+  }
+
+  .echo-m-content .timeline-content .reactions > .reaction,
+  .echo-m-content .timeline-content .reactions > .add-reaction {
+    background: var(--echo-chat);
+    border: 1px solid var(--echo-border);
+    border-radius: 0.5rem;
+    color: var(--echo-text);
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0.125rem 0.5rem;
+  }
+
+  .echo-m-content .timeline-content .reactions > .reaction[aria-pressed='true'] {
+    background: rgb(var(--echo-warm-rgb) / 12%);
+    border-color: rgb(var(--echo-warm-rgb) / 55%);
+  }
+
+  /* Read receipts: small overlapping faces (SPEC §6.6). */
+  .echo-m-content .timeline-content .read-receipt-stack .receipt-face {
+    --avatar-size: 1rem;
+
+    border: 1px solid var(--echo-chat);
+    border-radius: 50%;
+    font-size: 0.5rem;
+  }
+
+  /* Day separator and "new messages" (SPEC §6.7). */
+  .echo-m-content .timeline-content .date-divider {
+    color: var(--echo-text);
+    font-size: 0.8125rem;
+  }
+
+  .echo-m-content .timeline-content .date-divider::before,
+  .echo-m-content .timeline-content .date-divider::after {
+    border-top-color: currentcolor;
+    opacity: 0.2;
+  }
+
+  .echo-m-content .timeline-content .date-divider > span {
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  .echo-m-content .timeline-content :is(.unread, .read-marker)::before {
+    border-top: 1px solid var(--echo-unread-notify);
+    opacity: 0.6;
+  }
+
+  .echo-m-content .timeline-content :is(.unread, .read-marker) > span {
+    background: none;
+    border: 0;
+    color: var(--echo-unread-notify);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  /* The typing line, quiet, above the composer. */
+  .echo-m-content .timeline-content.timeline-content {
+    --timeline-foot-height: 1.75rem;
+  }
+
+  .echo-m-content .timeline-content .timeline-foot {
+    align-items: end;
+    background: var(--echo-chat);
+    padding: 0 0.75rem;
+  }
+
+  .echo-m-content .timeline-content .timeline-foot .typing {
+    color: var(--echo-text);
+    font-size: 0.8125rem;
+    gap: 0.375rem;
+    line-height: 1.5rem;
+    opacity: 0.5;
+  }
+
+  .echo-m-content .timeline-foot .typing-dots i {
+    background: currentcolor;
+    height: 0.1875rem;
+    width: 0.1875rem;
+  }
+
+  /* Composer (SPEC §7): a raised box, pinned above the keyboard and the home
+     indicator by the screen's bottom inset (mobile.css). */
+  .echo-m-content .room-view .composer-stack {
+    --composer-gutter: 0.5rem;
+
+    margin: 0.25rem auto 0.375rem;
+  }
+
+  .echo-m-content .room-view .composer-shell > .composer {
+    background: var(--echo-composer);
+    border: 1px solid var(--echo-border);
+    border-radius: 1rem;
+    box-shadow: 0 0 1rem var(--echo-modal-shadow);
+    color: var(--echo-text);
+  }
+
+  .echo-m-content .room-view .composer-shell > .composer:has([contenteditable='true']:focus) {
+    border-color: var(--echo-border);
+  }
+
+  .echo-m-content .room-view .composer-row [contenteditable] {
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .echo-m-content .composer-row :is(.composer-before, .composer-after) button {
+    opacity: 0.55;
+  }
+
+  .echo-m-content .composer-row .composer-after > .composer-send.icon-button {
+    opacity: 0.75;
+  }
+}

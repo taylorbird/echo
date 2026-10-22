@@ -1,0 +1,524 @@
+/* echo: the phone shell and room list (echo/mobile/PhoneShell.svelte,
+   RoomListScreen.svelte). Phones only (width < 48rem), the reverse of every
+   other file here: the desktop layout never renders these classes, and the
+   rules below that touch Sable's own markup are scoped to echo's phone shell.
+
+   Colours are the shared tokens in frame.css. The app's dark palette (the
+   cool near-black chat under a warmer list) is the desktop app's, so the phone
+   app looks like the same app. */
+
+@media (width < 48rem) and (prefers-color-scheme: dark) {
+  :root[data-tauri-os]:not(.light) {
+    --echo-roomlist: #1f1f24;
+    --echo-chat: #16181f;
+    --echo-text: #e6eaf2;
+    --echo-text-2: #98a0b0;
+    --echo-composer: #1e212a;
+    --echo-timeline-hover: #212530;
+    --echo-border: #2f3543;
+    --echo-hairline: rgb(230 234 242 / 9%);
+    --echo-hover: rgb(230 234 242 / 8%);
+    --echo-button-hover: rgb(230 234 242 / 18%);
+    --echo-code-bg: rgb(30 33 42 / 85%);
+    --echo-pill-bg: #39404f;
+  }
+}
+
+@media (width < 48rem) {
+  :root[data-tauri-os].dark {
+    --echo-roomlist: #1f1f24;
+    --echo-chat: #16181f;
+    --echo-text: #e6eaf2;
+    --echo-text-2: #98a0b0;
+    --echo-composer: #1e212a;
+    --echo-timeline-hover: #212530;
+    --echo-border: #2f3543;
+    --echo-hairline: rgb(230 234 242 / 9%);
+    --echo-hover: rgb(230 234 242 / 8%);
+    --echo-button-hover: rgb(230 234 242 / 18%);
+    --echo-code-bg: rgb(30 33 42 / 85%);
+    --echo-pill-bg: #39404f;
+  }
+
+  /* Light: the list is a soft grey under the white chat, as on the desktop. */
+  :root:has(.echo-m-shell) body {
+    background: var(--echo-roomlist);
+    color: var(--echo-text);
+  }
+
+  /* The two screens, stacked. The open page slides over the list from the
+     right; the list drifts a little left under it, as iOS pushes. */
+  .echo-m-shell {
+    height: 100%;
+    overflow: clip;
+    position: relative;
+    touch-action: pan-y;
+  }
+
+  .echo-m-screen {
+    --edge-inset-top: var(--safe-top);
+    --edge-inset-bottom: max(0px, calc(var(--safe-bottom) - var(--keyboard-overlap)));
+
+    display: flex;
+    flex-direction: column;
+    inset: 0;
+    min-width: 0;
+    overflow: hidden;
+    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+    position: absolute;
+  }
+
+  .echo-m-list {
+    background: var(--echo-roomlist);
+    color: var(--echo-text);
+    padding-bottom: 0;
+    transform: translate3d(-25%, 0, 0);
+  }
+
+  .echo-m-content {
+    --surface-container: var(--echo-chat);
+    --surface-container-hover: var(--echo-timeline-hover);
+    --surface-on-container: var(--echo-text);
+
+    background: var(--echo-chat);
+    box-shadow:
+      -1px 0 0 var(--echo-hairline),
+      -12px 0 32px rgb(0 0 0 / 35%);
+    color: var(--echo-text);
+    transform: translate3d(var(--echo-m-drag, 0), 0, 0);
+    z-index: 1;
+  }
+
+  .echo-m-shell.list-open .echo-m-list {
+    transform: none;
+  }
+
+  .echo-m-shell.list-open .echo-m-content {
+    box-shadow: none;
+    transform: translate3d(100%, 0, 0);
+  }
+
+  /* Dragging back: the list follows the page from its drifted position. */
+  .echo-m-shell.dragging .echo-m-list {
+    transform: translate3d(calc(-25% + var(--echo-m-drag, 0px) / 4), 0, 0);
+  }
+
+  /* Gated on Sable's Reduce motion setting, not the system query: in echo that
+     setting decides (echo/motion.ts). */
+  :root:not([data-reduced-motion='on']) .echo-m-shell:not(.dragging) .echo-m-screen {
+    /* stylelint-disable-next-line defensive-css/require-prefers-reduced-motion */
+    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .echo-m-main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* As in Sable's drawer: pages that draw their own top or bottom inset (the
+     room view's header and composer) take that edge from the screen. */
+  .echo-m-content.with-quick-tools,
+  .echo-m-content:has(> .echo-m-main > [data-inset-owner~='bottom']) {
+    padding-bottom: calc(var(--safe-bottom) - var(--edge-inset-bottom));
+  }
+
+  .echo-m-content.with-back-bar,
+  .echo-m-content:has(> .echo-m-main > [data-inset-owner~='top']) {
+    padding-top: 0;
+  }
+
+  .echo-m-content.with-back-bar > .mobile-back-bar {
+    padding-top: var(--safe-top);
+  }
+
+  /* Sable's bottom bar: search, inbox and the account, on echo's ground. */
+  .echo-m-tabs {
+    border-top: 1px solid var(--echo-hairline);
+    flex: none;
+    padding-bottom: var(--safe-bottom);
+  }
+
+  .echo-m-tabs .mobile-tools {
+    --surface-container: var(--echo-roomlist);
+
+    background: var(--echo-roomlist);
+    border: 0;
+    box-shadow: none;
+  }
+
+  .echo-m-content .echo-m-tabs {
+    padding-bottom: 0;
+  }
+
+  /* The room list screen. */
+  .echo-m-rooms {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .echo-m-rooms-header {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    min-height: 3.5rem;
+    padding: 0.25rem 0.5rem 0 1rem;
+  }
+
+  .echo-m-rooms-header > h1 {
+    color: var(--echo-room-name);
+    flex: 1;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .echo-m-icon-button {
+    align-items: center;
+    background: none;
+    border: 0;
+    border-radius: 0.5rem;
+    color: var(--echo-text);
+    display: flex;
+    flex: none;
+    height: 2.75rem;
+    justify-content: center;
+    padding: 0;
+    width: 2.75rem;
+  }
+
+  .echo-m-icon-button:active {
+    background: var(--echo-button-hover);
+  }
+
+  .echo-m-icon-button > svg {
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+
+  /* Places: chips that scroll sideways under the title. */
+  .echo-m-places {
+    display: flex;
+    flex: none;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 0.25rem 1rem 0.75rem;
+    scrollbar-width: none;
+  }
+
+  .echo-m-chip {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--echo-border);
+    border-radius: 999px;
+    color: var(--echo-text);
+    display: flex;
+    flex: none;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    gap: 0.375rem;
+    height: 2.125rem;
+    padding: 0 0.875rem;
+    position: relative;
+  }
+
+  .echo-m-chip:has(.echo-m-chip-avatar) {
+    padding-left: 0.25rem;
+  }
+
+  .echo-m-chip.selected {
+    background: var(--echo-primary);
+    border-color: var(--echo-primary);
+    color: var(--echo-on-primary);
+  }
+
+  .echo-m-chip .echo-m-chip-avatar {
+    --avatar-size: 1.5rem;
+
+    border-radius: 50%;
+    font-size: 0.6875rem;
+  }
+
+  /* Unread somewhere in that place: echo's blue dot after the label. */
+  .echo-m-chip.unread::after {
+    background: var(--echo-unread-message);
+    border-radius: 50%;
+    content: '';
+    height: 0.4375rem;
+    width: 0.4375rem;
+  }
+
+  .echo-m-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding-bottom: 1rem;
+  }
+
+  .echo-m-empty {
+    color: var(--echo-text-2);
+    padding: 2rem 1.5rem;
+    text-align: center;
+  }
+
+  .echo-m-room-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Rows (SPEC §4.3): full-bleed, a round avatar, two lines, a hairline under
+     the text, and the glow bar's lane at the far left. */
+  .echo-m-room {
+    position: relative;
+  }
+
+  .echo-m-room::before {
+    background: var(--echo-bar, transparent);
+    border-radius: 999px;
+    box-shadow:
+      0 0 6px var(--echo-bar-near, transparent),
+      0 0 14px var(--echo-bar-far, transparent);
+    content: '';
+    height: 2rem;
+    left: 0.25rem;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    width: 0.1875rem;
+  }
+
+  .echo-m-room-link {
+    align-items: center;
+    color: inherit;
+    display: flex;
+    gap: 0.75rem;
+    min-height: 4.75rem;
+    padding: 0 1rem 0 0.875rem;
+    -webkit-tap-highlight-color: transparent;
+    text-decoration: none;
+  }
+
+  .echo-m-room-link:active {
+    background: var(--echo-entry-hover);
+  }
+
+  .echo-m-room-avatar {
+    display: flex;
+    flex: none;
+  }
+
+  :root .echo-m-room-avatar > .avatar-root {
+    --avatar-size: 3rem;
+
+    border-radius: 50%;
+    font-size: 1.125rem;
+    height: 3rem;
+    width: 3rem;
+  }
+
+  /* Rooms without a picture: their kind glyph on a quiet disc. Sable's icon
+     is sized in em, its private-room badge included. */
+  :root .echo-m-room-avatar > .echo-m-glyph {
+    align-items: center;
+    background: var(--echo-entry-hover);
+    color: var(--echo-text);
+    display: flex;
+    font-size: 1.375rem;
+    justify-content: center;
+    opacity: 0.85;
+  }
+
+  /* Name, kind glyph and time on the first line; "Sender: text" and the
+     badge on the second. */
+  .echo-m-room-text {
+    align-self: stretch;
+    box-shadow: inset 0 -1px 0 var(--echo-hairline);
+    display: grid;
+    flex: 1;
+    gap: 0.125rem 0.375rem;
+    grid-template-areas:
+      'name kind . time'
+      'preview preview preview status';
+    grid-template-columns: minmax(0, max-content) auto 1fr auto;
+    min-width: 0;
+    padding: 0.75rem 0;
+    place-content: center stretch;
+  }
+
+  .echo-m-room:last-child .echo-m-room-text {
+    box-shadow: none;
+  }
+
+  .echo-m-room-name {
+    color: var(--echo-room-name);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    grid-area: name;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :root .echo-m-room-text > .echo-room-kind {
+    align-self: center;
+    color: var(--echo-kind-glyph);
+    display: block;
+    grid-area: kind;
+    height: 0.875rem;
+    opacity: var(--echo-kind-glyph-opacity);
+    width: 0.875rem;
+  }
+
+  .echo-m-room-time {
+    align-self: center;
+    color: var(--echo-text-2);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    grid-area: time;
+    padding-left: 0.5rem;
+    white-space: nowrap;
+  }
+
+  :root .echo-m-room-text > .echo-room-preview {
+    color: var(--echo-preview);
+    display: block;
+    font-size: 0.9375rem;
+    grid-area: preview;
+    line-height: 1.4;
+    min-width: 0;
+    opacity: 0.9;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .echo-m-room-status {
+    align-items: center;
+    display: flex;
+    grid-area: status;
+    justify-content: flex-end;
+    min-width: 1.25rem;
+    padding-left: 0.5rem;
+  }
+
+  .echo-m-room-status .typing-dots i {
+    background: var(--echo-text-2);
+  }
+
+  /* Unread rows: a wash and a bar in the tier's colour (SPEC §4.4). */
+  .echo-m-room.unread {
+    --echo-bar: var(--echo-unread-message);
+    --echo-bar-near: var(--echo-blue-near);
+    --echo-bar-far: var(--echo-blue-far);
+
+    background: var(--echo-unread-wash);
+  }
+
+  .echo-m-room.unread.notify {
+    --echo-bar: var(--echo-unread-notify);
+  }
+
+  .echo-m-room.unread.dm,
+  .echo-m-room.unread.mention {
+    --echo-bar: var(--echo-unread-highlight);
+    --echo-bar-near: var(--echo-red-near);
+    --echo-bar-far: var(--echo-red-far);
+  }
+
+  .echo-m-room.unread.mention {
+    background: var(--echo-highlight-wash);
+  }
+
+  .echo-m-room.unread .echo-m-room-time {
+    color: var(--echo-text);
+  }
+
+  /* The open room, when the list shows over it. */
+  .echo-m-room:has([aria-current='page']) {
+    --echo-bar: var(--echo-room-glow);
+    --echo-bar-near: var(--echo-room-near);
+    --echo-bar-far: var(--echo-room-far);
+
+    /* Half the desktop's wash: a full-width phone row carries it heavily. */
+    background: rgb(var(--echo-warm-rgb) / 10%);
+  }
+
+  /* Badges: a blue dot for plain unread, a light blue count for
+     notifications, a red "@" count for mentions, a red dot for a DM. */
+  :root .echo-m-room-status > .unread-badge-dot {
+    background: var(--echo-unread-message);
+    border-radius: 50%;
+    height: 0.5625rem;
+    padding: 0;
+    width: 0.5625rem;
+  }
+
+  :root .echo-m-room-status > .unread-badge-count {
+    background: var(--echo-unread-notify);
+    border-radius: 1rem;
+    box-shadow:
+      0 0 7px var(--echo-blue-near),
+      0 0 15px var(--echo-blue-far);
+    color: var(--echo-unread-ink);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    height: 1.375rem;
+    line-height: 1.375rem;
+    min-width: 1.375rem;
+    padding: 0 0.375rem;
+    text-align: center;
+  }
+
+  :root .echo-m-room.mention .echo-m-room-status > .unread-badge-count {
+    background: var(--echo-unread-highlight);
+    box-shadow:
+      0 0 7px var(--echo-red-near),
+      0 0 16px var(--echo-red-far);
+    color: var(--echo-unread-highlight-ink);
+  }
+
+  :root .echo-m-room.mention .echo-m-room-status > .unread-badge-count::before {
+    content: '@';
+    margin-right: 0.0625rem;
+  }
+
+  :root .echo-m-room.dm:not(.mention) .echo-m-room-status > .unread-badge {
+    background: var(--echo-unread-highlight);
+    border-radius: 50%;
+    box-shadow: none;
+    font-size: 0;
+    height: 0.5625rem;
+    min-width: 0;
+    padding: 0;
+    width: 0.5625rem;
+  }
+
+  /* Sable's invites block, at the top of the list. */
+  .echo-m-scroll > .invites {
+    border-bottom: 1px solid var(--echo-hairline);
+    margin: 0 0 0.25rem;
+    padding: 0.25rem 1rem 0.5rem;
+  }
+
+  /* As in Sable's drawer: the back bar carries the page's title, so the
+     page's own heading folds away (last: it outranks the list's h1). */
+  .echo-m-content:not(.with-quick-tools) .app-page-shell .app-page-header h1 {
+    height: 0;
+    visibility: collapse;
+  }
+}
