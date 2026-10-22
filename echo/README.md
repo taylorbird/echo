@@ -22,7 +22,8 @@ can live here instead.
   without the app's layout, keep testing Sable.
 - `init.ts` — start-up: echo's defaults where they differ from Sable's (Home on in the rail, and
   on macOS Sable's own title bar, which puts the window in overlay style so the panes can run to
-  the top edge), and in the macOS app the headers as window drag regions.
+  the top edge), and in the macOS app (Tauri or Electron) the headers as window drag regions, and `data-echo-app` on
+  `<html>`, which the app look in `styles/` keys on.
 - `panels.ts` — echo's right panel: each room opens with it closed (Sable reopened a
   remembered members panel in every room), and Esc closes it. Desktop only.
 - `space-dms.ts` — which DMs a place lists, as echo decided: a space lists DMs with members of
@@ -44,6 +45,15 @@ can live here instead.
   bundle ID, window, icons, update feed.
 - `tauri.echo.release.conf.json` — merged on top for releases: bundle ID `dev.tbird.echo`, echo's
   version, Developer ID signing and updater artifacts. `release.sh` builds with it.
+- `electron/` — the desktop app on Electron (Sable's desktop shell since 2026-10-21; Tauri stays
+  for mobile). `build.sh` packages it with Sable's `electron/package.mjs`, passing echo's
+  identifier, name, icon (`icons/echo.icon`), permission prompts and update feed as
+  electron-builder overrides; `dev.sh` runs it against the Vite dev server. `app.ts` tells the
+  main process it is echo (from the identifier it was built with), `updater.ts` points
+  electron-updater at `taylorbird/echo`, `legacy.ts` is `legacy.rs` for Electron. None of them
+  import Electron: Sable's main process passes in what they need.
+- `release-electron.sh` — a signed, notarized Electron release with both update feeds
+  (`latest-mac.yml` for Electron echo, `latest.json` for Tauri echo 1.0 and echo-gomuks).
 - `legacy.rs` — removes echo-gomuks's leftover files (its database, config, media cache and logs)
   at start-up, for installs that updated from it.
 - `visual/` — `mise run echo:shots`: screenshots of the signed-in web app against a throwaway
@@ -79,9 +89,17 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/routes/(app)/rooms/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`, as for Home |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `...echoCreateEntries()` (`echo/create-menu.ts`) first in the create menu: New chat |
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
+| `electron/src/updater.ts` | `echoUseUpdateFeed(autoUpdater)` after Sable's `setFeedURL` (`echo/electron/updater.ts`): echo's feed in echo builds |
+| `electron/src/main.ts` | `cleanGomuksLeftovers(…)` after `importTauriConfig(…)` (`echo/electron/legacy.ts`) |
+| `electron/src/main.ts` | `echoBranded(…)` around the core's `serviceName` and the screen-recording dialog's text (`echo/electron/app.ts`) |
 
 ## Running
 
+- `mise run echo:electron:build` — the branded Electron app (`dev.tbird.echo.dev`, ad-hoc signed)
+  in `electron/release/mac-arm64/echo.app`; `-- --identifier dev.tbird.echo.test --version X.Y.Z`
+  for other identities.
+- `mise run echo:electron:dev` — the Electron app against the Vite dev server.
+- `echo/release-electron.sh <version|patch|minor>` — the Electron release (see above).
 - `mise run echo:dev` — the branded app for this desktop, with live reload.
 - `mise run echo:build` — a branded, unsigned build.
 - `echo/release.sh <version|patch|minor>` — a signed, notarized release published to
