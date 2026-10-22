@@ -161,6 +161,19 @@
     border-radius: 50%;
   }
 
+  /* A closed folder previews its spaces as a 2×2 grid of small squircles inside
+     the tile's 2.5rem, not at full tile size (the rule above would make them so). */
+  :root .rail .folder-preview .folder-tiles {
+    gap: 0.25rem;
+  }
+
+  :root .rail .folder-preview .avatar-root.folder-tile {
+    --avatar-size: 1.125rem;
+
+    border-radius: 0.3125rem;
+    font-size: 0.5625rem;
+  }
+
   /* Tile badges ride the tile's lower right corner, in the space palette. */
   :root .rail .nav-tab .unread-badge {
     inset: auto -0.0625rem -0.0625rem auto;

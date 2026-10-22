@@ -308,5 +308,26 @@ export async function seedAccount(baseUrl: string): Promise<SeededAccount> {
     );
   }
 
+  // More spaces, three of them grouped in a rail folder: Sable keeps the rail's
+  // order and folders in the in.cinny.spaces account data.
+  for (const name of ['Signal', 'WhatsApp', 'Discord', 'Hobbies'] as const) {
+    rooms[name] = await me.createRoom({ name, topic: `${name} space`, isSpace: true });
+  }
+  await me.request(
+    'PUT',
+    `client/v3/user/${encodeURIComponent(me.userId)}/account_data/in.cinny.spaces`,
+    {
+      sidebar: [
+        rooms.Work,
+        {
+          id: 'echo-shots-bridges',
+          name: 'Bridges',
+          content: [rooms.Signal, rooms.WhatsApp, rooms.Discord],
+        },
+        rooms.Hobbies,
+      ],
+    }
+  );
+
   return { userId: me.userId, rooms };
 }

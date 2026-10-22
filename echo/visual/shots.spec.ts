@@ -388,6 +388,29 @@ function spaceFilter(value: string, label: string): View {
   };
 }
 
+// The rail with a folder of spaces (Bridges: Signal, WhatsApp, Discord), closed
+// and then open.
+const folderClosed: View = {
+  name: 'folder-closed',
+  open: async (page) => {
+    await home.open(page);
+    await expect(page.locator('.rail .folder-preview')).toBeVisible({ timeout: 15_000 });
+  },
+};
+
+const folderOpen: View = {
+  name: 'folder-open',
+  open: async (page) => {
+    await folderClosed.open(page);
+    await page.locator('.rail .folder-preview').click();
+    await expect(page.locator('.rail .folder-card')).toBeVisible();
+    await page.mouse.move(-1, -1);
+  },
+  close: async (page) => {
+    await page.locator('.rail .folder-collapse').click();
+  },
+};
+
 const spaceFilters = [
   spaceFilter('all', 'All chats'),
   spaceFilter('rooms', 'Rooms'),
@@ -462,6 +485,8 @@ test.describe('app', () => {
     await capture(page, 'app-dark-space-dm-open', inApp(spaceDm));
     await capture(page, 'app-dark-collapsed', inApp(collapsedSection));
     await capture(page, 'app-dark-palette', inApp(palette));
+    await capture(page, 'app-dark-folder-closed', inApp(folderClosed));
+    await capture(page, 'app-dark-folder-open', inApp(folderOpen));
     await capture(page, 'app-dark-profile', inApp(profile));
   });
 });

@@ -47,7 +47,9 @@ pnpm --dir "$REPO_ROOT" dev --port "$PORT" --strictPort &
 VITE_PID=$!
 trap 'kill "$VITE_PID" 2>/dev/null || true' EXIT
 
-for _ in $(seq 1 600); do
+# Up to 20 minutes: `pnpm dev` builds the wasm core before Vite listens, and a cold build of
+# it has taken over 5 minutes.
+for _ in $(seq 1 2400); do
 	curl -sf -o /dev/null "http://localhost:$PORT/" && break
 	kill -0 "$VITE_PID" 2>/dev/null || die "Vite exited"
 	sleep 0.5
