@@ -95,7 +95,9 @@ RELEASE_NOTES="$(perl -0pe 's/<!--.*?-->//gs; s/[ \t]+$//mg' "$RELEASE_NOTES_FIL
 
 [[ -f "$SIGNING_KEY" ]] || die "updater signing key not found: $SIGNING_KEY"
 
-security find-identity -v -p codesigning | grep -qF "Developer ID Application: $SIGNING_IDENTITY" \
+# grep reads all its input (no -q): under pipefail, -q exiting at the first match can SIGPIPE the
+# writer and fail the pipeline.
+security find-identity -v -p codesigning | grep -F "Developer ID Application: $SIGNING_IDENTITY" >/dev/null \
 	|| die "no 'Developer ID Application: $SIGNING_IDENTITY' certificate in the keychain"
 
 # Pin the identity for the whole run instead of inheriting whichever account happens to be active:
@@ -239,7 +241,7 @@ echo "  dmg:  $DMG"
 
 step "Verifying the signature and notarization"
 codesign --verify --deep --strict "$APP" || die "$APP fails codesign --verify"
-codesign -dv "$APP" 2>&1 | grep -qF "TeamIdentifier=$APPLE_TEAM" || die "$APP is not signed by team $APPLE_TEAM"
+codesign -dv "$APP" 2>&1 | grep -F "TeamIdentifier=$APPLE_TEAM" >/dev/null || die "$APP is not signed by team $APPLE_TEAM"
 xcrun stapler validate "$APP" || die "notarization ticket is not stapled to $APP"
 spctl -a -t exec -vv "$APP" || die "Gatekeeper rejects $APP"
 
