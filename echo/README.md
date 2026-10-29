@@ -128,3 +128,7 @@ replay of Sable's history, echo's layer merged cleanly across 1 to 8 weeks of up
 but files like `RoomView.svelte` and `TimelineItem.svelte` change ~100 times a month, so keep
 hooks in them small and merge often. Sable doesn't accept AI-assisted contributions, so nothing
 here goes upstream.
+
+The root `README.md` is echo's, for people installing the app; Sable's lives at
+`SABLE_README.md`. When a merge conflicts on `README.md`, keep echo's and carry Sable's changes
+into `SABLE_README.md` (its relative links point one folder up, `../`).
