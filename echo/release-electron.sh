@@ -30,6 +30,9 @@ APPLE_TEAM="UFCDGSKCXB"
 GH_REPO="taylorbird/echo"
 GH_ACCOUNT_REQUIRED="taylorbird"
 GH_REPO_URL="https://github.com/$GH_REPO"
+# Homebrew tap (`brew install --cask taylorbird/echo/echo`); bumped after the release is published.
+TAP_REPO="taylorbird/homebrew-echo"
+TAP_CASK="Casks/echo.rb"
 
 die() {
 	echo "error: $*" >&2
@@ -48,7 +51,7 @@ step() {
 [[ $# -eq 1 ]] || die "usage: echo/release-electron.sh <version|patch|minor>"
 BUMP="$1"
 
-for tool in jq gh pnpm mise security xcrun spctl perl codesign tar openssl ditto; do
+for tool in jq gh pnpm mise security xcrun spctl perl codesign tar openssl ditto shasum base64; do
 	command -v "$tool" >/dev/null 2>&1 || die "required tool not found on PATH: $tool"
 done
 
@@ -119,6 +122,11 @@ case "$GH_PERMISSION" in
 ADMIN | MAINTAIN | WRITE) ;;
 "") die "cannot read $GH_REPO as $GH_ACCOUNT — is that account still a collaborator?" ;;
 *) die "$GH_ACCOUNT has $GH_PERMISSION on $GH_REPO and cannot publish a release" ;;
+esac
+TAP_PERMISSION="$(gh repo view "$TAP_REPO" --json viewerPermission -q .viewerPermission 2>/dev/null || true)"
+case "$TAP_PERMISSION" in
+ADMIN | MAINTAIN | WRITE) ;;
+*) die "$GH_ACCOUNT cannot write $TAP_REPO (permission: ${TAP_PERMISSION:-none}), so the cask bump would fail" ;;
 esac
 
 # Resolve the keychain secrets up front: they can prompt, and finding out after a long build that
@@ -363,6 +371,23 @@ gh release create "$TAG" \
 
 Download the DMG below. Existing installs update themselves." \
 	--latest
+
+# The release is already public here, so a failed bump warns with the fix instead of dying: brew
+# installs keep getting the previous version (which then updates itself) until the cask is bumped.
+step "Bumping the Homebrew cask in $TAP_REPO"
+DMG_SHA256="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
+if CASK_JSON="$(gh api "repos/$TAP_REPO/contents/$TAP_CASK")" \
+	&& CASK="$(jq -r .content <<<"$CASK_JSON" | base64 -d \
+		| sed -E "s/^  version \"[^\"]*\"/  version \"$VERSION\"/; s/^  sha256 \"[^\"]*\"/  sha256 \"$DMG_SHA256\"/")" \
+	&& grep -F "version \"$VERSION\"" <<<"$CASK" >/dev/null \
+	&& grep -F "sha256 \"$DMG_SHA256\"" <<<"$CASK" >/dev/null \
+	&& jq -n --arg message "echo $VERSION" --arg content "$(base64 <<<"$CASK")" \
+		--arg sha "$(jq -r .sha <<<"$CASK_JSON")" '{message: $message, content: $content, sha: $sha}' \
+	| gh api -X PUT "repos/$TAP_REPO/contents/$TAP_CASK" --input - >/dev/null; then
+	echo "  cask: echo $VERSION, sha256 $DMG_SHA256"
+else
+	echo "warning: cask bump failed; set version \"$VERSION\" and sha256 \"$DMG_SHA256\" in $TAP_REPO/$TAP_CASK by hand" >&2
+fi
 
 cat <<EOF
 
