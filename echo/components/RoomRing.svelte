@@ -1,7 +1,8 @@
 <!-- echo: a room's badge ring in the room list (echo/design/SPEC.md §4.4), from
      echo/ring.ts. Hooked into the badge lane (`.room-status`) of Sable's
      RoomNav.svelte; Sable's own badge stays beside it, unseen, for screen
-     readers (echo/styles/roomlist.css). A reaction pops its emoji in with a
+     readers (echo/styles/roomlist.css). A reaction marker, which has no Sable
+     badge, carries its own label (ringLabel). A reaction pops its emoji in with a
      small spring, unless Sable's Reduce motion is on (echo/motion.ts). -->
 <script lang="ts">
   import type { RoomListItemView } from '#src/generated/protocol';
@@ -13,7 +14,7 @@
   import { hideQuietDot, resolveUnreadBadge } from '#lib/ui/primitives/unread-badge.js';
   import { echoActive } from '../active.js';
   import { echoReactions } from '../reactions.svelte.js';
-  import { ringFor } from '../ring.js';
+  import { ringFor, ringLabel } from '../ring.js';
   import { mutedRoom } from '../unread.js';
 
   interface Props {
@@ -54,6 +55,7 @@
         : ring.content.kind
   );
   let spring = $derived(ring?.popping === true && !shouldReduceMotion());
+  let label = $derived(ringLabel(ring));
 </script>
 
 {#if ring}
@@ -62,7 +64,9 @@
       class={['echo-ring', { 'echo-ring-pop': spring }]}
       data-tier={ring.tier}
       data-bar={ring.bar}
-      aria-hidden="true"
+      role={label ? 'img' : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : 'true'}
     >
       {#if ring.content.kind === 'count'}
         {ring.content.text}

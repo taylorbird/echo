@@ -75,3 +75,12 @@ export function ringFor(input: RingInput): Ring | null {
   }
   return shown === null ? null : { ...shown, bar, popping: false };
 }
+
+/**
+ * What a screen reader hears for the ring, which is aria-hidden otherwise:
+ * Sable's own badge, kept beside it unseen, speaks for unread and mentions. A
+ * reaction marker has no Sable badge behind it, so it speaks for itself.
+ */
+export function ringLabel(ring: Ring | null): string | null {
+  return ring?.tier === 'reaction' ? 'New reaction to your message' : null;
+}

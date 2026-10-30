@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ringFor, type RingInput } from './ring.js';
+import { ringFor, ringLabel, type RingInput } from './ring.js';
 
 const quiet: RingInput = {
   badge: false,
@@ -86,5 +86,23 @@ describe('ringFor', () => {
       bar: null,
       popping: true,
     });
+  });
+});
+
+describe('ringLabel', () => {
+  it('names a reaction marker, which has no Sable badge to speak for it', () => {
+    expect(ringLabel(ringFor({ ...quiet, marker: '👍' }))).toBe('New reaction to your message');
+    // A pop over the marker is still the marker's ring.
+    expect(ringLabel(ringFor({ ...quiet, marker: '👍', pop: '🎉' }))).toBe(
+      'New reaction to your message'
+    );
+  });
+
+  it("stays silent where Sable's own badge is read out, or nothing is drawn", () => {
+    expect(ringLabel(ringFor({ ...quiet, badge: true, unread: 2, marker: '👍' }))).toBeNull();
+    expect(ringLabel(ringFor({ ...quiet, badge: true, highlight: 1 }))).toBeNull();
+    // A pop alone: the row's "reacted to" preview says it.
+    expect(ringLabel(ringFor({ ...quiet, pop: '🎉' }))).toBeNull();
+    expect(ringLabel(ringFor(quiet))).toBeNull();
   });
 });
