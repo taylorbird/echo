@@ -77,3 +77,7 @@ storybook-static
 packaging/flatpak/electron/nightly/moe.sable.next.electron.Nightly.yml
 packaging/flatpak/electron/nightly/moe.sable.next.electron.Nightly.metainfo.xml
 packaging/flatpak/electron/moe.sable.next.electron.yml
+
+# Claude Code work state (uncomment to keep it out of git)
+# .claude/work/
+.claude/worktrees/
