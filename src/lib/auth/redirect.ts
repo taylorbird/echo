@@ -1,3 +1,5 @@
+import { echoNativeRedirectUri } from '../../../echo/auth.js';
+
 export type RedirectLoginType = 'oidc' | 'sso';
 
 const RESPONSE_PARAMETERS = ['code', 'state', 'error', 'loginToken'];
@@ -45,6 +47,8 @@ export function createRedirectUri(
 }
 
 export function nativeRedirectUri(loginType: RedirectLoginType): string {
+  const echo = echoNativeRedirectUri(loginType);
+  if (echo) return echo;
   if (__SABLE_STABLE__) {
     return loginType === 'oidc' ? 'moe.sable.app:/login' : 'sable://login';
   }

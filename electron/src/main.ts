@@ -31,7 +31,7 @@ import type {
   SaveFileRequest,
 } from '../../src/lib/platform/file-dialog-types';
 
-import { echoBranded } from '../../echo/electron/app';
+import { ECHO_BUILD, echoBranded, echoDeepLinkSchemes } from '../../echo/electron/app';
 import { claimSchemes } from './linux-schemes';
 import { enforcePermissions } from './permissions';
 import * as screenAudio from './screen-audio';
@@ -55,7 +55,8 @@ declare const __SABLE_IDENTIFIER__: string;
 const IDENTIFIER = process.env.SABLE_IDENTIFIER ?? __SABLE_IDENTIFIER__;
 const SCHEME = 'sable-app';
 const DEEP_LINK_SCHEMES =
-  IDENTIFIER === 'moe.sable.client' ? ['moe.sable.app', 'sable'] : ['moe.sable.next'];
+  echoDeepLinkSchemes() ??
+  (IDENTIFIER === 'moe.sable.client' ? ['moe.sable.app', 'sable'] : ['moe.sable.next']);
 const APP_ORIGIN = `${SCHEME}://app`;
 const PANIC_MARKER = 'SABLE_CORE_PANIC ';
 
@@ -636,7 +637,7 @@ function registerDeepLinks(): void {
   if (isLinux && process.env.FLATPAK_ID) return;
   if (isLinux) {
     void claimSchemes(join(xdgDataHome(), 'applications'), IDENTIFIER, DEEP_LINK_SCHEMES);
-  } else if (app.isPackaged) {
+  } else if (app.isPackaged && !ECHO_BUILD) {
     for (const scheme of DEEP_LINK_SCHEMES) {
       app.setAsDefaultProtocolClient(scheme);
     }

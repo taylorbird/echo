@@ -59,6 +59,14 @@ done
 [[ "$IDENTIFIER" != "dev.tbird.echo-dev" ]] \
 	|| die "dev.tbird.echo-dev is echo-gomuks's dev data folder"
 
+# Each build signs in through its own URL scheme, mapped from the identifier as echo/electron/app.ts
+# (echoSchemeFor) maps it: dev.tbird.echo -> com.github.taylorbird.echo, dev.tbird.echo.dev ->
+# com.github.taylorbird.echo.dev. electron-builder.echo.ts declares it in the Info.plist.
+SCHEME_SUFFIX="${IDENTIFIER#dev.tbird.echo}"
+[[ -z "$SCHEME_SUFFIX" || "$SCHEME_SUFFIX" =~ ^\.[a-z0-9][a-z0-9.-]*$ ]] \
+	|| die "identifier $IDENTIFIER cannot name a URL scheme (lowercase letters, digits, . and - only)"
+SCHEME="com.github.taylorbird.echo$SCHEME_SUFFIX"
+
 if [[ -z "$VERSION" ]]; then
 	VERSION="$(jq -r '.version' "$RELEASE_CONF")"
 fi
@@ -67,6 +75,8 @@ fi
 # Sable's stable flavour forces Sable's own identifier (electron/package.mjs).
 unset SABLE_BUILD_FLAVOR
 export SABLE_IDENTIFIER="$IDENTIFIER"
+# Sable's base config plus this build's scheme only: not the nightly config's moe.sable.next.
+export SABLE_BUILDER_CONFIG="$REPO_ROOT/echo/electron/electron-builder.echo.ts"
 export VERSION
 export VITE_APP_VERSION="$VERSION"
 
@@ -76,7 +86,7 @@ if [[ "$FRONTEND" == "1" ]]; then
 fi
 [[ -f "$REPO_ROOT/dist/index.html" ]] || die "no web app in dist/; build without --skip-frontend"
 
-echo "==> Packaging echo $VERSION as $IDENTIFIER"
+echo "==> Packaging echo $VERSION as $IDENTIFIER (sign-in scheme $SCHEME)"
 # The packaged echo.app is the input to every check after this, so a stale one must not survive a
 # failed build.
 rm -rf "$REPO_ROOT/electron/release/mac-arm64"
@@ -115,4 +125,5 @@ BUILT_VERSION="$(defaults read "$APP/Contents/Info.plist" CFBundleShortVersionSt
 [[ "$BUILT_VERSION" == "$VERSION" ]] || die "built version is $BUILT_VERSION, expected $VERSION"
 grep -Eq "^updaterCacheDirName: '?$APP_NAME-updater'?$" "$APP/Contents/Resources/app-update.yml" \
 	|| die "app-update.yml does not name echo's updater cache ($APP_NAME-updater)"
-echo "==> Built $APP ($BUILT_ID $BUILT_VERSION)"
+"$REPO_ROOT/echo/electron/check-url-schemes.sh" "$APP" "$SCHEME"
+echo "==> Built $APP ($BUILT_ID $BUILT_VERSION, $SCHEME:/login)"

@@ -50,7 +50,10 @@ can live here instead.
   until you open the room (kept per account on this device). Fed by `core/reactions.rs`.
 - `core/` — echo's Rust in Sable's core, compiled into `crates/sable-core` with `#[path]`
   modules: `reactions.rs` reports reactions to your messages from sync as `echo` core events;
-  `brand.rs` is the name servers see (sign-in, new devices, pushers): "echo", in every build.
+  `brand.rs` is the name servers see (sign-in, new devices, pushers): "echo", in every build,
+  and the OAuth `client_uri` for echo's sign-in schemes (see Identity and updates).
+- `auth.ts` — the OAuth/SSO redirect in echo's Electron app: the build's own scheme, which the
+  preload passes in (`echoRedirectScheme`).
 - `settings.ts` — echo's own settings as panels in Sable's settings pages (the reaction
   settings, under Notifications). Kept on this device. Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
@@ -66,9 +69,11 @@ can live here instead.
   for mobile). `build.sh` packages it with Sable's `electron/package.mjs`, passing echo's
   identifier, name, icon (`icons/echo.icon`), permission prompts and update feed as
   electron-builder overrides; `dev.sh` runs it against the Vite dev server. `app.ts` tells the
-  main process it is echo (from the identifier it was built with), `updater.ts` points
-  electron-updater at `taylorbird/echo`. None of them import Electron: Sable's main process
-  passes in what they need.
+  main process it is echo (from the identifier it was built with) and which sign-in scheme the
+  build has, `updater.ts` points electron-updater at `taylorbird/echo`. None of them import
+  Electron: Sable's main process passes in what they need. `electron-builder.echo.ts` is the
+  config `build.sh` packages with (Sable's base config and the build's own scheme), and
+  `check-url-schemes.sh` fails the build unless the app's Info.plist declares that scheme only.
 - `release-electron.sh` — a signed, notarized Electron release with its update feed
   (`latest-mac.yml`). Releases up to 1.3.0 also carried a Tauri updater feed (`latest.json`) for
   Tauri echo 1.0 and echo-gomuks 0.7 installs; 1.4 dropped it.
@@ -109,6 +114,11 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
 | `electron/src/updater.ts` | `echoUseUpdateFeed(autoUpdater)` after Sable's `setFeedURL` (`echo/electron/updater.ts`): echo's feed in echo builds |
 | `electron/src/main.ts` | `echoBranded(…)` around the core's `serviceName` and the screen-recording dialog's text (`echo/electron/app.ts`) |
+| `electron/src/main.ts` | `DEEP_LINK_SCHEMES` is `echoDeepLinkSchemes() ?? (…)` (`echo/electron/app.ts`): only the build's own scheme |
+| `electron/src/main.ts` | `registerDeepLinks` skips `setAsDefaultProtocolClient` when `ECHO_BUILD`: the Info.plist declaration routes echo's schemes |
+| `electron/src/preload.ts` | `echoRedirectScheme: ECHO_SCHEME` (`echo/electron/app.ts`) in the `sableElectron` bridge, and its import (two lines) |
+| `electron/package.mjs` | the builder config is `process.env.SABLE_BUILDER_CONFIG ?? …`: `build.sh` passes `echo/electron/electron-builder.echo.ts` |
+| `src/lib/auth/redirect.ts` | `nativeRedirectUri` returns `echoNativeRedirectUri(…)` (`echo/auth.ts`) first when there is one, and its import (three lines) |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomRing {room} />` (`echo/components/RoomRing.svelte`) first in each row's badge lane (`.room-status`) |
 | `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels |
 | `crates/sable-core/src/lib.rs` | `#[path = "../../../echo/core/reactions.rs"] mod echo_reactions;` (two lines) |
@@ -117,6 +127,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `vitest.config.ts` | `'echo/**/*.test.ts'` in the node project's `include`, so echo's unit tests run |
 | `crates/sable-core/src/lib.rs` | `#[path = "../../../echo/core/brand.rs"] mod echo_brand;` (two lines) |
 | `crates/sable-core/src/session.rs` | OAuth `client_name` is `echo_brand::APP_NAME` (`echo/core/brand.rs`) instead of "Sable" |
+| `crates/sable-core/src/session.rs` | a native client's `client_uri` is `echo_brand::native_client_uri(scheme)`, falling back to Sable's `reverse_dns_url(scheme)` (one expression, wrapped by rustfmt) |
 | `crates/sable-core/src/auth.rs` | `initial_device_display_name(echo_brand::APP_NAME)` for password and SSO sign-in (two lines) |
 | `crates/sable-core/src/registration.rs` | the new account's `initial_device_display_name` is `echo_brand::APP_NAME`, and its test expects it |
 | `crates/sable-core/src/notifications.rs` | a pusher's fallback name is `echo_brand::APP_NAME`, and its test expects it (three lines) |
@@ -150,6 +161,21 @@ releases stopped publishing in 1.4. Installs that took a release carrying it (up
 Electron echo now and update through `latest-mac.yml`; any still on Tauri stop finding updates
 once 1.4 is the latest release. echo no longer removes the old app's leftover files (dropped
 2026-10-30: no compatibility with echo-gomuks is kept).
+
+Sign-in comes back to the app through a URL scheme of its own, mapped from the identifier
+(`echo/electron/app.ts`): `dev.tbird.echo` uses `com.github.taylorbird.echo`, and a dev or test
+build `com.github.taylorbird.echo<suffix>` (`dev.tbird.echo.dev` →
+`com.github.taylorbird.echo.dev`), so an installed release and a dev build never take each
+other's sign-in. The OAuth redirect is `<scheme>:/login`, the legacy SSO one `<scheme>://login`.
+Each build declares only its own scheme in its Info.plist and doesn't take it over at run time
+(no `setAsDefaultProtocolClient`). The core registers these with `client_uri`
+`https://github.com/taylorbird/echo` (`echo/core/brand.rs`): MAS requires the scheme to start
+with the reversed host (`com.github`) and never fetches the page, so echo needs no website.
+Signed-in accounts don't need the old `moe.sable.next` scheme: a re-authentication whose
+redirect differs from the stored client's registers a new client for the same device. Echo
+builds dropped `moe.sable.next` outright; Tauri builds (`tauri.echo*.json`, mobile) keep it. An
+unpackaged `dev.sh` copy declares nothing, so its sign-in ends in the browser at a
+`com.github.taylorbird.echo.dev:/login?…` URL to hand to the running copy by hand.
 
 ## Upstream
 

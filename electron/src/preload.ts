@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import { ECHO_SCHEME } from '../../echo/electron/app';
 import type {
   PickedFile,
   PickFilesRequest,
@@ -27,6 +28,7 @@ ipcRenderer.on('sable-pick-screen', (_event, request: number, sources: ScreenSha
 
 contextBridge.exposeInMainWorld('sableElectron', {
   platform: process.platform,
+  echoRedirectScheme: ECHO_SCHEME,
   applyWindowSettings: (settings: unknown) =>
     ipcRenderer.invoke('sable-apply-window-settings', settings) as Promise<{
       trayAvailable: boolean;
