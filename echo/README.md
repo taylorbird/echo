@@ -52,7 +52,7 @@ can live here instead.
   settings, under Notifications). Kept on this device. Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
   the Sable project itself keep its name. In tests it follows `active.ts`, so Sable's own
-  component tests see Sable's text.
+  component tests see Sable's text. `echoAppName` is the name where Sable writes it in markup.
 - `brand/logo.svg` — the in-app logo. `icons/` — native app icons, generated with
   `pnpm tauri icon /path/to/echo-icon-facet-split-squircle.png --output echo/icons`.
 - `tauri.echo.conf.json` — merged over `src-tauri/tauri.conf.json` by the echo tasks: name,
@@ -116,6 +116,8 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `crates/sable-core/src/registration.rs` | the new account's `initial_device_display_name` is `echo_brand::APP_NAME`, and its test expects it |
 | `crates/sable-core/src/notifications.rs` | a pusher's fallback name is `echo_brand::APP_NAME`, and its test expects it (three lines) |
 | `crates/sable-core/src/media.rs` | the avatar fetcher's `user_agent(echo_brand::APP_NAME)` |
+| `src/lib/features/settings/AboutSettings.svelte` | the heading is `echoAppName('Sable')` (`echo/branding.ts`): "echo" |
+| `src/lib/ui/TitleBar.svelte` | the title is `echoAppName('Sable')` (`echo/branding.ts`), as on the About page |
 
 ## Running
 

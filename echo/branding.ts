@@ -39,3 +39,12 @@ export function brandLocale(bundle: Record<string, unknown>): Record<string, unk
   if (import.meta.env.MODE === 'test' && !echoActive()) return bundle;
   return rebrand(bundle, '') as Record<string, unknown>;
 }
+
+/**
+ * The app's name where Sable writes it in markup rather than in a locale
+ * string (the About page's heading, the title bar). Sable's while echo's layer
+ * is off, as in Sable's own component tests.
+ */
+export function echoAppName(sable: string): string {
+  return echoActive() ? 'echo' : sable;
+}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { i18n } from '#lib/i18n.js';
+  import { echoAppName } from '../../../echo/branding.js';
   import {
     closeWindow,
     dismissSnapLayouts,
@@ -86,7 +87,7 @@
 
 <div class={['titlebar', kind === 'mac' && 'titlebar-mac']}>
   <div class="drag" data-tauri-drag-region>
-    <span class="title">Sable</span>
+    <span class="title">{echoAppName('Sable')}</span>
   </div>
   {#if kind === 'desktop'}
     <div class="controls">

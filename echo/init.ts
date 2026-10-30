@@ -87,10 +87,13 @@ if (tauriMac) {
   else start();
 }
 
-// Sable's pages title themselves "… - Sable"; the window menu and Mission
-// Control show that, so the suffix is swapped here rather than in each page.
+// Sable's pages title themselves "… - Sable", and the root layout plain "Sable";
+// the window menu and Mission Control show that, so the name is swapped here
+// rather than in each page.
 function brandTitle(): void {
-  if (document.title.endsWith(' - Sable')) {
+  if (document.title === 'Sable') {
+    document.title = 'echo';
+  } else if (document.title.endsWith(' - Sable')) {
     document.title = `${document.title.slice(0, -' - Sable'.length)} - echo`;
   }
 }
