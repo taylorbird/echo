@@ -65,8 +65,9 @@ can live here instead.
   main process it is echo (from the identifier it was built with), `updater.ts` points
   electron-updater at `taylorbird/echo`. None of them import Electron: Sable's main process
   passes in what they need.
-- `release-electron.sh` — a signed, notarized Electron release with both update feeds
-  (`latest-mac.yml` for Electron echo, `latest.json` for Tauri echo 1.0 and echo-gomuks).
+- `release-electron.sh` — a signed, notarized Electron release with its update feed
+  (`latest-mac.yml`). Releases up to 1.3.0 also carried a Tauri updater feed (`latest.json`) for
+  Tauri echo 1.0 and echo-gomuks 0.7 installs; 1.4 dropped it.
 - `visual/` — `mise run echo:shots`: screenshots of the signed-in web app against a throwaway
   homeserver with fake data. See `visual/README.md`.
 
@@ -134,11 +135,12 @@ Plain `mise run tauri dev` still runs unbranded Sable.
 Dev and test builds use the bundle ID `dev.tbird.echo.dev`, so they don't collide with an
 installed echo. (Not `dev.tbird.echo-dev`: that was echo-gomuks's dev data folder.) Releases use
 `dev.tbird.echo`, which the gomuks-based echo (now
-[echo-gomuks](https://github.com/taylorbird/echo-gomuks)) used, with the same updater key. Its
-installed copies check `taylorbird/echo` for updates, so **every release published here with a
-`latest.json` updates echo-gomuks 0.7.x installs into this app.** They sign in again and recover
-their keys. echo no longer removes the old app's leftover files (dropped 2026-10-30: no
-compatibility with echo-gomuks is kept).
+[echo-gomuks](https://github.com/taylorbird/echo-gomuks)) used. Its installed copies, and
+Tauri echo 1.0's, check `taylorbird/echo`'s latest release for a `latest.json`, which Electron
+releases stopped publishing in 1.4. Installs that took a release carrying it (up to 1.3.0) are
+Electron echo now and update through `latest-mac.yml`; any still on Tauri stop finding updates
+once 1.4 is the latest release. echo no longer removes the old app's leftover files (dropped
+2026-10-30: no compatibility with echo-gomuks is kept).
 
 ## Upstream
 

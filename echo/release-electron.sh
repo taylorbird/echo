@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 #
 # Cuts a signed, notarized echo release of the Electron desktop app and publishes it to GitHub
-# with two update feeds. Successor to echo/release.sh (the Tauri app's release, kept for
+# with its update feed. Successor to echo/release.sh (the Tauri app's release, kept for
 # reference); the preflight and its comments are carried over from it.
 #
 # Usage: echo/release-electron.sh <version|patch|minor>
 #
-# Feeds, both served from $GH_REPO_URL/releases/latest/download/:
+# Feed, served from $GH_REPO_URL/releases/latest/download/:
 #   latest-mac.yml  electron-updater's feed, read by Electron echo (1.1 onward). Points at the
 #                   update ZIP (and its blockmap) on the tagged release.
-#   latest.json     the Tauri updater's feed, read by Tauri echo 1.0.x and echo-gomuks 0.7.x
-#                   installs (same bundle ID and updater key). Points at a minisign-signed
-#                   tarball of the Electron echo.app: the Tauri updater unpacks it over the
-#                   installed app and relaunches it, which moves those installs to Electron.
-#                   They keep their data folder, so 1.0 installs stay signed in.
+# Releases up to 1.3.0 also published a Tauri updater feed (latest.json and a signed tarball of
+# echo.app) that moved Tauri echo 1.0 and echo-gomuks 0.7 installs to Electron. Dropped for 1.4:
+# those installs stay on the last release that carried it.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,7 +21,6 @@ OUT_DIR="$REPO_ROOT/electron/release"
 APP="$OUT_DIR/mac-arm64/echo.app"
 IDENTIFIER="dev.tbird.echo"
 
-SIGNING_KEY="$HOME/.tauri/echo.key"
 SIGNING_IDENTITY="Taylor Bird (UFCDGSKCXB)"
 APPLE_ACCOUNT="taylor.bird@gmail.com"
 APPLE_TEAM="UFCDGSKCXB"
@@ -51,7 +48,7 @@ step() {
 [[ $# -eq 1 ]] || die "usage: echo/release-electron.sh <version|patch|minor>"
 BUMP="$1"
 
-for tool in jq gh pnpm mise security xcrun spctl perl codesign tar openssl ditto shasum base64; do
+for tool in jq gh pnpm mise security xcrun spctl perl codesign openssl ditto shasum base64; do
 	command -v "$tool" >/dev/null 2>&1 || die "required tool not found on PATH: $tool"
 done
 
@@ -96,8 +93,6 @@ RELEASE_NOTES="$(perl -0pe 's/<!--.*?-->//gs; s/[ \t]+$//mg' "$RELEASE_NOTES_FIL
 [[ -n "$(printf '%s' "$RELEASE_NOTES" | tr -d '[:space:]')" ]] \
 	|| die "$RELEASE_NOTES_FILE is empty — write what changed before releasing"
 
-[[ -f "$SIGNING_KEY" ]] || die "updater signing key not found: $SIGNING_KEY"
-
 # grep reads all its input (no -q): under pipefail, -q exiting at the first match can SIGPIPE the
 # writer and fail the pipeline.
 security find-identity -v -p codesigning | grep -F "Developer ID Application: $SIGNING_IDENTITY" >/dev/null \
@@ -131,24 +126,8 @@ esac
 
 # Resolve the keychain secrets up front: they can prompt, and finding out after a long build that
 # notarization has no password is a bad trade.
-UPDATER_KEY_PASSWORD="$(security find-generic-password -s echo-updater-key -w)" \
-	|| die "keychain item 'echo-updater-key' not found"
 NOTARY_PASSWORD="$(security find-generic-password -s echo-notary -w)" \
 	|| die "keychain item 'echo-notary' not found"
-
-# The Tauri feed's signature is made after the build and notarization. Prove the key and
-# password work now, on a throwaway file.
-SIGNER_PROBE="$(mktemp -d)"
-echo "probe" >"$SIGNER_PROBE/probe.txt"
-if ! TAURI_SIGNING_PRIVATE_KEY="$(cat "$SIGNING_KEY")" \
-	TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$UPDATER_KEY_PASSWORD" \
-	pnpm --dir "$REPO_ROOT" exec tauri signer sign "$SIGNER_PROBE/probe.txt" \
-	>"$SIGNER_PROBE/log" 2>&1; then
-	cat "$SIGNER_PROBE/log" >&2
-	rm -rf "${SIGNER_PROBE:?}"
-	die "the updater signing key or its password did not work; see log above"
-fi
-rm -rf "${SIGNER_PROBE:?}"
 
 cat <<EOF
 
@@ -204,8 +183,6 @@ ZIP="$OUT_DIR/$ZIP_NAME"
 BLOCKMAP="$ZIP.blockmap"
 DMG="$OUT_DIR/$DMG_NAME"
 FEED_DIR="$OUT_DIR/feed"
-TARBALL="$FEED_DIR/echo.app.tar.gz"
-SIG_FILE="$TARBALL.sig"
 
 # Clear the artifacts we're about to verify, so a build that fails partway can't leave a previous
 # build's files in place for every check below to pass on.
@@ -277,7 +254,7 @@ if ! spctl -a -t open --context context:primary-signature "$DMG"; then
 fi
 
 # --------------------------------------------------------------------------------------------
-# 4. Update feeds
+# 4. Update feed
 # --------------------------------------------------------------------------------------------
 
 mkdir -p "$FEED_DIR"
@@ -309,38 +286,6 @@ jq -n \
 	}' >"$LATEST_MAC"
 echo "  wrote $LATEST_MAC"
 
-step "Packing and signing the Tauri bridge (echo 1.0 and echo-gomuks installs)"
-# The Tauri updater drops the first path component of every entry and unpacks the rest over the
-# installed app, so echo.app must be the archive's top component. Symlinks (Electron's
-# frameworks are full of them) are archived as links; no AppleDouble or extended-attribute
-# entries, which the updater would unpack as files and which would break the signature.
-COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs -czf "$TARBALL" -C "$(dirname "$APP")" echo.app
-[[ "$(tar -tzf "$TARBALL" | head -1)" == echo.app/* ]] || die "$TARBALL does not start with echo.app/"
-TAURI_SIGNING_PRIVATE_KEY="$(cat "$SIGNING_KEY")" \
-	TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$UPDATER_KEY_PASSWORD" \
-	pnpm --dir "$REPO_ROOT" exec tauri signer sign "$TARBALL" >/dev/null
-[[ -f "$SIG_FILE" ]] || die "missing updater signature: $SIG_FILE"
-
-LATEST_JSON="$FEED_DIR/latest.json"
-jq -n \
-	--arg version "$VERSION" \
-	--arg pub_date "$PUB_DATE" \
-	--arg notes "$RELEASE_NOTES" \
-	--rawfile signature "$SIG_FILE" \
-	--arg url "$TAG_URL/$(basename "$TARBALL")" \
-	'{
-		version: $version,
-		pub_date: $pub_date,
-		notes: $notes,
-		platforms: {
-			"darwin-aarch64": {
-				signature: ($signature | rtrimstr("\n")),
-				url: $url,
-			},
-		},
-	}' >"$LATEST_JSON"
-echo "  wrote $LATEST_JSON"
-
 # --------------------------------------------------------------------------------------------
 # 5. Commit, tag, publish
 # --------------------------------------------------------------------------------------------
@@ -361,7 +306,6 @@ git -C "$REPO_ROOT" push origin "refs/tags/$TAG"
 step "Creating the GitHub release"
 gh release create "$TAG" \
 	"$DMG" "$ZIP" "$BLOCKMAP" "$LATEST_MAC" \
-	"$TARBALL" "$SIG_FILE" "$LATEST_JSON" \
 	--repo "$GH_REPO" \
 	--target "$BRANCH" \
 	--title "echo $TAG" \
@@ -397,7 +341,6 @@ cat <<EOF
   dmg:     $DMG
   release: $GH_REPO_URL/releases/tag/$TAG
 
-Both feeds are served from $GH_REPO_URL/releases/latest/download/ (latest-mac.yml for Electron
-echo, latest.json for Tauri echo and echo-gomuks) — confirm they resolve before assuming
-installed copies can see this release.
+The update feed is served from $GH_REPO_URL/releases/latest/download/latest-mac.yml — confirm
+it resolves before assuming installed copies can see this release.
 EOF
