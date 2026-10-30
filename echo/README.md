@@ -15,7 +15,8 @@ can live here instead.
   (`width >= 48rem`); the phone layout stays Sable's until echo has its own.
 - `components/` — the few pieces of echo's UI that CSS can't draw, each mounted from Sable's
   markup by a one-line hook (below).
-- `layout.ts` — echo's desktop geometry that lives in Sable's script (the room list's width).
+- `layout.ts` — echo's desktop geometry that lives in Sable's script (the room list's width, and
+  the 14px root the timeline sizes inline media from).
 - `active.ts` — whether echo's layer is running (`init.ts` switches it on). Where echo changes
   what Sable shows rather than how it looks (extra DMs in a list, panels starting closed,
   muted-room dots, the rail band) it checks this, so Sable's component tests, which render
@@ -101,6 +102,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/features/sidebar/RoomNav.svelte` | `roomHref`'s last fallback is `echoRoomPath(…) ?? …/home/…` (`echo/places.ts`): a space's DMs open in the space |
 | `src/routes/(app)/home/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`: an empty pane on desktop |
 | `src/routes/(app)/rooms/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`, as for Home |
+| `src/lib/features/room/timeline/timeline-layout.ts` | `ROOT_FONT_PX = echoRootFontPx(16)` (`echo/layout.ts`): 14 on echo's desktop |
 | `src/routes/(app)/direct/[roomId]/+page.svelte` | `RoomOrForumPage` imported from `echo/components/DirectRoom.svelte`: on to the room in Home |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `folderOpen` returns `echoFolderOpen(…) ?? …`, and the folder's tile and caret try `echoEnterFolder(…)` / `echoLeaveFolder(…)` before Sable's toggle (`echo/folders.ts`) |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `...echoCreateEntries()` (`echo/create-menu.ts`) first in the create menu: New chat |

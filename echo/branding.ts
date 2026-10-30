@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 /**
  * echo's name in Sable's text.
  *
@@ -13,7 +11,7 @@
  * since the English bundle can load before echo/init.ts has run.
  */
 
-import { echoActive } from './active.js';
+import { echoActive, sableTest } from './active.js';
 
 const KEEP_SABLE = /support|collective|resources/i;
 
@@ -36,7 +34,7 @@ function rebrand(value: unknown, path: string): unknown {
 }
 
 export function brandLocale(bundle: Record<string, unknown>): Record<string, unknown> {
-  if (import.meta.env.MODE === 'test' && !echoActive()) return bundle;
+  if (sableTest()) return bundle;
   return rebrand(bundle, '') as Record<string, unknown>;
 }
 

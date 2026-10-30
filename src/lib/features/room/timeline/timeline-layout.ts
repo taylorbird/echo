@@ -1,5 +1,6 @@
 import type { TimelineItemContentView } from '#src/generated/protocol';
 import type { MessageSpacing } from '#lib/settings/preferences.svelte.js';
+import { echoRootFontPx } from '../../../../../echo/layout.js';
 
 export const TIMELINE_LAYOUT = {
   historyPrefetchItems: 25,
@@ -38,7 +39,7 @@ export function timelineLayoutStyle(spacing: MessageSpacing): string {
   ].join(';');
 }
 
-const ROOT_FONT_PX = 16;
+const ROOT_FONT_PX = echoRootFontPx(16);
 const DEFAULT_PICTURE_RATIO = 4 / 3;
 
 function pictureRatio(width: number | null, height: number | null): number {
