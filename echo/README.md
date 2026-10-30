@@ -32,7 +32,9 @@ can live here instead.
   so a room opens in the place that's open when it lists the room (Home lists every chat, a
   space its rooms and the DMs `space-dms.ts` adds), otherwise in its space or Home, never in the
   rooms outside spaces or direct messages, whose rail tiles echo hides (`styles/rail.css`).
-  Start-up with no room to restore lands in Home. Desktop only.
+  Start-up with no room to restore lands in Home, and Sable's flows that open a DM at
+  `/direct/<id>` (New chat, a DM invite) go on to it in Home (`components/DirectRoom.svelte`).
+  Desktop only.
 - `create-menu.ts` — "New chat" in the rail's create (+) menu, since the direct messages section
   that offered it has no tile. Desktop only.
 - `folders.ts` — a space folder in the rail is open exactly while one of its spaces is: clicking
@@ -99,6 +101,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/features/sidebar/RoomNav.svelte` | `roomHref`'s last fallback is `echoRoomPath(…) ?? …/home/…` (`echo/places.ts`): a space's DMs open in the space |
 | `src/routes/(app)/home/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`: an empty pane on desktop |
 | `src/routes/(app)/rooms/+page.svelte` | `HomeLanding` imported from `echo/components/EmptyPane.svelte`, as for Home |
+| `src/routes/(app)/direct/[roomId]/+page.svelte` | `RoomOrForumPage` imported from `echo/components/DirectRoom.svelte`: on to the room in Home |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `folderOpen` returns `echoFolderOpen(…) ?? …`, and the folder's tile and caret try `echoEnterFolder(…)` / `echoLeaveFolder(…)` before Sable's toggle (`echo/folders.ts`) |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `...echoCreateEntries()` (`echo/create-menu.ts`) first in the create menu: New chat |
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
