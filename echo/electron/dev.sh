@@ -49,11 +49,28 @@ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
 	die "port $PORT is already in use; stop that server (lsof -nP -iTCP:$PORT -sTCP:LISTEN) or pass --port"
 fi
 
+# Stops a process and everything under it, deepest first. Vite runs as pnpm's grandchild
+# (pnpm, then the script's shell, then node), and killing pnpm and its direct children left it
+# serving on the port, so the next run failed with the port in use.
+kill_tree() {
+	local child
+	for child in $(pgrep -P "$1" 2>/dev/null); do
+		kill_tree "$child"
+	done
+	kill "$1" 2>/dev/null || true
+}
+
+VITE_PID=""
+ELECTRON_PID=""
+cleanup() {
+	[[ -z "$ELECTRON_PID" ]] || kill_tree "$ELECTRON_PID"
+	[[ -z "$VITE_PID" ]] || kill_tree "$VITE_PID"
+}
+trap cleanup EXIT
+
 echo "==> Starting Vite on port $PORT"
 pnpm --dir "$REPO_ROOT" dev --port "$PORT" --strictPort &
 VITE_PID=$!
-# pnpm runs Vite as a child; stopping only pnpm left Vite serving on the port.
-trap 'pkill -P "$VITE_PID" 2>/dev/null; kill "$VITE_PID" 2>/dev/null || true' EXIT
 
 # Up to 20 minutes: `pnpm dev` builds the wasm core before Vite listens, and a cold build of
 # it has taken over 5 minutes.
@@ -65,4 +82,8 @@ done
 curl -sf -o /dev/null "http://localhost:$PORT/" || die "Vite did not answer on port $PORT"
 
 echo "==> Starting Electron"
-SABLE_DEV_URL="http://localhost:$PORT" pnpm --dir "$REPO_ROOT/electron" exec electron .
+# In the background and waited on, so a signal to this script is handled at once rather than
+# after Electron exits.
+SABLE_DEV_URL="http://localhost:$PORT" pnpm --dir "$REPO_ROOT/electron" exec electron . &
+ELECTRON_PID=$!
+wait "$ELECTRON_PID"
