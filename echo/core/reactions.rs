@@ -231,7 +231,8 @@ mod tests {
             homeserver: server.server().uri(),
             oauth: false,
         });
-        core.echo_watch_reactions(&client, 0);
+        // A new Core's first session is generation 1, as in Sable's watcher tests.
+        core.echo_watch_reactions(&client, 1);
 
         server
             .sync_room(
