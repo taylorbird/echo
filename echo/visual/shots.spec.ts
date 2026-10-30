@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { LOGIN_PASSWORD, LOGIN_USERNAME } from '../../tests/e2e/fixtures/loginAccount';
+import { COLD_BOOT_TIMEOUT } from '../../tests/e2e/pages/AppShell';
 import { AuthFlow } from '../../tests/e2e/pages/AuthFlow';
 import { OUT_DIR, SKIPPED_PATH, readState, type ShotsState } from './state';
 
@@ -72,8 +73,26 @@ async function signIn(page: Page): Promise<void> {
   await expect(auth.moreMethodsButton).toBeVisible({ timeout: 60_000 });
   await auth.revealPasswordLogin();
   await auth.signInWithPassword(LOGIN_USERNAME, LOGIN_PASSWORD);
-  await auth.finishSetup();
-  await expect(page).toHaveURL(/\/rooms$/, { timeout: 30_000 });
+  await finishSetup(page, auth);
+}
+
+// Sign-in lands on /rooms, which goes on to Home on desktop
+// (echo/components/EmptyPane.svelte); AuthFlow's finishSetup waits for /rooms
+// alone, so this is it with Home accepted too.
+const SIGNED_IN = /\/(rooms|home)$/;
+
+async function finishSetup(page: Page, auth: AuthFlow): Promise<void> {
+  for (let step = 0; step < 12; step += 1) {
+    await expect(page).toHaveURL(/\/(setup\/[a-z]+|rooms|home)$/, { timeout: 30_000 });
+    if (SIGNED_IN.test(new URL(page.url()).pathname)) return;
+    const before = page.url();
+    // AuthFlow's own step picker; private to the e2e suite, reused as is.
+    await expect(async () => {
+      await (await auth['nextSetupAction']()).click({ timeout: 5_000 });
+    }).toPass({ timeout: COLD_BOOT_TIMEOUT });
+    await page.waitForURL((url) => url.href !== before, { timeout: 5_000 }).catch(() => undefined);
+  }
+  await expect(page).toHaveURL(SIGNED_IN);
 }
 
 async function settle(page: Page): Promise<void> {
@@ -531,9 +550,9 @@ test.describe('setup', () => {
     await auth.signInWithPassword(LOGIN_USERNAME, LOGIN_PASSWORD);
     const report: Record<string, { overflow: number; scrolled: number }> = {};
     for (let index = 0; index < 12; index += 1) {
-      await expect(page).toHaveURL(/\/(setup\/[a-z]+|rooms)$/, { timeout: 30_000 });
+      await expect(page).toHaveURL(/\/(setup\/[a-z]+|rooms|home)$/, { timeout: 30_000 });
       const path = new URL(page.url()).pathname;
-      if (path.endsWith('/rooms')) break;
+      if (SIGNED_IN.test(path)) break;
       const step = path.split('/').pop() ?? String(index);
       await settle(page);
       await page.screenshot({ path: join(OUT_DIR, `setup-${step}.png`) });
