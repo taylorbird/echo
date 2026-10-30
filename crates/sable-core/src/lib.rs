@@ -79,6 +79,8 @@ pub mod webpush;
 
 pub use matrix_sdk::{Client as MatrixClient, reqwest, ruma};
 
+#[path = "../../../echo/core/reactions.rs"]
+mod echo_reactions;
 mod widgets;
 
 use std::{

@@ -1049,6 +1049,7 @@ impl Core {
         self.watch_cosmetics(&client, generation);
         self.watch_profile_changes(&client, generation);
         self.watch_redactions(&client);
+        self.echo_watch_reactions(&client, generation);
         self.track_session_handler(&client, crate::rooms::repair_unreadable_tombstones(&client));
         self.watch_bot_commands(&client, generation);
         self.watch_image_packs(&client, generation);
