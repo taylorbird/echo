@@ -157,7 +157,7 @@ impl Core {
         let mut login = client
             .matrix_auth()
             .login_identifier(user_identifier(identifier), &password)
-            .initial_device_display_name("Sable");
+            .initial_device_display_name(crate::echo_brand::APP_NAME);
         if let Some(account) = &reauth
             && !account.device_invalidated
         {
@@ -566,7 +566,7 @@ impl Core {
             .matrix_auth()
             .login_with_sso_callback(callback_url.into())
             .or_failed(self, "complete_sso_login_callback_url")?
-            .initial_device_display_name("Sable");
+            .initial_device_display_name(crate::echo_brand::APP_NAME);
         if let Some(account) = &reauth
             && !account.device_invalidated
         {

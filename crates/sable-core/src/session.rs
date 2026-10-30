@@ -799,7 +799,7 @@ fn metadata_with(redirect_uri: &Url, device_code: bool) -> Raw<ClientMetadata> {
         grant_types,
         Localized::new(client_uri, []),
     );
-    metadata.client_name = Some(Localized::new("Sable".to_owned(), []));
+    metadata.client_name = Some(Localized::new(crate::echo_brand::APP_NAME.to_owned(), []));
 
     Raw::new(&metadata).expect("client metadata serializes")
 }

@@ -102,7 +102,7 @@ pub(super) fn registration_request(
     let mut request = RegistrationRequest::new();
     request.username = Some(username.to_owned());
     request.password = Some(password.to_owned());
-    request.initial_device_display_name = Some("Sable".to_owned());
+    request.initial_device_display_name = Some(crate::echo_brand::APP_NAME.to_owned());
     request.auth = auth;
     request
 }
@@ -978,7 +978,7 @@ mod tests {
         assert_eq!(request.password.as_deref(), Some("correct horse"));
         assert_eq!(
             request.initial_device_display_name.as_deref(),
-            Some("Sable")
+            Some(crate::echo_brand::APP_NAME)
         );
         assert!(request.auth.is_none());
     }

@@ -46,7 +46,8 @@ can live here instead.
   emoji and a "reacted to" preview, and with "show reactions as notifications" on a marker
   until you open the room (kept per account on this device). Fed by `core/reactions.rs`.
 - `core/` — echo's Rust in Sable's core, compiled into `crates/sable-core` with `#[path]`
-  modules: `reactions.rs` reports reactions to your messages from sync as `echo` core events.
+  modules: `reactions.rs` reports reactions to your messages from sync as `echo` core events;
+  `brand.rs` is the name servers see (sign-in, new devices, pushers): "echo", in every build.
 - `settings.ts` — echo's own settings as panels in Sable's settings pages (the reaction
   settings, under Notifications). Kept on this device. Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
@@ -107,6 +108,12 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `crates/sable-core/src/accounts.rs` | `self.echo_watch_reactions(&client, generation);` with Sable's other watchers |
 | `crates/sable-core/src/protocol.rs` | a `CoreEvent::Echo { event }` variant carrying echo's own JSON events (five lines; `src/generated/protocol.ts` regenerated with `mise run generate:types`) |
 | `vitest.config.ts` | `'echo/**/*.test.ts'` in the node project's `include`, so echo's unit tests run |
+| `crates/sable-core/src/lib.rs` | `#[path = "../../../echo/core/brand.rs"] mod echo_brand;` (two lines) |
+| `crates/sable-core/src/session.rs` | OAuth `client_name` is `echo_brand::APP_NAME` (`echo/core/brand.rs`) instead of "Sable" |
+| `crates/sable-core/src/auth.rs` | `initial_device_display_name(echo_brand::APP_NAME)` for password and SSO sign-in (two lines) |
+| `crates/sable-core/src/registration.rs` | the new account's `initial_device_display_name` is `echo_brand::APP_NAME`, and its test expects it |
+| `crates/sable-core/src/notifications.rs` | a pusher's fallback name is `echo_brand::APP_NAME`, and its test expects it (three lines) |
+| `crates/sable-core/src/media.rs` | the avatar fetcher's `user_agent(echo_brand::APP_NAME)` |
 
 ## Running
 
