@@ -51,7 +51,8 @@ can live here instead.
 - `settings.ts` — echo's own settings as panels in Sable's settings pages (the reaction
   settings, under Notifications). Kept on this device. Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
-  the Sable project itself keep its name.
+  the Sable project itself keep its name. In tests it follows `active.ts`, so Sable's own
+  component tests see Sable's text.
 - `brand/logo.svg` — the in-app logo. `icons/` — native app icons, generated with
   `pnpm tauri icon /path/to/echo-icon-facet-split-squircle.png --output echo/icons`.
 - `tauri.echo.conf.json` — merged over `src-tauri/tauri.conf.json` by the echo tasks: name,
