@@ -423,7 +423,7 @@
   );
 
   function mentionSender(): void {
-    if (item.sender) onMentionUser?.(item.sender, accountName);
+    if (item.sender) onMentionUser?.(item.sender, roomIdentity.name ?? item.sender);
   }
 </script>
 
