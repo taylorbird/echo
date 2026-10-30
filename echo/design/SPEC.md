@@ -345,18 +345,18 @@ The open "partable" entry (All chats, Outside spaces, or a space) **parts the ra
 ### 4.4 Unread tiers: badge rings
 echo's own badge (2026-10-30), replacing echo-gomuks's dots and pills. Every state is one **ring** in the badge lane, and each tier differs in what's inside it as well as its colour. Sable still decides whether a row has a badge (its badge modes and "show unread dots"); echo decides the ring's colour and content (`echo/ring.ts`, drawn by `echo/components/RoomRing.svelte`).
 
-- **Ring:** height **2rem**, `min-width: 2rem`, radius 1rem, padding-inline .5rem, so wider content (`1k+`) stretches it into a pill. Centred in the 3rem lane.
-- Fill: the tier colour at **18%**. Outline `box-shadow: 0 0 0 1px` tier at **60%**, plus a glow `0 0 12px` tier at **35%** (dark; light mode has no glow).
-- Text **.8125rem / 600**, tabular numbers, the tier's ink.
+- **Ring:** height **1.75rem**, `min-width: 1.75rem`, radius .875rem, padding-inline .4375rem (made smaller on 2026-10-30, from 2rem), so wider content (`1k+`) stretches it into a pill. Centred in the 3rem lane.
+- Fill: the tier colour at **18%**. Outline `box-shadow: 0 0 0 1px` tier at **60%**, plus a glow `0 0 10px` tier at **35%** (dark; light mode has no glow).
+- Text **.75rem / 600**, tabular numbers, the tier's ink.
 - Counts are Sable's formatting (`formatUnreadCount`): up to `999`, then `1k`, then `1k+`.
 
 | Tier | Ring colour (dark) | Ink | Inside | Row wash / bar |
 |---|---|---|---|---|
-| unread (any unread, notifying or not, or marked unread) | purple `#b48cff` | `#e9dcff` | the room's **total** unread count; an **8px dot** when there's no count (marked unread) | purple `.06` / purple |
+| unread (any unread, notifying or not, or marked unread) | purple `#b48cff` | `#e9dcff` | the room's **total** unread count; a **7px dot** when there's no count (marked unread) | purple `.06` / purple |
 | mention (highlight) | red `#ff4d6d` | `#ffd6dc` | **"@"** only, no number | red `.06` / red |
-| DM unread | red | | an **8px red dot**, no number | red `.06` / red |
+| DM unread | red | | a **7px red dot**, no number | red `.06` / red |
 | muted room with unread (`echo/unread.ts`) | grey `#b0acaa` | `#dedad8` | the count; **no glow** | none / none |
-| reaction marker (§4.6, "show reactions as notifications") | blue `#5cbbff` | `#cfeaff` | the reaction's **emoji** (1.0625rem), no count | blue `.06` / blue |
+| reaction marker (§4.6, "show reactions as notifications") | blue `#5cbbff` | `#cfeaff` | the reaction's **emoji** (.9375rem), no count | blue `.06` / blue |
 
 Precedence, one ring per row: mention, then muted, then DM, then unread; a reaction marker only shows when none of those apply. The open room's green bar and wash outrank every tier. The tokens are RGB triplets in `styles/frame.css` (`--echo-ring-*`); light mode uses darker hues of the same tiers, with no glow or wash. Sable's own badge stays in the lane for screen readers, visually hidden. The rail's space badges keep their own look (§3).
 

@@ -397,21 +397,21 @@
 
     align-items: center;
     background: rgb(var(--echo-tier) / 18%);
-    border-radius: 1rem;
+    border-radius: 0.875rem;
     box-shadow:
       0 0 0 1px rgb(var(--echo-tier) / 60%),
-      0 0 12px rgb(var(--echo-tier) / var(--echo-ring-glow));
+      0 0 10px rgb(var(--echo-tier) / var(--echo-ring-glow));
     color: var(--echo-tier-ink);
     display: inline-flex;
     flex: none;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
-    height: 2rem;
+    height: 1.75rem;
     justify-content: center;
     line-height: 1;
-    min-width: 2rem;
-    padding: 0 0.5rem;
+    min-width: 1.75rem;
+    padding: 0 0.4375rem;
     pointer-events: none;
   }
 
@@ -437,12 +437,12 @@
   :root .room-row .echo-ring > .echo-ring-dot {
     background: rgb(var(--echo-tier));
     border-radius: 50%;
-    height: 8px;
-    width: 8px;
+    height: 7px;
+    width: 7px;
   }
 
   :root .room-row .echo-ring > .echo-ring-emoji {
-    font-size: 1.0625rem;
+    font-size: 0.9375rem;
     font-weight: 400;
     max-width: 2.5rem;
     overflow: hidden;
@@ -451,9 +451,9 @@
 
   :root .room-row .echo-ring > .echo-ring-emote,
   :root .echo-ring > .echo-ring-emote img {
-    height: 1.25rem;
+    height: 1.125rem;
     object-fit: contain;
-    width: 1.25rem;
+    width: 1.125rem;
   }
 
   /* A reaction pops in with a small spring (SPEC §4.6). RoomRing.svelte leaves
