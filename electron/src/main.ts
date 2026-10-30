@@ -32,7 +32,6 @@ import type {
 } from '../../src/lib/platform/file-dialog-types';
 
 import { echoBranded } from '../../echo/electron/app';
-import { cleanGomuksLeftovers } from '../../echo/electron/legacy';
 import { claimSchemes } from './linux-schemes';
 import { enforcePermissions } from './permissions';
 import * as screenAudio from './screen-audio';
@@ -85,7 +84,6 @@ importTauriConfig(
   ],
   app.getPath('userData')
 );
-cleanGomuksLeftovers(process.platform, homedir(), app.getPath('appData'), IDENTIFIER);
 initSentry(app.getPath('userData'));
 const settingsPath = join(app.getPath('userData'), 'settings.json');
 let settings = readSettings(settingsPath);

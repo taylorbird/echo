@@ -53,12 +53,10 @@ can live here instead.
   identifier, name, icon (`icons/echo.icon`), permission prompts and update feed as
   electron-builder overrides; `dev.sh` runs it against the Vite dev server. `app.ts` tells the
   main process it is echo (from the identifier it was built with), `updater.ts` points
-  electron-updater at `taylorbird/echo`, `legacy.ts` is `legacy.rs` for Electron. None of them
-  import Electron: Sable's main process passes in what they need.
+  electron-updater at `taylorbird/echo`. None of them import Electron: Sable's main process
+  passes in what they need.
 - `release-electron.sh` — a signed, notarized Electron release with both update feeds
   (`latest-mac.yml` for Electron echo, `latest.json` for Tauri echo 1.0 and echo-gomuks).
-- `legacy.rs` — removes echo-gomuks's leftover files (its database, config, media cache and logs)
-  at start-up, for installs that updated from it.
 - `visual/` — `mise run echo:shots`: screenshots of the signed-in web app against a throwaway
   homeserver with fake data. See `visual/README.md`.
 
@@ -82,7 +80,6 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/features/sidebar/RoomNav.svelte` | `MentionProfile` imported from `echo/components/ProfileModal.svelte`, as in `RoomView.svelte` (call participants) |
 | `src/lib/ui/primitives/identity-color.ts` | `senderColor` returns through `echoSenderColor(…)` (`echo/sender-color.ts`): echo-gomuks's ten colours and formula |
 | `src/lib/features/room/members/members.ts` | your own name takes `echoSenderColor(…)` instead of the plain text colour (two call sites) |
-| `src-tauri/src/lib.rs` | `#[path] mod echo_legacy;` and `echo_legacy::remove_gomuks_leftovers(…)` first in `setup` (`echo/legacy.rs`) |
 | `src-tauri/src/lib.rs`, `tray.rs`, `webkit.rs`, `Info.plist` | "Sable" → "echo" in the macOS permission prompts, the tray tooltip and the proxy error dialog |
 | `src/lib/ui/motion.ts` | `shouldReduceMotion` passes the system query through `echoSystemReducedMotion(…)` (`echo/motion.ts`): Sable's own setting decides |
 | `src/lib/rooms/permalink.ts` | `sectionPath` returns `echoRoomPath(…)` (`echo/places.ts`) when echo picks the place (two lines) |
@@ -94,7 +91,6 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/features/sidebar/NavigationRail.svelte` | `...echoCreateEntries()` (`echo/create-menu.ts`) first in the create menu: New chat |
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
 | `electron/src/updater.ts` | `echoUseUpdateFeed(autoUpdater)` after Sable's `setFeedURL` (`echo/electron/updater.ts`): echo's feed in echo builds |
-| `electron/src/main.ts` | `cleanGomuksLeftovers(…)` after `importTauriConfig(…)` (`echo/electron/legacy.ts`) |
 | `electron/src/main.ts` | `echoBranded(…)` around the core's `serviceName` and the screen-recording dialog's text (`echo/electron/app.ts`) |
 
 ## Running
@@ -119,7 +115,8 @@ installed echo. (Not `dev.tbird.echo-dev`: that was echo-gomuks's dev data folde
 [echo-gomuks](https://github.com/taylorbird/echo-gomuks)) used, with the same updater key. Its
 installed copies check `taylorbird/echo` for updates, so **every release published here with a
 `latest.json` updates echo-gomuks 0.7.x installs into this app.** They sign in again and recover
-their keys; `legacy.rs` clears the old app's files.
+their keys. echo no longer removes the old app's leftover files (dropped 2026-10-30: no
+compatibility with echo-gomuks is kept).
 
 ## Upstream
 
