@@ -4,8 +4,8 @@
    4rem tall and full-bleed, with a 2.5rem round avatar, the room name at
    1.125rem/600, a one-line "Sender: text" preview (echo/components/
    RoomPreview.svelte), a badge lane at the right, a hairline between rows and a
-   glow bar in a lane at the far left: green for the open room, the unread tier's
-   colour otherwise.
+   glow bar in a lane at the far left: green for the open room, the badge
+   ring's colour otherwise.
 
    `.room-list:not(.collapsed)` leaves Sable's icon-only list, shown when the
    pane is dragged narrow, as it is. */
@@ -246,35 +246,28 @@
     width: 0.1875rem;
   }
 
-  /* Unread rows: a wash and a bar in the tier's colour (SPEC §4.4). Each tier's
-     selector outranks the last, so they resolve by specificity. */
-  :root .room-list:not(.collapsed) > .room-row-wrap:has(.unread-badge) {
-    --echo-bar: var(--echo-unread-message);
-    --echo-bar-near: var(--echo-blue-near);
-    --echo-bar-far: var(--echo-blue-far);
+  /* Rows with a ring: a wash and a bar in the ring's tier colour (SPEC §4.4),
+     from the ring's data-bar (echo/ring.ts). A muted room's grey ring and a
+     reaction popping into a quiet row leave the row as it is. */
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.echo-ring[data-bar]) {
+    --echo-bar: rgb(var(--echo-row-tier));
+    --echo-bar-near: rgb(var(--echo-row-tier) / calc(var(--echo-ring-glow) * 2));
+    --echo-bar-far: rgb(var(--echo-row-tier) / var(--echo-ring-glow));
 
-    background: var(--echo-unread-wash);
+    background: rgb(var(--echo-row-tier) / var(--echo-ring-wash));
   }
 
-  :root .room-list:not(.collapsed) > .room-row-wrap:has(.unread-badge):has(.unread-badge-count) {
-    --echo-bar: var(--echo-unread-notify);
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.echo-ring[data-bar='unread']) {
+    --echo-row-tier: var(--echo-ring-unread);
   }
 
-  /* A DM's unread is red: someone is waiting on you. */
-  :root .room-list:not(.collapsed) > .room-row-wrap:has(.unread-badge):has(.echo-dm) {
-    --echo-bar: var(--echo-unread-highlight);
-    --echo-bar-near: var(--echo-red-near);
-    --echo-bar-far: var(--echo-red-far);
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.echo-ring[data-bar='dm']),
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.echo-ring[data-bar='mention']) {
+    --echo-row-tier: var(--echo-ring-mention);
   }
 
-  :root
-    .room-list:not(.collapsed)
-    > .room-row-wrap:has(.unread-badge):has([aria-label$='mentions']) {
-    --echo-bar: var(--echo-unread-highlight);
-    --echo-bar-near: var(--echo-red-near);
-    --echo-bar-far: var(--echo-red-far);
-
-    background: var(--echo-highlight-wash);
+  :root .room-list:not(.collapsed) > .room-row-wrap:has(.echo-ring[data-bar='reaction']) {
+    --echo-row-tier: var(--echo-ring-reaction);
   }
 
   /* The open room: a flat warm wash, like the unread tiers' washes, and the
@@ -394,61 +387,107 @@
     width: 3rem;
   }
 
-  /* Badges (SPEC §4.4): a small blue dot for plain unread, a light blue count
-     for notifications, a red "@" count for mentions. */
-  :root .room-row .room-status > .unread-badge-dot {
-    background: var(--echo-unread-message);
-    background-clip: border-box;
-    height: 0.4375rem;
-    padding: 0;
-    width: 0.4375rem;
-  }
+  /* Badges (SPEC §4.4): one ring per row (echo/components/RoomRing.svelte):
+     purple with the unread count, red "@" for a mention, red with a dot for a
+     DM, grey with the count and no glow for a muted room, blue with the emoji
+     for a reaction marker. Each tier differs in what's inside, not only hue. */
+  :root .room-list:not(.collapsed) .room-status > .echo-ring {
+    --echo-tier: var(--echo-ring-unread);
+    --echo-tier-ink: var(--echo-ring-unread-ink);
 
-  :root .room-row .room-status > .unread-badge-count {
-    background: var(--echo-unread-notify);
+    align-items: center;
+    background: rgb(var(--echo-tier) / 18%);
     border-radius: 1rem;
     box-shadow:
-      0 0 7px var(--echo-blue-near),
-      0 0 15px var(--echo-blue-far);
-    color: var(--echo-unread-ink);
-    font-size: 0.75rem;
+      0 0 0 1px rgb(var(--echo-tier) / 60%),
+      0 0 12px rgb(var(--echo-tier) / var(--echo-ring-glow));
+    color: var(--echo-tier-ink);
+    display: inline-flex;
+    flex: none;
+    font-size: 0.8125rem;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
-
-    /* A 1rem content box plus .125rem a side in echo (content-box there). */
-    height: 1.25rem;
+    height: 2rem;
+    justify-content: center;
     line-height: 1;
-    min-width: 1.25rem;
-    padding: calc(0.125rem + 0.5px) 0.25rem calc(0.125rem - 0.5px);
+    min-width: 2rem;
+    padding: 0 0.5rem;
+    pointer-events: none;
   }
 
-  /* Sable's "highlight" covers mentions and notifying rooms alike; only the
-     badge's label tells a mention apart ("N mentions"). In another language a
-     mention falls back to the notified badge. */
-  :root .room-row .room-status > .unread-badge-count[aria-label$='mentions'] {
-    background: var(--echo-unread-highlight);
-    box-shadow:
-      0 0 7px var(--echo-red-near),
-      0 0 16px var(--echo-red-far);
-    color: var(--echo-unread-highlight-ink);
+  :root .room-list:not(.collapsed) .echo-ring[data-tier='mention'],
+  :root .room-list:not(.collapsed) .echo-ring[data-tier='dm'] {
+    --echo-tier: var(--echo-ring-mention);
+    --echo-tier-ink: var(--echo-ring-mention-ink);
   }
 
-  :root .room-row .room-status > .unread-badge-count[aria-label$='mentions']::before {
-    content: '@';
-    font-weight: 600;
-    margin-right: 0.0625rem;
+  :root .room-list:not(.collapsed) .echo-ring[data-tier='reaction'] {
+    --echo-tier: var(--echo-ring-reaction);
+    --echo-tier-ink: var(--echo-ring-reaction-ink);
   }
 
-  /* A DM's unread is a plain red dot, without the count (SPEC §4.4); a real
-     mention keeps the @ count. */
-  :root .room-row:has(.echo-dm) .room-status > .unread-badge:not([aria-label$='mentions']) {
-    background: var(--echo-unread-highlight);
-    box-shadow: none;
-    font-size: 0;
-    height: 0.4375rem;
-    min-width: 0;
-    padding: 0;
-    width: 0.4375rem;
+  /* Muted: grey, and no glow. */
+  :root .room-list:not(.collapsed) .echo-ring[data-tier='muted'] {
+    --echo-tier: var(--echo-ring-muted);
+    --echo-tier-ink: var(--echo-ring-muted-ink);
+
+    box-shadow: 0 0 0 1px rgb(var(--echo-tier) / 60%);
+  }
+
+  :root .room-row .echo-ring > .echo-ring-dot {
+    background: rgb(var(--echo-tier));
+    border-radius: 50%;
+    height: 8px;
+    width: 8px;
+  }
+
+  :root .room-row .echo-ring > .echo-ring-emoji {
+    font-size: 1.0625rem;
+    font-weight: 400;
+    max-width: 2.5rem;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  :root .room-row .echo-ring > .echo-ring-emote,
+  :root .echo-ring > .echo-ring-emote img {
+    height: 1.25rem;
+    object-fit: contain;
+    width: 1.25rem;
+  }
+
+  /* A reaction pops in with a small spring (SPEC §4.6). RoomRing.svelte leaves
+     the class off under Sable's Reduce motion. */
+  :root .room-row .room-status > .echo-ring.echo-ring-pop {
+    /* stylelint-disable-next-line defensive-css/require-prefers-reduced-motion */
+    animation: echo-ring-pop 0.3s;
+  }
+
+  @keyframes echo-ring-pop {
+    0% {
+      animation-timing-function: ease-out;
+      scale: 0.85;
+    }
+
+    45% {
+      animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+      scale: 1.12;
+    }
+
+    100% {
+      scale: 1;
+    }
+  }
+
+  /* Sable's badge, and its typing dots, stay in the lane (after the ring) for
+     screen readers but out of sight: the ring stands in for them. */
+  :root .room-list:not(.collapsed) .echo-ring ~ :is(.unread-badge, .room-typing) {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
   }
 
   /* echo showed no notification-mode icon on a row; the mode lives in the

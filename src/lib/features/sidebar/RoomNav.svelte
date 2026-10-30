@@ -80,6 +80,7 @@
   } from './nav-rows.js';
   import { PeerProfiles } from './peer-profiles.svelte.js';
   import EchoRoomPreview from '../../../../echo/components/RoomPreview.svelte';
+  import EchoRoomRing from '../../../../echo/components/RoomRing.svelte';
   import { echoSectionRooms } from '../../../../echo/space-dms.js';
   import { echoRoomPath } from '../../../../echo/places.js';
   import { publishVisibleRoomOrder } from './visible-rooms.svelte.js';
@@ -688,6 +689,7 @@
               </span>
             {/if}
             <span class="room-status">
+              <EchoRoomRing {room} />
               {#if typing}
                 <span class="room-typing"><TypingDots /></span>
               {:else}

@@ -63,6 +63,19 @@
   --echo-blue-far: transparent;
   --echo-red-near: transparent;
   --echo-red-far: transparent;
+
+  /* The room list's badge rings (SPEC §4.4): each tier as an RGB triplet, so
+     roomlist.css mixes its fill, outline, glow, bar and wash from one colour. */
+  --echo-ring-unread: 124 77 255;
+  --echo-ring-unread-ink: #3f2296;
+  --echo-ring-mention: 214 32 66;
+  --echo-ring-mention-ink: #8a0f27;
+  --echo-ring-muted: 110 106 104;
+  --echo-ring-muted-ink: #4a4644;
+  --echo-ring-reaction: 0 120 212;
+  --echo-ring-reaction-ink: #004a82;
+  --echo-ring-glow: 0%;
+  --echo-ring-wash: 0%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -108,6 +121,16 @@
     --echo-blue-far: rgb(92 187 255 / 40%);
     --echo-red-near: rgb(255 77 109 / 90%);
     --echo-red-far: rgb(255 77 109 / 45%);
+    --echo-ring-unread: 180 140 255;
+    --echo-ring-unread-ink: #e9dcff;
+    --echo-ring-mention: 255 77 109;
+    --echo-ring-mention-ink: #ffd6dc;
+    --echo-ring-muted: 176 172 170;
+    --echo-ring-muted-ink: #dedad8;
+    --echo-ring-reaction: 92 187 255;
+    --echo-ring-reaction-ink: #cfeaff;
+    --echo-ring-glow: 35%;
+    --echo-ring-wash: 6%;
   }
 }
 
@@ -154,6 +177,16 @@
   --echo-blue-far: rgb(92 187 255 / 40%);
   --echo-red-near: rgb(255 77 109 / 90%);
   --echo-red-far: rgb(255 77 109 / 45%);
+  --echo-ring-unread: 180 140 255;
+  --echo-ring-unread-ink: #e9dcff;
+  --echo-ring-mention: 255 77 109;
+  --echo-ring-mention-ink: #ffd6dc;
+  --echo-ring-muted: 176 172 170;
+  --echo-ring-muted-ink: #dedad8;
+  --echo-ring-reaction: 92 187 255;
+  --echo-ring-reaction-ink: #cfeaff;
+  --echo-ring-glow: 35%;
+  --echo-ring-wash: 6%;
 }
 
 /* Desktop frame. */

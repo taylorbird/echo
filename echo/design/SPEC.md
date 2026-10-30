@@ -342,20 +342,36 @@ The open "partable" entry (All chats, Outside spaces, or a space) **parts the ra
 - Resting rows are **not** dimmed. Every row has the same weight.
 - **Context menu:** right click (shift+right click gives the native menu).
 
-### 4.4 Unread tiers (`RoomList.css:564-629, 994-1186`, `UnreadCount.tsx`)
-The tier is read from the badge with `:has()`. An unread row gets a wash and, unless it is active, a **tier-coloured bar** in the same lane at the same size as the active bar (3px × 2rem, `6px/14px` halo).
+### 4.4 Unread tiers: badge rings
+echo's own badge (2026-10-30), replacing echo-gomuks's dots and pills. Every state is one **ring** in the badge lane, and each tier differs in what's inside it as well as its colour. Sable still decides whether a row has a badge (its badge modes and "show unread dots"); echo decides the ring's colour and content (`echo/ring.ts`, drawn by `echo/components/RoomRing.svelte`).
 
-| Tier | Badge | Row wash | Bar |
-|---|---|---|---|
-| plain unread messages | **.4375rem (≈6px) dot**, fill `#5cbbff`, **no glow**, digits hidden (`font-size: 0`; the count stays in `title`) | blue `.06` | blue |
-| notified / marked unread | count pill: `--unread-count-size: 1rem` (height 1rem, radius 1rem, padding-inline .25rem), `.75em` text, tabular numbers, +.5px top / -.5px bottom optical nudge. Fill `#85d6ff`, ink `#10233a`, glow `0 0 7px near, 0 0 15px far` | blue | light blue |
-| mention (highlight) | count pill with a **"@" prefix** (`::before`, 600, margin-right .0625rem). Fill `#ff4d6d`, ink `#fff2f4`, glow `7px/16px`. A breathing ring on `::after` animates opacity .2 → 1 → .2 over **2.4s ease-in-out infinite** (`0 0 9px, 0 0 20px`). With reduced motion the ring stays at opacity 0 and the static glow remains | red `.06` | red |
-| DM unread (`dm_mention_colors`, default on) | **red dot** .4375rem, no glow, no @, no pulse | blue (the normal unread wash) | red |
+- **Ring:** height **2rem**, `min-width: 2rem`, radius 1rem, padding-inline .5rem, so wider content (`1k+`) stretches it into a pill. Centred in the 3rem lane.
+- Fill: the tier colour at **18%**. Outline `box-shadow: 0 0 0 1px` tier at **60%**, plus a glow `0 0 12px` tier at **35%** (dark; light mode has no glow).
+- Text **.8125rem / 600**, tabular numbers, the tier's ink.
+- Counts are Sable's formatting (`formatUnreadCount`): up to `999`, then `1k`, then `1k+`.
 
-Counts display as `999+` above 9999, and as `99+` above 999 on space badges.
+| Tier | Ring colour (dark) | Ink | Inside | Row wash / bar |
+|---|---|---|---|---|
+| unread (any unread, notifying or not, or marked unread) | purple `#b48cff` | `#e9dcff` | the room's **total** unread count; an **8px dot** when there's no count (marked unread) | purple `.06` / purple |
+| mention (highlight) | red `#ff4d6d` | `#ffd6dc` | **"@"** only, no number | red `.06` / red |
+| DM unread | red | | an **8px red dot**, no number | red `.06` / red |
+| muted room with unread (`echo/unread.ts`) | grey `#b0acaa` | `#dedad8` | the count; **no glow** | none / none |
+| reaction marker (§4.6, "show reactions as notifications") | blue `#5cbbff` | `#cfeaff` | the reaction's **emoji** (1.0625rem), no count | blue `.06` / blue |
+
+Precedence, one ring per row: mention, then muted, then DM, then unread; a reaction marker only shows when none of those apply. The open room's green bar and wash outrank every tier. The tokens are RGB triplets in `styles/frame.css` (`--echo-ring-*`); light mode uses darker hues of the same tiers, with no glow or wash. Sable's own badge stays in the lane for screen readers, visually hidden. The rail's space badges keep their own look (§3).
 
 ### 4.5 Compact mode (preference, `StylePreferences.tsx:116-149`)
 Row height 2.75rem, padding .375rem vertical, avatar lane 2rem with a 1.75rem avatar, name 1rem, no preview, bars 1.5rem tall.
+
+### 4.6 Reactions to your messages
+Sable's core reports reactions only for open timelines, so `echo/core/reactions.rs` watches sync for a reaction by someone else to a message you sent, in any joined room (decrypted, so encrypted rooms work), and reports it to `echo/reactions.svelte.ts`.
+
+- **Pop (live reactions only):** when the reaction is at most 60s old, its emoji takes the room's ring content for **5s**, with a spring: scale .85 → **1.12** → 1 over .3s, the settle on `cubic-bezier(.34,1.56,.64,1)`. The ring keeps the room's current colour and the row's bar and wash don't change; a room without a ring gets a purple one for the 5s. A newer reaction replaces the emoji and restarts the 5s.
+- **Preview:** for the same 5s the row's preview crossfades (.25s) to "*Name* reacted to “excerpt”", the name in the reactor's sender colour at weight 500 (display name, else the localpart). The excerpt is your message's text (reply fallback stripped, 120 bytes), or what it was ("an image", "a file", …).
+- **Marker** (with "show reactions as notifications" on): the reaction stays as the blue ring (§4.4), with the latest emoji, until you open the room. Markers are per account, kept in this device's local storage and not synced. A per-account watermark (the last time echo ran) lets reactions that came in while echo was closed leave markers without a pop; an account's first run starts it at now, so old history isn't marked.
+- Ignored: your own reactions, reactions to others' messages, muted rooms, and redactions.
+- With Sable's Reduce motion on (`echo/motion.ts`), the emoji and preview swap instantly.
+- **Settings** (Notifications, desktop only, `echo/components/ReactionSettings.svelte`): "Show reactions in the room list" (on; off turns all of this off) and "Show reactions as notifications" (off).
 
 ---
 

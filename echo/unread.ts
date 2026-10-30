@@ -11,14 +11,21 @@ import { echoActive } from './active.js';
 // Phones keep Sable's UI until echo has its own (echo/README.md).
 const desktop = new MediaQuery(BREAKPOINTS.appLayout);
 
+/** Whether the room's notification mode is mute (its own, else the default). */
+export function mutedRoom(room: RoomListItemView | undefined): boolean {
+  return room !== undefined && (room.notification.room ?? room.notification.default) === 'mute';
+}
+
 /**
- * Sable's core clears every count in a muted room. echo still marked a muted
- * room with unread messages, as a plain dot: muting silences a room, it does
- * not hide that something happened in it. The raw count is still on the row,
- * so a muted room keeps it as an unread with nothing notifying.
+ * Sable's core clears every count in a muted room. echo still marks a muted
+ * room with unread messages, with a grey ring (echo/ring.ts): muting silences
+ * a room, it does not hide that something happened in it. The raw count is
+ * still on the row, so a muted room keeps it as an unread with nothing
+ * notifying.
  */
 export function echoBadgeCounts(room: RoomListItemView): UnreadCount {
-  const muted = (room.notification.room ?? room.notification.default) === 'mute';
-  if (!echoActive() || !desktop.current || !muted || room.unread === 0) return room.counts;
+  if (!echoActive() || !desktop.current || !mutedRoom(room) || room.unread === 0) {
+    return room.counts;
+  }
   return { unread: room.unread, highlight: 0, notifying: 0, marked: room.counts.marked };
 }

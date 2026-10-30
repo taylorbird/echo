@@ -1,13 +1,22 @@
 <!-- echo: the one-line "Sender: text" preview under a room's name in the room
      list (echo/design/SPEC.md §4.3). Hooked into Sable's RoomNav.svelte. It also
      marks a direct message's row (`.echo-dm`), which the rail's sub-filters
-     and the red DM badge read: a DM's link doesn't always say what it is.
-     It also draws the conversation-kind glyph after the name (SPEC §4.3). -->
+     read: a DM's link doesn't always say what it is.
+     It also draws the conversation-kind glyph after the name (SPEC §4.3). While
+     someone's reaction to your message pops in (echo/reactions.svelte.ts,
+     SPEC §4.6) the preview says who reacted to what. -->
 <script lang="ts">
+  import { fade } from 'svelte/transition';
+  import { page } from '$app/state';
   import type { RoomListItemView } from '#src/generated/protocol';
   import { useCoreClient } from '#lib/core/context.js';
   import type { PeerProfiles } from '#lib/features/sidebar/peer-profiles.svelte.js';
+  import { findRoomByPathId, useRoomList } from '#lib/rooms/room-list.svelte.js';
   import { senderColor } from '#lib/ui/primitives/identity-color.js';
+  import { motionMs } from '#lib/ui/motion.js';
+  import { echoActive } from '../active.js';
+  import { connectEchoReactions, echoReactions } from '../reactions.svelte.js';
+  import { mutedRoom } from '../unread.js';
 
   interface Props {
     room: RoomListItemView | undefined;
@@ -16,18 +25,39 @@
 
   let { room, profiles }: Props = $props();
   const core = useCoreClient();
+  const roomList = useRoomList();
+  // Sable's component tests render RoomNav without echo's layer (echo/active.ts).
+  const active = echoActive();
+
+  if (active) {
+    connectEchoReactions(
+      core,
+      (roomId) => mutedRoom(roomList.byId(roomId)),
+      () => findRoomByPathId(roomList.rooms, page.params.roomId)?.room_id ?? null
+    );
+  }
 
   let latest = $derived(room?.latest_event ?? null);
   let sender = $derived(latest?.sender ?? null);
   let own = $derived(sender !== null && sender === core.session?.user_id);
+  let reaction = $derived(active && room ? echoReactions.pop(room.room_id) : null);
 
   $effect(() => {
     if (sender !== null && !own) profiles.request(sender);
   });
 
+  $effect(() => {
+    if (reaction) profiles.request(reaction.sender);
+  });
+
   // Names longer than 16 characters are cut to 12 and an ellipsis.
   function shorten(name: string): string {
     return name.length > 16 ? `${name.slice(0, 12)}…` : name;
+  }
+
+  function nameOf(userId: string): string {
+    const display = profiles.get(userId)?.display_name;
+    return shorten(display ?? userId.replace(/^@/, '').split(':')[0]);
   }
 
   // What kind of conversation this is: a person for a one-to-one DM, two
@@ -43,8 +73,7 @@
   let name = $derived.by(() => {
     if (sender === null) return null;
     if (own) return 'You';
-    const display = profiles.get(sender)?.display_name;
-    return shorten(display ?? sender.replace(/^@/, '').split(':')[0]);
+    return nameOf(sender);
   });
 </script>
 
@@ -74,16 +103,32 @@
     {/if}
   </svg>
 {/if}
-{#if latest && latest.body}
-  <span class="echo-room-preview"
-    >{#if name}<span class="echo-preview-sender" style:color={senderColor(sender)}>{name}</span
-      >{/if}{latest.body}</span
-  >
+{#if reaction || (latest && latest.body)}
+  <span class="echo-room-preview">
+    {#if reaction}
+      <span class="echo-preview-line" transition:fade={{ duration: motionMs(250) }}
+        ><span class="echo-preview-reactor" style:color={senderColor(reaction.sender)}
+          >{nameOf(reaction.sender)}</span
+        >
+        reacted to “{reaction.excerpt}”</span
+      >
+    {:else if latest && latest.body}
+      <span class="echo-preview-line" transition:fade={{ duration: motionMs(250) }}
+        >{#if name}<span class="echo-preview-sender" style:color={senderColor(sender)}>{name}</span
+          >{/if}{latest.body}</span
+      >
+    {/if}
+  </span>
 {/if}
 
 <style>
   .echo-room-preview {
     display: none;
+    min-width: 0;
+  }
+
+  .echo-preview-line {
+    grid-area: 1 / 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -94,7 +139,8 @@
     display: none;
   }
 
-  .echo-preview-sender {
+  .echo-preview-sender,
+  .echo-preview-reactor {
     font-weight: 500;
   }
 
@@ -113,10 +159,13 @@
       width: 0.9375rem;
     }
 
+    /* The two lines stack in one cell, so a reaction crossfades over the
+       latest message. */
     .echo-room-preview {
       color: var(--echo-preview);
-      display: block;
+      display: grid;
       font-size: 0.9rem;
+      grid-template-columns: minmax(0, 1fr);
       line-height: 1.4;
       opacity: 0.9;
     }

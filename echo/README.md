@@ -38,8 +38,17 @@ can live here instead.
 - `folders.ts` — a space folder in the rail is open exactly while one of its spaces is: clicking
   a closed folder opens its last space (or its first), and its caret goes Home. Sable's
   expanded-with-nothing-open step is gone. Desktop only.
-- `unread.ts` — echo's unread indicators: a muted room with unread messages still gets its dot
+- `unread.ts` — echo's unread indicators: a muted room with unread messages still gets its badge
   in the room list and rail (Sable's core clears a muted room's counts). Desktop only.
+- `ring.ts` — what a room's badge ring shows (colour and content: count, "@", dot or emoji),
+  drawn by `components/RoomRing.svelte` in the room list's badge lane. Desktop only.
+- `reactions.svelte.ts` — reactions to your messages in the room list: a 5-second pop of the
+  emoji and a "reacted to" preview, and with "show reactions as notifications" on a marker
+  until you open the room (kept per account on this device). Fed by `core/reactions.rs`.
+- `core/` — echo's Rust in Sable's core, compiled into `crates/sable-core` with `#[path]`
+  modules: `reactions.rs` reports reactions to your messages from sync as `echo` core events.
+- `settings.ts` — echo's own settings as panels in Sable's settings pages (the reaction
+  settings, under Notifications). Kept on this device. Desktop only.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
   the Sable project itself keep its name.
 - `brand/logo.svg` — the in-app logo. `icons/` — native app icons, generated with
@@ -92,6 +101,12 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
 | `electron/src/updater.ts` | `echoUseUpdateFeed(autoUpdater)` after Sable's `setFeedURL` (`echo/electron/updater.ts`): echo's feed in echo builds |
 | `electron/src/main.ts` | `echoBranded(…)` around the core's `serviceName` and the screen-recording dialog's text (`echo/electron/app.ts`) |
+| `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomRing {room} />` (`echo/components/RoomRing.svelte`) first in each row's badge lane (`.room-status`) |
+| `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels |
+| `crates/sable-core/src/lib.rs` | `#[path = "../../../echo/core/reactions.rs"] mod echo_reactions;` (two lines) |
+| `crates/sable-core/src/accounts.rs` | `self.echo_watch_reactions(&client, generation);` with Sable's other watchers |
+| `crates/sable-core/src/protocol.rs` | a `CoreEvent::Echo { event }` variant carrying echo's own JSON events (five lines; `src/generated/protocol.ts` regenerated with `mise run generate:types`) |
+| `vitest.config.ts` | `'echo/**/*.test.ts'` in the node project's `include`, so echo's unit tests run |
 
 ## Running
 
