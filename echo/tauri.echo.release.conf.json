@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "identifier": "dev.tbird.echo",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "bundle": {
     "createUpdaterArtifacts": true,
     "macOS": {
