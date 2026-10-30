@@ -36,8 +36,10 @@ const desktop = browser && matchMedia(BREAKPOINTS.appLayout).matches;
 
 // Defaults only: a setting the person has changed keeps their value.
 applyDeploymentDefaults({
-  // echo's rail starts with "All chats", every room in one list: Sable's Home.
-  ...(desktop ? { showHome: true } : {}),
+  // echo's rail starts with "All chats", every room in one list: Sable's Home. The
+  // composer starts with Sable's formatting toolbar open (it works in markdown mode
+  // too, so the rich text composer stays off).
+  ...(desktop ? { showHome: true, formattingToolbar: true } : {}),
   // echo has no title-bar band on macOS. Sable's own title bar puts the window in
   // overlay style, so the panes can run to the top edge (echo/styles/frame.css);
   // without it, macOS draws its own bar across the top.

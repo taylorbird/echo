@@ -20,8 +20,8 @@ can live here instead.
   what Sable shows rather than how it looks (extra DMs in a list, panels starting closed,
   muted-room dots, the rail band) it checks this, so Sable's component tests, which render
   without the app's layout, keep testing Sable.
-- `init.ts` — start-up: echo's defaults where they differ from Sable's (Home on in the rail, and
-  on macOS Sable's own title bar, which puts the window in overlay style so the panes can run to
+- `init.ts` — start-up: echo's defaults where they differ from Sable's (Home on in the rail and
+  the composer's formatting toolbar open, on desktop; on macOS Sable's own title bar, which puts the window in overlay style so the panes can run to
   the top edge), and in the macOS app (Tauri or Electron) the headers as window drag regions, and `data-echo-app` on
   `<html>`, which the app look in `styles/` keys on.
 - `panels.ts` — echo's right panel: each room opens with it closed (Sable reopened a
