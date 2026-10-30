@@ -1,10 +1,8 @@
 <!-- Notes for the release being cut; echo/release-electron.sh reads this. -->
 
-echo 1.1 moves the desktop app to Electron, the shell Sable itself now uses on desktop.
+echo 1.2 gives the room list new badges and shows you when someone reacts to your messages.
 
-- You stay signed in, and your settings carry over. Updates keep coming automatically.
-- Space folders in the rail: a closed folder previews its spaces, and opening one opens a space inside it.
-- A taller composer set off from the timeline, and smaller reaction chips.
-- After signing in you land on Home.
-- The window remembers its size, position and full-screen state, and choosing a profile picture, banner or emoji opens the system's file picker.
-- Coming from the old echo (0.7)? Sign in again and enter your recovery key, or verify from another session, to unlock your encrypted history.
+- New badges: each room's unread state is a glowing ring. Purple shows how many messages you haven't read, a red @ means someone mentioned you, a red dot means a direct message is waiting, and muted rooms get a quiet grey ring.
+- Reactions: when someone reacts to one of your messages, the emoji pops into that room's badge for a few seconds, and the preview says who reacted to what.
+- Two new settings under Settings → Notifications → Reactions: turn reaction pops off, or keep a blue marker with the emoji on the room until you open it.
+- echo can now be installed with Homebrew: see the README on GitHub.
