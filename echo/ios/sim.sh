@@ -43,7 +43,17 @@ rm -f "$OPTIONS"
 PATH="$SHIM:$PATH" pnpm --dir "$ROOT" tauri ios dev --open \
 	--config echo/tauri.echo.conf.json --config echo/tauri.echo.ios.conf.json &
 DEV=$!
-trap 'kill "$DEV" 2>/dev/null; rm -rf "$SHIM"' EXIT
+
+# Stops a process and everything under it, deepest first. The dev server runs below pnpm
+# (pnpm, tauri, then Vite), and killing pnpm alone left Vite serving on the port.
+kill_tree() {
+	local child
+	for child in $(pgrep -P "$1" 2>/dev/null); do
+		kill_tree "$child"
+	done
+	kill "$1" 2>/dev/null || true
+}
+trap 'kill_tree "$DEV"; rm -rf "$SHIM"' EXIT
 
 echo "==> waiting for the dev server"
 until [[ -s "$OPTIONS" ]]; do
