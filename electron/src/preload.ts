@@ -1,4 +1,10 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import { ECHO_SCHEME } from '../../echo/electron/app';
+import type {
+  PickedFile,
+  PickFilesRequest,
+  SaveFileRequest,
+} from '../../src/lib/platform/file-dialog-types';
 import type { ScreenAudioListing } from '../../src/lib/platform/screen-audio-types';
 
 interface ScreenShareCandidate {
@@ -22,6 +28,7 @@ ipcRenderer.on('sable-pick-screen', (_event, request: number, sources: ScreenSha
 
 contextBridge.exposeInMainWorld('sableElectron', {
   platform: process.platform,
+  echoRedirectScheme: ECHO_SCHEME,
   applyWindowSettings: (settings: unknown) =>
     ipcRenderer.invoke('sable-apply-window-settings', settings) as Promise<{
       trayAvailable: boolean;
@@ -36,6 +43,15 @@ contextBridge.exposeInMainWorld('sableElectron', {
     ipcRenderer.send('sable-window-close');
   },
   isWindowMaximized: () => ipcRenderer.invoke('sable-window-is-maximized') as Promise<boolean>,
+  onWindowHiddenToTray: (callback: () => void) => {
+    const listener = () => {
+      callback();
+    };
+    ipcRenderer.on('sable-window-hidden-to-tray', listener);
+    return () => {
+      ipcRenderer.removeListener('sable-window-hidden-to-tray', listener);
+    };
+  },
   onWindowMaximized: (callback: (maximized: boolean) => void) => {
     const listener = (_event: IpcRendererEvent, maximized: boolean) => {
       callback(maximized);
@@ -68,6 +84,10 @@ contextBridge.exposeInMainWorld('sableElectron', {
     ipcRenderer.invoke('sable-screen-audio-start', selection) as Promise<string>,
   stopScreenAudio: () => ipcRenderer.invoke('sable-screen-audio-stop') as Promise<void>,
   unmuteScreenAudio: () => ipcRenderer.invoke('sable-screen-audio-unmute') as Promise<void>,
+  pickFiles: (request: PickFilesRequest) =>
+    ipcRenderer.invoke('sable-pick-files', request) as Promise<PickedFile[] | null>,
+  saveFile: (request: SaveFileRequest) =>
+    ipcRenderer.invoke('sable-save-file', request) as Promise<{ path: string } | null>,
   checkForUpdate: () =>
     ipcRenderer.invoke('sable-update-check') as Promise<{
       version: string;

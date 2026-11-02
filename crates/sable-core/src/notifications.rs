@@ -51,7 +51,7 @@ pub(crate) async fn pusher_display_name(client: &Client, fallback: String) -> St
         .and_then(|device| device.display_name.as_deref())
         .map(str::trim)
         .filter(|name| !name.is_empty())
-        .unwrap_or("Sable")
+        .unwrap_or(crate::echo_brand::APP_NAME)
         .to_owned()
 }
 
@@ -1434,8 +1434,8 @@ mod tests {
         for (display_name, expected) in [
             (Some("  Personal phone  "), "Personal phone"),
             (Some("Work phone"), "Work phone"),
-            (Some("  "), "Sable"),
-            (None, "Sable"),
+            (Some("  "), crate::echo_brand::APP_NAME),
+            (None, crate::echo_brand::APP_NAME),
         ] {
             let devices = Mock::given(method("GET"))
                 .and(path("/_matrix/client/v3/devices"))

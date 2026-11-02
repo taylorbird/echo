@@ -1,7 +1,11 @@
-<!-- Notes for the release being cut; echo/release.sh reads this and archives it in echo/release-notes/. -->
+<!-- Notes for the release being cut; echo/release-electron.sh reads this. -->
 
-echo 1.0 is a new app: echo rebuilt on Sable, with echo's look and feel.
+echo 1.4 signs in under its own name and tidies up a few rough edges.
 
-- A native Matrix core (matrix-rust-sdk), with the same rail, room list, timeline and composer you know from echo.
-- After this update, sign in again and enter your recovery key (or verify from another session) to unlock your encrypted history. The old app's local data is cleaned up automatically.
-- New: Cmd-K quick switcher, two-column profile cards, per-sender colours as before, and Home with Rooms, Direct messages and Recent filters.
+- Signing in now goes through echo's own link, and your server's sign-in page links to echo's GitHub page instead of Sable's. You stay signed in through the update.
+- The formatting toolbar is on by default above the message box. You can turn it off in Settings.
+- Clicking someone's name to mention them now uses their real name, not a nickname you gave them privately.
+- Starting a new direct message opens it in Home instead of an empty screen.
+- Images and videos in the timeline reserve the right amount of space before they load.
+- The About page and window title say echo.
+- Screen readers announce a new reaction on a room in the room list.

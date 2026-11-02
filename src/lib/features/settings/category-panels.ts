@@ -38,6 +38,7 @@ import DeveloperSentry from '#lib/features/settings/DeveloperSentry.svelte';
 import DeveloperServerFeatures from '#lib/features/settings/DeveloperServerFeatures.svelte';
 import DeveloperSyncDiagnostics from '#lib/features/settings/DeveloperSyncDiagnostics.svelte';
 import SoundVolumeSettings from '../call/SoundVolumeSettings.svelte';
+import { echoReactionSettings } from '../../../../echo/settings.js';
 
 export interface CategoryPanel {
   component: Component;
@@ -70,6 +71,7 @@ export const categoryPanels: Record<string, CategoryPanel[]> = {
     { component: NotificationPermission, section: 'alerts', start: true },
     { component: NotificationDefaults },
     { component: MentionNotifications },
+    echoReactionSettings,
     { component: NotificationKeywords },
     { component: PushersSettings },
     { component: PushGateway, when: usesPushGateway },

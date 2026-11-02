@@ -8,8 +8,6 @@ mod app_dirs;
 mod deep_link_delivery;
 #[cfg(any(all(feature = "cef", target_os = "linux"), all(test, unix)))]
 pub mod deep_link_ipc;
-#[path = "../../echo/legacy.rs"]
-mod echo_legacy;
 #[cfg(target_os = "ios")]
 // Objective-C bindings expose PhotoKit calls as unsafe; keep that exception out
 // of the Rust-only application code.
@@ -46,8 +44,6 @@ mod tray;
 mod v1_migration;
 #[cfg(desktop)]
 pub mod verbose;
-#[cfg(all(feature = "cef", target_os = "linux"))]
-mod video_transcode;
 mod web_resources;
 #[cfg(all(not(feature = "cef"), target_os = "linux"))]
 mod webkit;
@@ -150,46 +146,6 @@ async fn fetch_media(
 #[tauri::command]
 async fn forget_media(state: State<'_, AppState>, source: String) -> Result<(), RpcError> {
     state.core.forget_media(source).await
-}
-
-/// The MIME type [`stream_video`] delivers.
-#[cfg(all(feature = "cef", target_os = "linux"))]
-#[tauri::command]
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "the frontend transport expects a Result"
-)]
-async fn video_stream_mime() -> Result<&'static str, RpcError> {
-    Ok(video_transcode::STREAM_MIME)
-}
-
-/// Sends a re-encode over `chunks`, ending with the empty end-of-stream chunk.
-#[cfg(all(feature = "cef", target_os = "linux"))]
-#[tauri::command]
-async fn stream_video(
-    app: AppHandle<BrowserEngine>,
-    state: State<'_, AppState>,
-    source: String,
-    id: u64,
-    chunks: tauri::ipc::Channel<Response>,
-) -> Result<(), RpcError> {
-    tracing::info!(%source, id, "video stream requested");
-    let input = state
-        .core
-        .media_thumbnail(source.clone(), 0, 0)
-        .await
-        .inspect_err(
-            |error| tracing::warn!(%source, ?error, "video stream could not fetch the attachment"),
-        )?;
-    tracing::info!(id, bytes = input.len(), "video stream fetched, encoding");
-    tauri::async_runtime::spawn_blocking(move || {
-        video_transcode::stream_to(&app, &source, &input, &chunks, id)
-    })
-    .await
-    .map_err(|error| {
-        tracing::error!(%error, "video encode task did not finish");
-        RpcError::Unavailable
-    })?
 }
 
 pub(crate) fn decode_header(request: &Request<'_>, name: &str) -> Option<String> {
@@ -423,7 +379,6 @@ async fn set_notification_encrypted_content(
 }
 
 fn setup(app: &mut tauri::App<BrowserEngine>) -> Result<(), Box<dyn std::error::Error>> {
-    echo_legacy::remove_gomuks_leftovers(app.handle());
     #[cfg(desktop)]
     proxy::apply_to_core();
     #[cfg(desktop)]
@@ -532,8 +487,6 @@ fn setup(app: &mut tauri::App<BrowserEngine>) -> Result<(), Box<dyn std::error::
     webkit::configure(app.handle());
 
     map_tiles::cleanup_cache(app.handle());
-    #[cfg(all(feature = "cef", target_os = "linux"))]
-    video_transcode::cleanup_cache(app.handle());
 
     Ok(())
 }
@@ -950,6 +903,9 @@ fn with_platform_plugins(builder: tauri::Builder<BrowserEngine>) -> tauri::Build
         .plugin(tauri_plugin_edge_to_edge::init())
         .plugin(tauri_plugin_livekit_mobile::init());
 
+    #[cfg(target_os = "ios")]
+    let builder = builder.plugin(tauri_plugin_auth_session::init());
+
     #[cfg(target_os = "android")]
     let builder = builder.plugin(tauri_plugin_sable_push::init());
 
@@ -1049,10 +1005,6 @@ pub fn run() {
             subscribe_events,
             fetch_media,
             forget_media,
-            #[cfg(all(feature = "cef", target_os = "linux"))]
-            stream_video,
-            #[cfg(all(feature = "cef", target_os = "linux"))]
-            video_stream_mime,
             import_persona_avatar,
             send_attachment,
             send_gallery,

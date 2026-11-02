@@ -555,7 +555,7 @@ async fn download_persona_avatar(url: &str) -> Result<(String, Vec<u8>), RpcErro
     }
     // Do not send Matrix credentials to avatar hosts.
     let http = crate::tls::apply(matrix_sdk::reqwest::Client::builder())
-        .user_agent("Sable")
+        .user_agent(crate::echo_brand::APP_NAME)
         .timeout(Duration::from_secs(30))
         .redirect(matrix_sdk::reqwest::redirect::Policy::limited(5))
         .build()

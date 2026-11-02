@@ -1,5 +1,6 @@
 import { app, ipcMain, type WebFrameMain } from 'electron';
 import { autoUpdater, type UpdateInfo } from 'electron-updater';
+import { echoUseUpdateFeed } from '../../echo/electron/updater';
 
 type IsAppFrame = (frame: WebFrameMain | null | undefined) => boolean;
 
@@ -21,6 +22,7 @@ export function setUpdateChannel(channel: keyof typeof FEEDS): void {
     url: FEEDS[channel],
     channel: channel === 'stable' ? 'latest' : 'nightly',
   });
+  echoUseUpdateFeed(autoUpdater);
   // Moving from nightly to an older stable is a downgrade to the updater.
   autoUpdater.allowDowngrade = channel !== builtChannel;
 }

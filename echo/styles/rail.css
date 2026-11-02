@@ -161,6 +161,67 @@
     border-radius: 50%;
   }
 
+  /* A closed folder previews its spaces as a 2×2 grid of small squircles inside
+     the tile's 2.5rem, not at full tile size (the rule above would make them so). */
+  :root .rail .folder-preview .folder-tiles {
+    gap: 0.25rem;
+  }
+
+  :root .rail .folder-preview .avatar-root.folder-tile {
+    --avatar-size: 1.125rem;
+
+    border-radius: 0.3125rem;
+    font-size: 0.5625rem;
+  }
+
+  /* An open folder: a rounded card sized for echo's 3.125rem tiles (Sable sizes it
+     for 2.125rem ones), with room around them so the outline doesn't hug the
+     tiles. Each tile sits in a wrapper, so the card's gap can't space them:
+     their own margin does, a little tighter than the rail's. */
+  :root .rail .folder-open {
+    width: auto;
+  }
+
+  :root .rail .folder-open .folder-card {
+    border-color: var(--echo-hairline);
+    border-radius: 1.125rem;
+    padding: 0.25rem 0.375rem;
+  }
+
+  :root .folder-card .rail-slot.nested .nav-tab.nav-tab-side {
+    margin-block: 0.1875rem;
+  }
+
+  /* A space inside the folder is open: the whole folder is the parted band
+     (the li around it already draws it), full rail width and square, its card
+     outline gone. The open space's filters sit under it, then a divider, then
+     the folder's other spaces. */
+  :root .rail .folder-open:has(.echo-rail-band) {
+    align-self: stretch;
+    width: auto;
+  }
+
+  :root .rail .folder-open:has(.echo-rail-band) .folder-card {
+    border-color: transparent;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  :root .rail .folder-card .rail-slot.nested:has(.echo-rail-band) {
+    align-self: stretch;
+  }
+
+  :root .rail .folder-card .echo-rail-band-inner::after {
+    align-self: center;
+    background: rgb(0 0 0 / 40%);
+    box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
+    content: '';
+    flex: none;
+    height: 1px;
+    margin: 0.3125rem 0 0.4375rem;
+    width: 2.5rem;
+  }
+
   /* Tile badges ride the tile's lower right corner, in the space palette. */
   :root .rail .nav-tab .unread-badge {
     inset: auto -0.0625rem -0.0625rem auto;

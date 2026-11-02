@@ -285,6 +285,11 @@ pub enum CoreEvent {
         #[cfg_attr(feature = "typegen", specta(type = String))]
         room_id: OwnedRoomId,
     },
+    /// echo's own events (echo/core/): their shape is echo's.
+    Echo {
+        #[cfg_attr(feature = "typegen", specta(type = specta_typescript::Unknown))]
+        event: serde_json::Value,
+    },
     WidgetRoomEvent {
         #[cfg_attr(feature = "typegen", specta(type = specta_typescript::Unknown))]
         event: serde_json::Value,

@@ -1,0 +1,7 @@
+{
+  "extends": "../../electron/tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": ["../../electron/node_modules/@types"]
+  },
+  "include": ["."]
+}

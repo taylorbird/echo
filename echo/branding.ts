@@ -5,7 +5,13 @@
  * src/lib/locales.ts), so "Sable" becomes "echo" in all languages without
  * editing src/locales/*.json, which upstream changes constantly. Strings about
  * the Sable project itself (supporting it, its resources) keep its name.
+ *
+ * In tests the swap follows echo/active.ts: Sable's own component tests render
+ * without echo's layer and expect Sable's text. In the app it always applies,
+ * since the English bundle can load before echo/init.ts has run.
  */
+
+import { echoActive, sableTest } from './active.js';
 
 const KEEP_SABLE = /support|collective|resources/i;
 
@@ -28,5 +34,15 @@ function rebrand(value: unknown, path: string): unknown {
 }
 
 export function brandLocale(bundle: Record<string, unknown>): Record<string, unknown> {
+  if (sableTest()) return bundle;
   return rebrand(bundle, '') as Record<string, unknown>;
+}
+
+/**
+ * The app's name where Sable writes it in markup rather than in a locale
+ * string (the About page's heading, the title bar). Sable's while echo's layer
+ * is off, as in Sable's own component tests.
+ */
+export function echoAppName(sable: string): string {
+  return echoActive() ? 'echo' : sable;
 }

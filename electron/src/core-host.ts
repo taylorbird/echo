@@ -9,6 +9,7 @@ import type { WorkerRequest } from '../../src/worker/protocol.ts';
 
 interface NativeCore {
   restore(): Promise<void>;
+  setActive(active: boolean): Promise<void>;
   call(method: string, params: string): Promise<string>;
   fetchMedia(source: string, width: number, height: number, background: boolean): Promise<Buffer>;
   forgetMedia(source: string): Promise<void>;
@@ -35,10 +36,9 @@ const instance = new native.SableCore(dataDir, process.env.SABLE_LOG ?? null);
 void instance.restore();
 
 function unwrap<T>(promise: Promise<T>): Promise<T> {
-  return promise.catch((error: unknown) =>
-    // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- the boundary only decodes a string rejection as an `RpcError`
-    Promise.reject(error instanceof Error ? error.message : error)
-  );
+  return promise.catch((error: unknown) => {
+    throw new Error(error instanceof Error ? error.message : String(error));
+  });
 }
 
 const core: WorkerCore = {
@@ -49,6 +49,7 @@ const core: WorkerCore = {
   sendAttachment: (request, bytes) => unwrap(instance.sendAttachment(request, bytes)),
   sendGallery: (request, items) => unwrap(instance.sendGallery(request, items)),
   uploadMedia: (mime, bytes) => unwrap(instance.uploadMedia(mime, bytes)),
+  setActive: (active) => unwrap(instance.setActive(active)),
 };
 
 const boundary = createCoreWorkerBoundary(

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import RoomOrForumPage from '#lib/features/forum/RoomOrForumPage.svelte';
+  import RoomOrForumPage from '../../../../../echo/components/DirectRoom.svelte';
 </script>
 
 <RoomOrForumPage />

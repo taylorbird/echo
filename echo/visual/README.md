@@ -35,11 +35,16 @@ Screenshots land in `echo/visual/out/` (gitignored), replaced on every run:
 | `desktop-{light,dark}-profile.png` | Alex Rivera's profile card |
 | `desktop-{light,dark}-settings.png` | settings |
 | `desktop-{light,dark}-modal-room-settings.png` | #general's room settings dialog |
-| `app-{light,dark}-{home,timeline,members}.png` | the same views with the macOS app's chrome (`data-tauri-os`, `data-client-decorations` set on `<html>` by hand): floating panes, no title band |
+| `app-{light,dark}-{home,timeline,members}.png` | the same views with the macOS app's chrome (`data-echo-app`, `data-tauri-os`, `data-client-decorations` set on `<html>` by hand): floating panes, no title band |
 | `app-dark-space-{all,rooms,dms,recent}.png` | the Work space in the app with each rail sub-filter selected; the selected row's box goes to `out/.pill-space-<filter>.json`, to check the pill against it |
 | `app-dark-home-empty.png` | Home with no room open: echo's empty pane; checks the band's DM tiles open in Home |
 | `app-dark-create-menu.png` | the rail's create (+) menu, with New chat |
 | `app-dark-space-dm-open.png` | the DM with Alex opened from the Work space's DMs: it stays in the space |
+| `app-dark-collapsed.png` | #general open with its section collapsed: the open room stays, with the marker for the folded rest |
+| `app-dark-palette.png` | the Cmd-K quick switcher over #general |
+| `app-dark-folder-closed.png` | the rail with the Bridges folder of spaces (Signal, WhatsApp, Discord) closed |
+| `app-dark-folder-space.png` | the Bridges folder after a click on it: a space in it open, the folder as the parted band (echo/folders.ts); its caret then goes Home |
+| `app-dark-profile.png` | Alex Rivera's profile, as echo's centred modal in the app |
 | `phone-light-{roomlist,timeline}.png` | 390×844 @3x |
 | `setup-<step>.png`, `setup-<step>-scrolled.png` | each setup step after a fresh sign-in at a short 1280×440 window, before and after a wheel; `out/.setup-scroll.json` records how far each overflowed and scrolled |
 

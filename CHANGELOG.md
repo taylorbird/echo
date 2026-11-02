@@ -1,5 +1,54 @@
 # Sable Changelog
 
+## 2.1.4 (2026-10-21)
+
+### Fixes
+
+* Allow messages with a file, video or audio attachment to be edited, by editing their caption.
+* Open the native file dialog for attachments and exports in the Electron app, rather than the browser's.
+* Fixed launch crash on Windows.
+* Install the Linux app as `sable` again, so the deb, the rpm and the AUR packages put `/usr/bin/sable` back in `PATH`.
+* Add Windows tray support.
+
+## 2.1.3 (2026-10-21)
+
+### Fixes
+
+* Allow messages with a file, video or audio attachment to be edited, by editing their caption.
+* Open the native file dialog for attachments and exports in the Electron app, rather than the browser's.
+* Install the Linux app as `sable` again, so the deb, the rpm and the AUR packages put `/usr/bin/sable` back in `PATH`.
+
+## 2.1.2 (2026-10-21)
+
+### Fixes
+
+* Fixed launch crash on Windows.
+* Add Windows tray support.
+
+## 2.1.1 (2026-10-21)
+
+### Fixes
+
+* Fix Electron and Android release builds.
+
+## 2.1.0 (2026-10-21)
+
+### Features
+
+* Added a badge next to settings that aren't synchronized across devices
+* Ship the desktop apps on Electron for Windows, macOS and Linux, importing the Tauri app's settings on first launch.
+
+### Fixes
+
+* Lower CPU and memory use in large encrypted rooms when room keys arrive.
+* Fix extra colons in custom emoji alt text and titles.
+* Keep popup background present while scrolling content fades.
+* Keep Markdown literal in incoming messages and previews.
+* Ring for one-to-one calls on Android when the app is closed.
+* Use the server's mutual rooms endpoint instead of checking locally cached membership.
+
+* Recover sync after the computer sleeps
+
 ## 2.0.3 (2026-10-17)
 
 ### Fixes

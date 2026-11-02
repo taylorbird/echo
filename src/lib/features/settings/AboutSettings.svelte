@@ -35,6 +35,7 @@
   import CheckIcon from 'phosphor-svelte/lib/CheckIcon';
   import CopySimpleIcon from 'phosphor-svelte/lib/CopySimpleIcon';
 
+  import { echoAppName } from '../../../../echo/branding.js';
   import HomeserverInfo from './HomeserverInfo.svelte';
   import SupporterSettings from './SupporterSettings.svelte';
 
@@ -120,7 +121,7 @@
     <SableBrandMark class="about-logo" />
     <div>
       <div class="product-name">
-        <h1>Sable</h1>
+        <h1>{echoAppName('Sable')}</h1>
         <Tooltip label={i18n.t(versionCopied ? 'common.copied' : 'common.copy')}>
           {#snippet trigger({ props })}
             <button
@@ -179,6 +180,7 @@
       {#if automaticUpdateChecksSupported}
         <SettingsRow
           id="auto-update-check"
+          key="autoUpdateCheck"
           title={i18n.t('settings.autoUpdateCheck')}
           description={i18n.t('settings.autoUpdateCheckHint')}
           control="auto-update-check-switch"
@@ -194,6 +196,7 @@
       {#if isElectron()}
         <SettingsRow
           id="update-channel"
+          key="updateChannel"
           title={i18n.t('settings.updateChannel')}
           description={i18n.t('settings.updateChannelHint')}
         >

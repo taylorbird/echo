@@ -776,7 +776,10 @@ fn metadata_with(redirect_uri: &Url, device_code: bool) -> Raw<ClientMetadata> {
         // *native* client per RFC 8252, which is what a dev server is.
         "http" if loopback => (ApplicationType::Native, canonical_client_uri()),
         "https" | "http" => (ApplicationType::Web, origin_url(redirect_uri)),
-        scheme => (ApplicationType::Native, reverse_dns_url(scheme)),
+        scheme => (
+            ApplicationType::Native,
+            crate::echo_brand::native_client_uri(scheme).unwrap_or_else(|| reverse_dns_url(scheme)),
+        ),
     };
 
     // RFC 8252 §7.3: a loopback redirect registers without its port; authorization uses the real URI.
@@ -799,7 +802,7 @@ fn metadata_with(redirect_uri: &Url, device_code: bool) -> Raw<ClientMetadata> {
         grant_types,
         Localized::new(client_uri, []),
     );
-    metadata.client_name = Some(Localized::new("Sable".to_owned(), []));
+    metadata.client_name = Some(Localized::new(crate::echo_brand::APP_NAME.to_owned(), []));
 
     Raw::new(&metadata).expect("client metadata serializes")
 }

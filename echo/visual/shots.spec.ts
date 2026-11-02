@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { LOGIN_PASSWORD, LOGIN_USERNAME } from '../../tests/e2e/fixtures/loginAccount';
+import { COLD_BOOT_TIMEOUT } from '../../tests/e2e/pages/AppShell';
 import { AuthFlow } from '../../tests/e2e/pages/AuthFlow';
 import { OUT_DIR, SKIPPED_PATH, readState, type ShotsState } from './state';
 
@@ -72,8 +73,26 @@ async function signIn(page: Page): Promise<void> {
   await expect(auth.moreMethodsButton).toBeVisible({ timeout: 60_000 });
   await auth.revealPasswordLogin();
   await auth.signInWithPassword(LOGIN_USERNAME, LOGIN_PASSWORD);
-  await auth.finishSetup();
-  await expect(page).toHaveURL(/\/rooms$/, { timeout: 30_000 });
+  await finishSetup(page, auth);
+}
+
+// Sign-in lands on /rooms, which goes on to Home on desktop
+// (echo/components/EmptyPane.svelte); AuthFlow's finishSetup waits for /rooms
+// alone, so this is it with Home accepted too.
+const SIGNED_IN = /\/(rooms|home)$/;
+
+async function finishSetup(page: Page, auth: AuthFlow): Promise<void> {
+  for (let step = 0; step < 12; step += 1) {
+    await expect(page).toHaveURL(/\/(setup\/[a-z]+|rooms|home)$/, { timeout: 30_000 });
+    if (SIGNED_IN.test(new URL(page.url()).pathname)) return;
+    const before = page.url();
+    // AuthFlow's own step picker; private to the e2e suite, reused as is.
+    await expect(async () => {
+      await (await auth['nextSetupAction']()).click({ timeout: 5_000 });
+    }).toPass({ timeout: COLD_BOOT_TIMEOUT });
+    await page.waitForURL((url) => url.href !== before, { timeout: 5_000 }).catch(() => undefined);
+  }
+  await expect(page).toHaveURL(SIGNED_IN);
 }
 
 async function settle(page: Page): Promise<void> {
@@ -255,7 +274,10 @@ const profile: View = {
   name: 'profile',
   open: async (page) => {
     await openGeneral(page);
-    await page.getByRole('button', { name: "Open Alex Rivera's profile" }).last().click();
+    await page
+      .getByRole('button', { name: /^Open Alex Rivera['’]s profile$/ })
+      .last()
+      .click();
     // echo's modal on desktop (echo/components/ProfileModal.svelte), Sable's card on phones.
     await expect(page.locator('.profile-card, .echo-profile').first()).toBeVisible({
       timeout: 10_000,
@@ -385,6 +407,35 @@ function spaceFilter(value: string, label: string): View {
   };
 }
 
+// The rail with a folder of spaces (Bridges: Signal, WhatsApp, Discord), closed
+// and then open.
+const folderClosed: View = {
+  name: 'folder-closed',
+  open: async (page) => {
+    await home.open(page);
+    await expect(page.locator('.rail .folder-preview')).toBeVisible({ timeout: 15_000 });
+  },
+};
+
+// Clicking the closed folder opens a space in it (echo/folders.ts), and the
+// folder becomes the parted band; its caret goes Home, closing it again.
+const folderSpace: View = {
+  name: 'folder-space',
+  open: async (page) => {
+    await folderClosed.open(page);
+    await page.locator('.rail .folder-preview').click();
+    await expect(page.locator('.rail .folder-card .echo-rail-band')).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.mouse.move(-1, -1);
+  },
+  close: async (page) => {
+    await page.locator('.rail .folder-collapse').click();
+    await expect(page.locator('.rail .folder-preview')).toBeVisible();
+    await expect(page).toHaveURL(/\/home$/);
+  },
+};
+
 const spaceFilters = [
   spaceFilter('all', 'All chats'),
   spaceFilter('rooms', 'Rooms'),
@@ -401,6 +452,7 @@ function inApp(view: View): View {
       await view.open(page);
       await page.evaluate(() => {
         document.documentElement.dataset.tauriOs = 'macos';
+        document.documentElement.dataset.echoApp = 'macos';
         document.documentElement.dataset.clientDecorations = 'mac';
       });
     },
@@ -458,6 +510,8 @@ test.describe('app', () => {
     await capture(page, 'app-dark-space-dm-open', inApp(spaceDm));
     await capture(page, 'app-dark-collapsed', inApp(collapsedSection));
     await capture(page, 'app-dark-palette', inApp(palette));
+    await capture(page, 'app-dark-folder-closed', inApp(folderClosed));
+    await capture(page, 'app-dark-folder-space', inApp(folderSpace));
     await capture(page, 'app-dark-profile', inApp(profile));
   });
 });
@@ -496,9 +550,9 @@ test.describe('setup', () => {
     await auth.signInWithPassword(LOGIN_USERNAME, LOGIN_PASSWORD);
     const report: Record<string, { overflow: number; scrolled: number }> = {};
     for (let index = 0; index < 12; index += 1) {
-      await expect(page).toHaveURL(/\/(setup\/[a-z]+|rooms)$/, { timeout: 30_000 });
+      await expect(page).toHaveURL(/\/(setup\/[a-z]+|rooms|home)$/, { timeout: 30_000 });
       const path = new URL(page.url()).pathname;
-      if (path.endsWith('/rooms')) break;
+      if (SIGNED_IN.test(path)) break;
       const step = path.split('/').pop() ?? String(index);
       await settle(page);
       await page.screenshot({ path: join(OUT_DIR, `setup-${step}.png`) });
