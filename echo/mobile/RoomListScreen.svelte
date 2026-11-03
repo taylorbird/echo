@@ -1,7 +1,7 @@
 <!-- echo's room list on a phone (PhoneShell.svelte's first screen). The rows are
      echo's (echo/design/SPEC.md §4.3–4.4): a round avatar, the name with its
      kind glyph and the time, a "Sender: text" line in the sender's colour, and
-     the unread dot or badge in echo's colours. Where to look — everything,
+     the desktop's badge ring (components/RoomRing.svelte). Where to look — everything,
      direct messages, rooms or one space — is a strip of chips under the title
      rather than echo's desktop rail: a rail would take a fifth of a phone's
      width from every row, and a bottom tab bar has no room for a list of
@@ -37,6 +37,7 @@
   import UnreadBadge from '#lib/ui/primitives/UnreadBadge.svelte';
   import { whenVisible } from '#lib/ui/when-visible.js';
   import EchoRoomPreview from '../components/RoomPreview.svelte';
+  import EchoRoomRing from '../components/RoomRing.svelte';
   import { readPlace, writePlace, type Place } from './place.js';
   import { listTime } from './time.js';
 
@@ -267,6 +268,7 @@
               <EchoRoomPreview {room} {profiles} />
               {#if time}<time class="echo-m-room-time" datetime={time.iso}>{time.label}</time>{/if}
               <span class="echo-m-room-status">
+                <EchoRoomRing {room} />
                 {#if typing}
                   <TypingDots />
                 {:else}

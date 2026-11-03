@@ -91,7 +91,8 @@
 {/if}
 
 <style>
-  /* Desktop only: echo/styles/roomlist.css draws it there. */
+  /* Drawn only where echo styles it: the desktop list (echo/styles/roomlist.css)
+     and the phone's (echo/styles/mobile.css). */
   .echo-ring {
     display: none;
   }

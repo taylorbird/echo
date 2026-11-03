@@ -52,9 +52,11 @@ can live here instead.
   a closed folder opens its last space (or its first), and its caret goes Home. Sable's
   expanded-with-nothing-open step is gone. Desktop only.
 - `unread.ts` — echo's unread indicators: a muted room with unread messages still gets its badge
-  in the room list and rail (Sable's core clears a muted room's counts). Desktop only.
+  in the room list and rail (Sable's core clears a muted room's counts), on the desktop and the
+  phone.
 - `ring.ts` — what a room's badge ring shows (colour and content: count, "@", dot or emoji),
-  drawn by `components/RoomRing.svelte` in the room list's badge lane. Desktop only.
+  drawn by `components/RoomRing.svelte` in the room list's badge lane, on the desktop and in the
+  phone's list (`mobile/RoomListScreen.svelte`).
 - `reactions.svelte.ts` — reactions to your messages in the room list: a 5-second pop of the
   emoji and a "reacted to" preview, and with "show reactions as notifications" on a marker
   until you open the room (kept per account on this device). Fed by `core/reactions.rs`.
@@ -65,7 +67,7 @@ can live here instead.
 - `auth.ts` — the OAuth/SSO redirect in echo's Electron app: the build's own scheme, which the
   preload passes in (`echoRedirectScheme`).
 - `settings.ts` — echo's own settings as panels in Sable's settings pages (the reaction
-  settings, under Notifications). Kept on this device. Desktop only.
+  settings, under Notifications). Kept on this device.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
   the Sable project itself keep its name. In tests it follows `active.ts`, so Sable's own
   component tests see Sable's text. `echoAppName` is the name where Sable writes it in markup.
