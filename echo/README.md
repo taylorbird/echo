@@ -20,7 +20,7 @@ can live here instead.
   edge — and anywhere else Sable's drawer as before. The list switches places (all, DMs, rooms,
   a space) with chips under its title; Sable's bottom bar stays for search, inbox and account.
 - `ios/` — the iOS app: `prepare.mjs` writes echo's copy of Sable's Xcode template and icon
-  catalog before `tauri ios init`; `sim.sh` runs the dev build in a named simulator.
+  catalog before `tauri ios init`; `sim.sh` runs the dev build, or with `--bundled` the self-contained one, in a named simulator.
 - `tauri.echo.ios.conf.json` — merged after `tauri.echo.conf.json` for iOS: the dev bundle ID,
   echo's Xcode template, no development team, Vite on port 3027.
 - `components/` — the few pieces of echo's UI that CSS can't draw, each mounted from Sable's
@@ -165,7 +165,11 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
   (`tauri ios dev`). Tauri only runs it on a simulator with Xcode's own iOS version; with an
   older runtime it opens Xcode instead. Then use `mise run echo:ios:sim "iPhone 16 Pro"`, which
   builds with xcodebuild and launches it there itself (`ios/sim.sh`).
-- `mise run echo:ios:build` — an unsigned debug build for the simulator (same runtime caveat).
+- `mise run echo:ios:sim --bundled "iPhone 16 Pro"` — the same, with the web app built into the
+  app as a release carries it: it runs with no dev server, and the script exits once it's up.
+  Without Simulator.app the app runs headless; `xcrun simctl io booted screenshot` sees it.
+- `mise run echo:ios:build` — an unsigned debug build for the simulator (same runtime caveat;
+  `echo:ios:sim --bundled` works around it).
 - `echo/release.sh <version|patch|minor>` — a signed, notarized release published to
   `taylorbird/echo` with its updater feed (`latest.json`). Write `echo/RELEASE_NOTES.md` first.
 

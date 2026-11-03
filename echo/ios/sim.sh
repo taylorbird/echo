@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 #
-# Runs echo's dev build in an iOS Simulator with live reload: `mise run echo:ios:sim [name]`.
+# Runs echo in an iOS Simulator: `mise run echo:ios:sim [--bundled] [name]`.
+#
+# By default it's the dev build with live reload from Vite. With --bundled the web app is
+# built into the app (as a release carries it), so it runs with nothing serving it, and the
+# script exits once the app is launched.
 #
 # `tauri ios dev` picks a simulator only when one runs the same iOS version as Xcode's SDK
 # (Xcode 27.1 wants an iOS 27.1 runtime); otherwise it gives up and opens Xcode. This does
@@ -11,6 +15,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BUNDLED=0
+if [[ "${1:-}" == "--bundled" ]]; then
+	BUNDLED=1
+	shift
+fi
 NAME="${1:-iPhone 16 Pro}"
 BUNDLE_ID="dev.tbird.echo.dev"
 DERIVED="$ROOT/target/ios-sim-derived"
@@ -39,9 +48,16 @@ exec /usr/bin/open "$@"
 EOF
 chmod +x "$SHIM/open"
 
+# Both modes leave Tauri's CLI running to answer the Xcode project's "Build Rust Code" step;
+# --open makes it skip its own build, which insists on a simulator matching Xcode's SDK.
+CONFIGS=(--config echo/tauri.echo.conf.json --config echo/tauri.echo.ios.conf.json)
 rm -f "$OPTIONS"
-PATH="$SHIM:$PATH" pnpm --dir "$ROOT" tauri ios dev --open \
-	--config echo/tauri.echo.conf.json --config echo/tauri.echo.ios.conf.json &
+if ((BUNDLED)); then
+	PATH="$SHIM:$PATH" pnpm --dir "$ROOT" tauri ios build --open --debug --target aarch64-sim \
+		"${CONFIGS[@]}" &
+else
+	PATH="$SHIM:$PATH" pnpm --dir "$ROOT" tauri ios dev --open "${CONFIGS[@]}" &
+fi
 DEV=$!
 
 # Stops a process and everything under it, deepest first. The dev server runs below pnpm
@@ -55,9 +71,9 @@ kill_tree() {
 }
 trap 'kill_tree "$DEV"; rm -rf "$SHIM"' EXIT
 
-echo "==> waiting for the dev server"
+echo "==> waiting for Tauri's CLI"
 until [[ -s "$OPTIONS" ]]; do
-	kill -0 "$DEV" 2>/dev/null || die "tauri ios dev exited"
+	kill -0 "$DEV" 2>/dev/null || die "tauri exited"
 	sleep 1
 done
 
@@ -71,5 +87,9 @@ xcrun simctl launch "$UDID" "$BUNDLE_ID"
 # The app runs headless without the Simulator window (`xcrun simctl io booted screenshot`
 # still works), and some Xcode installs don't register Simulator.app with Launch Services.
 open -a Simulator 2>/dev/null || echo "note: Simulator.app not found; echo runs headless"
+if ((BUNDLED)); then
+	echo "==> echo is running in $NAME"
+	exit 0
+fi
 echo "==> echo is running; Ctrl-C stops the dev server"
 wait "$DEV"
