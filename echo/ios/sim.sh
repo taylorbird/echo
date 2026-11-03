@@ -92,9 +92,11 @@ xcodebuild -project "$ROOT/src-tauri/gen/apple/app.xcodeproj" -scheme app_iOS \
 
 xcrun simctl install "$UDID" "$DERIVED/Build/Products/debug-iphonesimulator/echo.app"
 xcrun simctl launch "$UDID" "$BUNDLE_ID"
-# The app runs headless without the Simulator window (`xcrun simctl io booted screenshot`
-# still works), and some Xcode installs don't register Simulator.app with Launch Services.
-open -a Simulator 2>/dev/null || echo "note: Simulator.app not found; echo runs headless"
+# Show the simulator: Xcode 27.2 replaced Simulator.app with Device Hub (bundle id
+# com.apple.dt.Devices, in Xcode.app/Contents/Applications); older Xcodes have Simulator.
+# Without either the app still runs headless, and `xcrun simctl io booted screenshot` sees it.
+open -b com.apple.dt.Devices 2>/dev/null || open -a Simulator 2>/dev/null ||
+	echo "note: neither Device Hub nor Simulator.app found; echo runs headless"
 if ((BUNDLED)); then
 	echo "==> echo is running in $NAME"
 	exit 0
