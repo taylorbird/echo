@@ -68,6 +68,8 @@ xcodebuild -project "$ROOT/src-tauri/gen/apple/app.xcodeproj" -scheme app_iOS \
 
 xcrun simctl install "$UDID" "$DERIVED/Build/Products/debug-iphonesimulator/echo.app"
 xcrun simctl launch "$UDID" "$BUNDLE_ID"
-open -a Simulator
+# The app runs headless without the Simulator window (`xcrun simctl io booted screenshot`
+# still works), and some Xcode installs don't register Simulator.app with Launch Services.
+open -a Simulator 2>/dev/null || echo "note: Simulator.app not found; echo runs headless"
 echo "==> echo is running; Ctrl-C stops the dev server"
 wait "$DEV"

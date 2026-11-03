@@ -47,6 +47,14 @@ function writeTemplate() {
   template = swap(template, /\n *ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES:[^\n]*/g, '');
   template = swap(template, /\bSable (uses|connects|shares|saves)\b/g, 'echo $1');
   template = swap(template, 'CFBundleDisplayName: Sable', 'CFBundleDisplayName: echo');
+  // iPhones run portrait only: a phone on its side is wider than 48rem, which is
+  // the desktop layout's breakpoint, so landscape would swap echo's phone UI
+  // for the desktop's. iPads keep every orientation (they get the desktop's).
+  template = swap(
+    template,
+    /(\n *UISupportedInterfaceOrientations:\n *- UIInterfaceOrientationPortrait)\n *- UIInterfaceOrientationLandscapeLeft\n *- UIInterfaceOrientationLandscapeRight/g,
+    '$1'
+  );
 
   rmSync(out, { recursive: true, force: true });
   const iconSet = join(out, 'AppIcons.xcassets/AppIcon.appiconset');
