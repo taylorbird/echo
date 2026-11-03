@@ -21,6 +21,14 @@ if [[ "${1:-}" == "--bundled" ]]; then
 	shift
 fi
 NAME="${1:-iPhone 16 Pro}"
+
+# The iOS Rust build is large: every worktree builds into the main checkout's target/, and
+# without debug info or incremental output (about 4 GB, against 15 GB with both in a
+# worktree of its own). Set any of these to override.
+COMMON="$(cd "$(git -C "$ROOT" rev-parse --git-common-dir)/.." && pwd)"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$COMMON/target}"
+export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
+export CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}"
 BUNDLE_ID="dev.tbird.echo.dev"
 DERIVED="$ROOT/target/ios-sim-derived"
 OPTIONS="$ROOT/src-tauri/gen/apple/.tauri/cli-options-server.json"
