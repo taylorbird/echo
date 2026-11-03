@@ -516,22 +516,86 @@ test.describe('app', () => {
   });
 });
 
-test.describe('phone', () => {
-  test.use({
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 3,
-    isMobile: true,
-    hasTouch: true,
-    colorScheme: 'light',
-  });
+// The phone's own list (echo/mobile/RoomListScreen.svelte), narrowed to the
+// Work space by its chip.
+const phoneSpace: View = {
+  name: 'space',
+  open: async (page) => {
+    await roomList.open(page);
+    await page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('button', { name: 'Work' })
+      .click();
+    await expect(page.getByRole('heading', { name: 'Work', level: 1 })).toBeVisible();
+  },
+  close: async (page) => {
+    await page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('button', { name: 'All' })
+      .click();
+  },
+};
 
-  test('phone', async ({ context, page }) => {
-    await holdReadState(context);
-    await liveCss(context);
-    await signIn(page);
-    for (const view of [roomList, timeline]) await capture(page, `phone-light-${view.name}`, view);
+// A phone opens a room from its list: a room's own URL loaded from outside
+// lands on the list (PhoneShell.svelte follows Sable's drawer state).
+const phoneTimeline: View = {
+  name: 'timeline',
+  open: async (page) => {
+    await roomList.open(page);
+    await page
+      .getByRole('list', { name: 'Home' })
+      .getByRole('link', { name: /^general / })
+      .click();
+    await expect(page.locator('.timeline-viewport:not(.initial)')).toBeVisible({ timeout: 45_000 });
+    await expect(message(page, 'great week')).toBeVisible({ timeout: 20_000 });
+  },
+};
+
+// The account tab's Settings, which a phone reaches through its bottom bar.
+const phoneSettings: View = {
+  name: 'settings',
+  open: async (page) => {
+    await page.goto('/settings');
+    await expect(page.getByRole('navigation', { name: 'Settings sections' })).toBeVisible({
+      timeout: 15_000,
+    });
+  },
+};
+
+for (const scheme of ['light', 'dark'] satisfies Scheme[]) {
+  test.describe(`phone ${scheme}`, () => {
+    test.use({
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+      colorScheme: scheme,
+    });
+
+    test(`phone ${scheme}`, async ({ context, page }) => {
+      await holdReadState(context);
+      await liveCss(context);
+      await signIn(page);
+      for (const view of [roomList, phoneSpace, phoneTimeline, phoneSettings]) {
+        await capture(page, `phone-${scheme}-${view.name}`, view);
+      }
+      // The same views as the iOS app draws them (echo/styles/mobile.css keys
+      // its palette on data-tauri-os), set on <html> by hand as for app-mode.
+      for (const view of [roomList, phoneTimeline]) {
+        await capture(page, `phone-app-${scheme}-${view.name}`, {
+          ...view,
+          open: async (target) => {
+            await view.open(target);
+            await target.evaluate(() => {
+              document.documentElement.dataset.tauriOs = 'ios';
+              document.documentElement.dataset.echoApp = 'ios';
+            });
+          },
+        });
+      }
+    });
   });
-});
+}
 
 // The setup screens after a first sign-in, at a short desktop window: each step
 // is screenshotted, and whether a wheel over it scrolls anything is recorded
