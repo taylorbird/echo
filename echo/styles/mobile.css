@@ -151,11 +151,12 @@
     padding-top: 0;
   }
 
-  /* Sable's bottom bar: search, inbox and the account, on echo's ground. */
+  /* Sable's bottom bar: search, inbox and the account, on echo's ground. The
+     bar pads itself for the home indicator (--edge-inset-bottom, set on the
+     screen above), so the wrapper adds none of its own. */
   .echo-m-tabs {
     border-top: 1px solid var(--echo-hairline);
     flex: none;
-    padding-bottom: var(--safe-bottom);
   }
 
   .echo-m-tabs .mobile-tools {
@@ -164,10 +165,6 @@
     background: var(--echo-roomlist);
     border: 0;
     box-shadow: none;
-  }
-
-  .echo-m-content .echo-m-tabs {
-    padding-bottom: 0;
   }
 
   /* The open tab: the desktop rail's selected tile behind it, in the text
