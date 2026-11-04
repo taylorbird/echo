@@ -43,6 +43,14 @@ dir = "{{config_root}}"
 run = "echo/ios/sim.sh"
 raw_args = true
 
+# A connected iPhone, signed with your Apple Development identity (echo/ios/device.sh):
+# ECHO_IOS_TEAM=<team id> mise run echo:ios:device [device name].
+[tasks."echo:ios:device"]
+description = "Build, install and launch echo on a connected iPhone (needs ECHO_IOS_TEAM)"
+dir = "{{config_root}}"
+run = "echo/ios/device.sh"
+raw_args = true
+
 [tasks."echo:ios:build"]
 description = "Build echo for the iOS Simulator (debug, unsigned)"
 dir = "{{config_root}}"
