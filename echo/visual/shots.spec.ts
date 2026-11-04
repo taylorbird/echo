@@ -128,6 +128,12 @@ async function capture(page: Page, file: string, view: View): Promise<void> {
     const debug = join(OUT_DIR, '.debug', file);
     await mkdir(join(OUT_DIR, '.debug'), { recursive: true });
     await page.screenshot({ path: `${debug}.png` }).catch(() => undefined);
+    // The whole error (the warning above has its first line): Playwright's call log
+    // says what blocked an action, such as another element taking the click.
+    // oxlint-disable-next-line no-control-regex -- stripping terminal colours
+    await writeFile(`${debug}.error.txt`, detail.replaceAll(/\x1b\[[0-9;]*m/g, '')).catch(
+      () => undefined
+    );
     await page
       .locator('body')
       .ariaSnapshot()
@@ -516,23 +522,54 @@ test.describe('app', () => {
   });
 });
 
-// The phone's own list (echo/mobile/RoomListScreen.svelte), narrowed to the
-// Work space by its chip.
+// The phone's space drawer (echo/mobile/SpaceDrawer.svelte), opened from the
+// place button by the title.
+async function phoneDrawer(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Spaces', exact: true }).click();
+  await expect(page.getByRole('navigation', { name: 'Spaces' })).toBeVisible();
+}
+
+const phoneDrawerOpen: View = {
+  name: 'drawer',
+  open: async (page) => {
+    await roomList.open(page);
+    await phoneDrawer(page);
+  },
+  close: async (page) => {
+    await page.keyboard.press('Escape');
+  },
+};
+
+// The phone's list in the Work space, picked in the drawer, then back Home.
 const phoneSpace: View = {
   name: 'space',
   open: async (page) => {
     await roomList.open(page);
+    await phoneDrawer(page);
     await page
-      .getByRole('navigation', { name: 'Primary navigation' })
-      .getByRole('button', { name: 'Work' })
+      .getByRole('navigation', { name: 'Spaces' })
+      .getByRole('button', { name: 'Work', exact: true })
       .click();
     await expect(page.getByRole('heading', { name: 'Work', level: 1 })).toBeVisible();
   },
   close: async (page) => {
+    await phoneDrawer(page);
     await page
-      .getByRole('navigation', { name: 'Primary navigation' })
-      .getByRole('button', { name: 'All' })
+      .getByRole('navigation', { name: 'Spaces' })
+      .getByRole('button', { name: 'Home', exact: true })
       .click();
+  },
+};
+
+// Recent: the rail's fourth sub-filter, one list newest first.
+const phoneRecent: View = {
+  name: 'recent',
+  open: async (page) => {
+    await roomList.open(page);
+    await page.getByRole('button', { name: 'Recent', exact: true }).click();
+  },
+  close: async (page) => {
+    await page.getByRole('button', { name: 'All chats', exact: true }).click();
   },
 };
 
@@ -543,7 +580,7 @@ const phoneTimeline: View = {
   open: async (page) => {
     await roomList.open(page);
     await page
-      .getByRole('list', { name: 'Home' })
+      .getByRole('list', { name: 'Rooms', exact: true })
       .getByRole('link', { name: /^general / })
       .click();
     await expect(page.locator('.timeline-viewport:not(.initial)')).toBeVisible({ timeout: 45_000 });
@@ -576,7 +613,14 @@ for (const scheme of ['light', 'dark'] satisfies Scheme[]) {
       await holdReadState(context);
       await liveCss(context);
       await signIn(page);
-      for (const view of [roomList, phoneSpace, phoneTimeline, phoneSettings]) {
+      for (const view of [
+        roomList,
+        phoneDrawerOpen,
+        phoneSpace,
+        phoneRecent,
+        phoneTimeline,
+        phoneSettings,
+      ]) {
         await capture(page, `phone-${scheme}-${view.name}`, view);
       }
       // The same views as the iOS app draws them (echo/styles/mobile.css keys
