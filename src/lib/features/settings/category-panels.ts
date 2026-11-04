@@ -38,7 +38,7 @@ import DeveloperSentry from '#lib/features/settings/DeveloperSentry.svelte';
 import DeveloperServerFeatures from '#lib/features/settings/DeveloperServerFeatures.svelte';
 import DeveloperSyncDiagnostics from '#lib/features/settings/DeveloperSyncDiagnostics.svelte';
 import SoundVolumeSettings from '../call/SoundVolumeSettings.svelte';
-import { echoReactionSettings } from '../../../../echo/settings.js';
+import { echoPhoneLayoutSettings, echoReactionSettings } from '../../../../echo/settings.js';
 
 export interface CategoryPanel {
   component: Component;
@@ -54,6 +54,7 @@ export const categoryPanels: Record<string, CategoryPanel[]> = {
     { component: QuickCss, section: 'themes' },
     { component: AppIconSettings, section: 'themes' },
     { component: FontSettings, section: 'font' },
+    echoPhoneLayoutSettings,
   ],
   composer: [
     { component: ComposerEnterSetting, section: 'writing', start: true },

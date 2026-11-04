@@ -522,11 +522,11 @@ test.describe('app', () => {
   });
 });
 
-// The phone's space drawer (echo/mobile/SpaceDrawer.svelte), opened from the
-// place button by the title.
+// The phone's space drawer (echo/mobile/SpaceDrawer.svelte), the default,
+// opened from the place button by the title.
 async function phoneDrawer(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Spaces', exact: true }).click();
-  await expect(page.getByRole('navigation', { name: 'Spaces' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Space drawer' })).toBeVisible();
 }
 
 const phoneDrawerOpen: View = {
@@ -547,7 +547,7 @@ const phoneSpace: View = {
     await roomList.open(page);
     await phoneDrawer(page);
     await page
-      .getByRole('navigation', { name: 'Spaces' })
+      .getByRole('navigation', { name: 'Space drawer' })
       .getByRole('button', { name: 'Work', exact: true })
       .click();
     await expect(page.getByRole('heading', { name: 'Work', level: 1 })).toBeVisible();
@@ -555,21 +555,67 @@ const phoneSpace: View = {
   close: async (page) => {
     await phoneDrawer(page);
     await page
-      .getByRole('navigation', { name: 'Spaces' })
+      .getByRole('navigation', { name: 'Space drawer' })
       .getByRole('button', { name: 'Home', exact: true })
       .click();
   },
 };
 
-// Recent: the rail's fourth sub-filter, one list newest first.
-const phoneRecent: View = {
-  name: 'recent',
+// Settings → Appearance → "Spaces along the top" (echo/mobile/layout.svelte.ts):
+// the strip under the title instead of the drawer. Read once at start-up, so
+// set before a reload.
+const SPACES_ON_TOP = 'echo-mobile-spaces-on-top';
+
+async function spacesOnTop(page: Page, on: boolean): Promise<void> {
+  await page.evaluate(
+    ([key, value]) => {
+      if (value) localStorage.setItem(key, 'true');
+      else localStorage.removeItem(key);
+    },
+    [SPACES_ON_TOP, on] as const
+  );
+  await page.reload();
+}
+
+function phoneStrip(page: Page) {
+  return page.getByRole('navigation', { name: 'Spaces', exact: true });
+}
+
+const phoneStripList: View = {
+  name: 'strip',
   open: async (page) => {
     await roomList.open(page);
-    await page.getByRole('button', { name: 'Recent', exact: true }).click();
+    await spacesOnTop(page, true);
+    await roomList.open(page);
+    await expect(phoneStrip(page)).toBeVisible();
+  },
+};
+
+// The Work space picked on the strip, then back Home.
+const phoneStripSpace: View = {
+  name: 'strip-space',
+  open: async (page) => {
+    await roomList.open(page);
+    await phoneStrip(page).getByRole('button', { name: 'Work', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Work', level: 1 })).toBeVisible();
   },
   close: async (page) => {
-    await page.getByRole('button', { name: 'All chats', exact: true }).click();
+    await phoneStrip(page).getByRole('button', { name: 'Home', exact: true }).click();
+  },
+};
+
+// The Bridges folder opened on the strip: its caret, then its spaces in a row.
+// Puts the drawer back afterwards.
+const phoneStripFolder: View = {
+  name: 'strip-folder',
+  open: async (page) => {
+    await roomList.open(page);
+    await phoneStrip(page).locator('.echo-m-folder-tile').click();
+    await expect(phoneStrip(page).locator('.echo-m-folder.open')).toBeVisible();
+  },
+  close: async (page) => {
+    await phoneStrip(page).locator('.echo-m-folder-caret').click();
+    await spacesOnTop(page, false);
   },
 };
 
@@ -585,6 +631,18 @@ const phoneTimeline: View = {
       .click();
     await expect(page.locator('.timeline-viewport:not(.initial)')).toBeVisible({ timeout: 45_000 });
     await expect(message(page, 'great week')).toBeVisible({ timeout: 20_000 });
+  },
+};
+
+// Settings → Appearance on a phone, scrolled to echo's "Spaces along the top"
+// switch (echo/components/PhoneLayoutSettings.svelte).
+const phoneAppearance: View = {
+  name: 'appearance',
+  open: async (page) => {
+    await page.goto('/settings/appearance');
+    const row = page.getByRole('switch', { name: 'Spaces along the top' });
+    await expect(row).toBeAttached({ timeout: 15_000 });
+    await row.scrollIntoViewIfNeeded();
   },
 };
 
@@ -617,9 +675,12 @@ for (const scheme of ['light', 'dark'] satisfies Scheme[]) {
         roomList,
         phoneDrawerOpen,
         phoneSpace,
-        phoneRecent,
+        phoneStripList,
+        phoneStripSpace,
+        phoneStripFolder,
         phoneTimeline,
         phoneSettings,
+        phoneAppearance,
       ]) {
         await capture(page, `phone-${scheme}-${view.name}`, view);
       }

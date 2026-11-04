@@ -17,12 +17,15 @@ can live here instead.
   their own screens, sharing Sable's core and stores). `Shell.svelte` is where Sable mounts its
   phone drawer: on a phone with echo on it mounts `PhoneShell.svelte` instead — the room list
   screen (`RoomListScreen.svelte`) with the open page pushed over it, swiped back from the left
-  edge — and anywhere else Sable's drawer as before. A place (Home or a space) is picked in
-  `SpaceDrawer.svelte`, the desktop rail's places in a panel that slides over the list (a swipe
-  from the left edge, or the place button by the title); the chips under the title are the
-  rail's sub-filters (All, Rooms, DMs, Recent). Sable's bottom bar stays for search, inbox and
-  account. Inside a space the DMs chip shows the space's DM rooms only, not `space-dms.ts`'s
-  DMs with its members.
+  edge — and anywhere else Sable's drawer as before. A place (Home or a space) is picked from
+  `SpaceTiles.svelte`, the desktop rail's places. By default they are a column in
+  `SpaceDrawer.svelte`, which slides over the list from the place button by the title or a
+  swipe from the left edge. With Settings → Appearance → "Spaces along the top"
+  (`layout.svelte.ts`, `components/PhoneLayoutSettings.svelte`) they are a row under the
+  title instead, on a dark header cut off from the list by a hard rule, with the glow pill
+  floating under the open place; the swipe still opens the drawer. The list is direct messages over rooms; the rail's sub-filters have
+  no place on the phone for now (the chips were dropped 2026-11-04). Sable's bottom bar
+  stays for search, inbox and account.
 - `ios/` — the iOS app: `prepare.mjs` writes echo's copy of Sable's Xcode template and icon
   catalog before `tauri ios init` (iPhones portrait only); `sim.sh` runs the dev build, or with
   `--bundled` the self-contained one, in a named simulator; `device.sh` signs and installs the
@@ -139,7 +142,7 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
 | `electron/package.mjs` | the builder config is `process.env.SABLE_BUILDER_CONFIG ?? …`: `build.sh` passes `echo/electron/electron-builder.echo.ts` |
 | `src/lib/auth/redirect.ts` | `nativeRedirectUri` returns `echoNativeRedirectUri(…)` (`echo/auth.ts`) first when there is one, and its import (three lines) |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomRing {room} />` (`echo/components/RoomRing.svelte`) first in each row's badge lane (`.room-status`) |
-| `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels |
+| `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels; `echoPhoneLayoutSettings` in the Appearance panels |
 | `crates/sable-core/src/lib.rs` | `#[path = "../../../echo/core/reactions.rs"] mod echo_reactions;` (two lines) |
 | `crates/sable-core/src/accounts.rs` | `self.echo_watch_reactions(&client, generation);` with Sable's other watchers |
 | `crates/sable-core/src/protocol.rs` | a `CoreEvent::Echo { event }` variant carrying echo's own JSON events (five lines; `src/generated/protocol.ts` regenerated with `mise run generate:types`) |

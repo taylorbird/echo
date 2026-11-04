@@ -7,6 +7,28 @@
    cool near-black chat under a warmer list) is the desktop app's, so the phone
    app looks like the same app. */
 
+/* The room list's header (title and space strip): the rail's ground, and the
+   hard rule that cuts it off from the list. Dark goes a shade below the rail
+   so the rule reads against both sides. */
+@media (width < 48rem) {
+  :root {
+    --echo-m-top: var(--echo-rail);
+    --echo-m-top-rule: var(--echo-border);
+  }
+
+  :root.dark {
+    --echo-m-top: #121215;
+    --echo-m-top-rule: #46464e;
+  }
+}
+
+@media (width < 48rem) and (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --echo-m-top: #121215;
+    --echo-m-top-rule: #46464e;
+  }
+}
+
 @media (width < 48rem) and (prefers-color-scheme: dark) {
   :root[data-tauri-os]:not(.light) {
     --echo-roomlist: #1f1f24;
@@ -185,6 +207,16 @@
     min-height: 0;
   }
 
+  /* The header: title and space strip as one block on the rail's ground,
+     reaching up under the status bar, with a hard rule under it. */
+  .echo-m-rooms-top {
+    background: var(--echo-m-top);
+    border-bottom: 1px solid var(--echo-m-top-rule);
+    flex: none;
+    margin: calc(-1 * var(--safe-top)) calc(-1 * var(--safe-right)) 0 calc(-1 * var(--safe-left));
+    padding: var(--safe-top) var(--safe-right) 0 var(--safe-left);
+  }
+
   .echo-m-rooms-header {
     align-items: center;
     display: flex;
@@ -193,7 +225,12 @@
     padding: 0.25rem 0.5rem 0 0.75rem;
   }
 
-  /* The place button: the open place's tile, which opens the space drawer. */
+  .echo-m-rooms-top > .echo-m-rooms-header {
+    padding-left: 1rem;
+  }
+
+  /* The place button (spaces in the drawer): the open place's tile, which
+     opens the drawer. */
   .echo-m-place-button {
     align-items: center;
     background: var(--echo-entry-selected);
@@ -255,50 +292,15 @@
     width: 1.5rem;
   }
 
-  /* Places: chips that scroll sideways under the title. */
-  .echo-m-places {
-    display: flex;
-    flex: none;
-    gap: 0.5rem;
-    overflow-x: auto;
+  /* The space strip: the rail's tiles in a row that scrolls sideways. */
+  .echo-m-strip {
+    overflow: auto hidden;
     overscroll-behavior-x: contain;
-    padding: 0.25rem 1rem 0.75rem;
     scrollbar-width: none;
   }
 
-  .echo-m-chip {
-    align-items: center;
-    background: transparent;
-    border: 1px solid var(--echo-border);
-    border-radius: 999px;
-    color: var(--echo-text);
-    display: flex;
-    flex: none;
-    font: inherit;
-    font-size: 0.9375rem;
-    font-weight: 500;
-    gap: 0.375rem;
-    height: 2.125rem;
-    padding: 0 0.875rem;
-    position: relative;
-  }
-
-  /* Selected: the desktop rail's selected tile (echo/styles/rail.css), not
-     Sable's accent. */
-  .echo-m-chip.selected {
-    background: var(--echo-entry-selected);
-    border-color: var(--echo-entry-selected);
-    color: var(--echo-text);
-  }
-
-  /* Unread somewhere in that place: a dot after the label, in the unread
-     ring's purple (SPEC §4.4). */
-  .echo-m-chip.unread::after {
-    background: rgb(var(--echo-ring-unread));
-    border-radius: 50%;
-    content: '';
-    height: 0.4375rem;
-    width: 0.4375rem;
+  .echo-m-strip::-webkit-scrollbar {
+    display: none;
   }
 
   .echo-m-scroll {
@@ -377,6 +379,12 @@
     width: 5rem;
   }
 
+  /* Closed, the panel sits just off the left edge and its shadow would still
+     fall on the list. */
+  .echo-m-drawer:not(.open, .moving) .echo-m-drawer-panel {
+    box-shadow: none;
+  }
+
   :root:not([data-reduced-motion='on']) .echo-m-drawer:not(.moving) .echo-m-drawer-panel,
   :root:not([data-reduced-motion='on']) .echo-m-drawer:not(.moving) .echo-m-drawer-scrim {
     /* stylelint-disable-next-line defensive-css/require-prefers-reduced-motion */
@@ -385,7 +393,9 @@
       opacity 0.28s;
   }
 
-  .echo-m-drawer-list,
+  /* The tiles (echo/mobile/SpaceTiles.svelte): a column in the drawer, a row
+     in the strip. */
+  .echo-m-tiles,
   .echo-m-folder > ul {
     align-items: center;
     display: flex;
@@ -395,7 +405,7 @@
     padding: 0.5rem 0;
   }
 
-  .echo-m-drawer-list > li {
+  .echo-m-tiles > li {
     align-self: stretch;
     display: flex;
     flex-direction: column;
@@ -403,7 +413,7 @@
   }
 
   /* Engraved, as on the rail (SPEC §3.4). */
-  .echo-m-drawer-separator {
+  .echo-m-tiles-separator {
     background: rgb(0 0 0 / 40%);
     block-size: 1px;
     box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
@@ -517,6 +527,61 @@
 
   .echo-m-folder > ul {
     padding: 0;
+  }
+
+  /* The row. The bottom padding leaves clear space under the floating pill
+     before the header's rule. */
+  .echo-m-tiles.row,
+  .echo-m-tiles.row .echo-m-folder > ul {
+    flex-direction: row;
+    width: max-content;
+  }
+
+  .echo-m-tiles.row {
+    padding: 0.25rem 0.75rem 0.8125rem;
+  }
+
+  .echo-m-tiles.row > li {
+    align-self: center;
+  }
+
+  .echo-m-tiles.row .echo-m-tile {
+    margin: 0.3125rem 0.1875rem;
+  }
+
+  .echo-m-tiles.row .echo-m-tiles-separator {
+    block-size: 1.5rem;
+    box-shadow: 1px 0 0 rgb(var(--echo-warm-rgb) / 8%);
+    margin: 0 0.5rem;
+    width: 1px;
+  }
+
+  /* In the row the pill floats under the tile, thinner, rounded at both ends,
+     with space between it and the tile. */
+  .echo-m-tiles.row .echo-m-tile[aria-current='page']::before {
+    height: 0.1875rem;
+    inset-block: auto -0.5rem;
+    inset-inline: 0;
+    margin: 0 auto;
+    width: 1.125rem;
+  }
+
+  /* An open folder's card holds the tile: drop the pill below the card. */
+  .echo-m-tiles.row .echo-m-folder .echo-m-tile[aria-current='page']::before {
+    inset-block-end: -0.8125rem;
+  }
+
+  .echo-m-tiles.row .echo-m-folder.open {
+    align-items: center;
+    flex-direction: row;
+    margin: 0 0.1875rem;
+    padding: 0 0.25rem 0 0;
+    width: auto;
+  }
+
+  .echo-m-tiles.row .echo-m-folder-caret {
+    height: 3.125rem;
+    width: 1.75rem;
   }
 
   .echo-m-sr {

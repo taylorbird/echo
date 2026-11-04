@@ -3,14 +3,17 @@
      kind glyph and the time, a "Sender: text" line in the sender's colour, and
      the desktop's badge ring (components/RoomRing.svelte).
 
-     Where to look works as on the desktop: a place, Home or a space, picked in
-     the space drawer (SpaceDrawer.svelte, the desktop rail's places), and the
-     rail's four sub-filters as chips under the title (SPEC §3.5): All chats,
-     in sections, Rooms, Direct messages, and Recent, one list newest first.
-     The drawer opens from the place button by the title or a swipe from the
-     left edge. Sable's own bottom bar (UserQuickTools) stays below for the
-     app-level pages: search, inbox, account. Data, unread counts, invites and
-     navigation are Sable's. Styles: echo/styles/mobile.css. -->
+     Where to look works as on the desktop: a place, Home or a space, picked
+     from the desktop rail's places (SpaceTiles.svelte). By default they are in
+     the space drawer (SpaceDrawer.svelte), opened from the place button by the
+     title or a swipe from the left edge. With "Spaces along the top"
+     (layout.svelte.ts) they are a strip under the title instead, the two one
+     header on the rail's ground cut off from the list by a hard rule; the
+     swipe still opens the drawer. The list shows direct messages over rooms,
+     newest first; the rail's sub-filters have no place on the phone for now. Sable's own bottom bar
+     (UserQuickTools) stays below for the app-level pages: search, inbox,
+     account. Data, unread counts, invites and navigation are Sable's. Styles:
+     echo/styles/mobile.css. -->
 <script lang="ts">
   import type { RoomListItemView } from '#src/generated/protocol';
   import { goto } from '$app/navigation';
@@ -28,7 +31,6 @@
     roomPathParam,
     useRoomList,
   } from '#lib/rooms/room-list.svelte.js';
-  import { addUnread } from '#lib/rooms/spaces.js';
   import { hasUnread, type UnreadCount } from '#lib/rooms/unread.js';
   import { i18n } from '#lib/i18n.js';
   import { PeerProfiles } from '#lib/features/sidebar/peer-profiles.svelte.js';
@@ -41,16 +43,10 @@
   import { whenVisible } from '#lib/ui/when-visible.js';
   import EchoRoomPreview from '../components/RoomPreview.svelte';
   import EchoRoomRing from '../components/RoomRing.svelte';
-  import {
-    FILTERS,
-    readFilter,
-    readPlace,
-    writeFilter,
-    writePlace,
-    type Filter,
-    type Place,
-  } from './place.js';
+  import { phoneLayout } from './layout.svelte.js';
+  import { readPlace, writePlace, type Place } from './place.js';
   import SpaceDrawer from './SpaceDrawer.svelte';
+  import SpaceTiles from './SpaceTiles.svelte';
   import { listTime } from './time.js';
 
   const core = useCoreClient();
@@ -58,7 +54,6 @@
   const profiles = new PeerProfiles(core);
 
   let place = $state<Place>(readPlace());
-  let filter = $state<Filter>(readFilter());
 
   let chats = $derived(
     roomList.rooms.filter(
@@ -84,22 +79,18 @@
     );
   }
 
-  function filtered(target: Filter): RoomListItemView[] {
-    if (target === 'dms') return inPlace.filter((room) => room.is_direct);
-    if (target === 'rooms') return inPlace.filter((room) => !room.is_direct);
-    return inPlace;
-  }
-
-  // All chats comes in two sections, direct messages over rooms, as the
-  // desktop's list has headings; the rest are one list. Newest first within.
-  type Section = { label: string | null; rows: RoomListItemView[] };
-  let sections = $derived.by((): Section[] => {
-    if (filter !== 'all') return [{ label: null, rows: newestFirst(filtered(filter)) }];
-    return [
-      { label: i18n.t('common.directMessages'), rows: newestFirst(filtered('dms')) },
-      { label: i18n.t('nav.rooms'), rows: newestFirst(filtered('rooms')) },
-    ].filter((section) => section.rows.length > 0);
-  });
+  // Two sections, direct messages over rooms, as the desktop's list has
+  // headings. Newest first within each.
+  type Section = { label: string; rows: RoomListItemView[] };
+  let sections: Section[] = $derived(
+    [
+      {
+        label: i18n.t('common.directMessages'),
+        rows: newestFirst(inPlace.filter((room) => room.is_direct)),
+      },
+      { label: i18n.t('nav.rooms'), rows: newestFirst(inPlace.filter((room) => !room.is_direct)) },
+    ].filter((section) => section.rows.length > 0)
+  );
   let empty = $derived(sections.every((section) => section.rows.length === 0));
 
   let invites = $derived.by(() => {
@@ -109,23 +100,12 @@
         !isDeclining(room.room_id) &&
         !dismissedInvites.has(room.room_id)
     );
-    const here =
-      place.kind === 'space' && space !== undefined
-        ? pending.filter((room) =>
-            new Set(space.space_children.map((child) => child.room_id)).has(room.room_id)
-          )
-        : pending;
-    if (filter === 'dms') return here.filter((room) => room.is_direct);
-    if (filter === 'rooms') return here.filter((room) => !room.is_direct);
-    return here;
+    return place.kind === 'space' && space !== undefined
+      ? pending.filter((room) =>
+          new Set(space.space_children.map((child) => child.room_id)).has(room.room_id)
+        )
+      : pending;
   });
-
-  function filterUnread(target: Filter): UnreadCount {
-    return filtered(target).reduce(
-      (total, room) => addUnread(total, roomList.badgeUnreadFor(room)),
-      { unread: 0, highlight: 0 }
-    );
-  }
 
   let title = $derived(
     place.kind === 'space' && space !== undefined
@@ -139,18 +119,16 @@
     drawerOpen = false;
   }
 
-  function chooseFilter(next: Filter): void {
-    filter = next;
-    writeFilter(next);
-  }
-
-  // The chips: short labels, the desktop rail's full names for screen readers.
-  const FILTER_LABELS: Record<Filter, { short: () => string; full: () => string }> = {
-    all: { short: () => i18n.t('inbox.filterAll'), full: () => 'All chats' },
-    rooms: { short: () => i18n.t('nav.rooms'), full: () => i18n.t('nav.rooms') },
-    dms: { short: () => i18n.t('inbox.filterDirect'), full: () => i18n.t('common.directMessages') },
-    recent: { short: () => 'Recent', full: () => 'Recent' },
-  };
+  // The open place's tile in view: a space far along the strip, restored
+  // from the last visit or picked in the drawer, would otherwise sit
+  // off-screen with its pill.
+  let strip = $state<HTMLElement | null>(null);
+  $effect(() => {
+    void place;
+    strip
+      ?.querySelector('.echo-m-tile[aria-current="page"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
 
   function href(room: RoomListItemView): string {
     if (place.kind === 'space' && space !== undefined) {
@@ -185,7 +163,8 @@
     return i18n.t('nav.markedUnread');
   }
 
-  // The space drawer, and the swipe from the left edge that pulls it open.
+  // The space drawer, and the swipe from the left edge that pulls it open. A
+  // swipe that starts on the strip scrolls the strip instead.
   const EDGE = 28;
   let drawerOpen = $state(false);
   let pull = $state<number | null>(null);
@@ -194,6 +173,7 @@
   function touchStart(event: TouchEvent): void {
     const touch = event.touches.item(0);
     if (drawerOpen || event.touches.length !== 1 || !touch || touch.clientX > EDGE) return;
+    if (event.target instanceof Element && event.target.closest('.echo-m-strip')) return;
     gesture = { x: touch.clientX, y: touch.clientY, horizontal: null };
   }
 
@@ -221,7 +201,7 @@
   }
 </script>
 
-<!-- The touch handlers are the swipe that opens the drawer; the place button is the accessible way. -->
+<!-- The touch handlers are the swipe that opens the drawer; the place button or the strip is the accessible way to the same places. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="echo-m-rooms"
@@ -234,23 +214,7 @@
     touchEnd(true);
   }}
 >
-  <header class="echo-m-rooms-header">
-    <button
-      type="button"
-      class="echo-m-place-button"
-      aria-label="Spaces"
-      aria-expanded={drawerOpen}
-      onclick={() => {
-        drawerOpen = true;
-      }}
-    >
-      {#if place.kind === 'space' && space !== undefined}
-        <Avatar id={space.room_id} src={space.avatar_url} name={space.name} size="small" />
-      {:else}
-        <HouseIcon weight="fill" />
-      {/if}
-    </button>
-    <h1>{title}</h1>
+  {#snippet newChatButton()}
     <button
       type="button"
       class="echo-m-icon-button"
@@ -259,24 +223,39 @@
     >
       <NotePencilIcon />
     </button>
-  </header>
+  {/snippet}
 
-  <nav class="echo-m-places" aria-label={i18n.t('nav.primary')}>
-    {#each FILTERS as entry (entry)}
-      {@const selected = filter === entry}
+  {#if phoneLayout.spacesOnTop}
+    <div class="echo-m-rooms-top">
+      <header class="echo-m-rooms-header">
+        <h1>{title}</h1>
+        {@render newChatButton()}
+      </header>
+      <nav class="echo-m-strip" aria-label="Spaces" bind:this={strip}>
+        <SpaceTiles {place} onChoose={choose} direction="row" idPrefix="echo-m-strip" />
+      </nav>
+    </div>
+  {:else}
+    <header class="echo-m-rooms-header">
       <button
         type="button"
-        class={['echo-m-chip', { selected, unread: !selected && hasUnread(filterUnread(entry)) }]}
-        aria-pressed={selected}
-        aria-label={FILTER_LABELS[entry].full()}
+        class="echo-m-place-button"
+        aria-label="Spaces"
+        aria-expanded={drawerOpen}
         onclick={() => {
-          chooseFilter(entry);
+          drawerOpen = true;
         }}
       >
-        <span class="echo-m-chip-label">{FILTER_LABELS[entry].short()}</span>
+        {#if place.kind === 'space' && space !== undefined}
+          <Avatar id={space.room_id} src={space.avatar_url} name={space.name} size="small" />
+        {:else}
+          <HouseIcon weight="fill" />
+        {/if}
       </button>
-    {/each}
-  </nav>
+      <h1>{title}</h1>
+      {@render newChatButton()}
+    </header>
+  {/if}
 
   <div class="echo-m-scroll">
     <RoomInvites {invites} />
@@ -285,9 +264,9 @@
         {roomList.settled ? i18n.t('nav.chatsEmpty') : i18n.t('nav.roomsUnavailable')}
       </p>
     {/if}
-    {#each sections as section (section.label ?? 'all')}
-      {#if section.label}<h2 class="echo-m-section">{section.label}</h2>{/if}
-      <ul class="echo-m-room-list" aria-label={section.label ?? title}>
+    {#each sections as section (section.label)}
+      <h2 class="echo-m-section">{section.label}</h2>
+      <ul class="echo-m-room-list" aria-label={section.label}>
         {#each section.rows as room (room.room_id)}
           {@const target = href(room)}
           {@const counts = roomList.badgeUnreadFor(room)}
