@@ -352,7 +352,7 @@ echo's own badge (2026-10-30), replacing echo-gomuks's dots and pills. Every sta
 
 | Tier | Ring colour (dark) | Ink | Inside | Row wash / bar |
 |---|---|---|---|---|
-| unread (any unread, notifying or not, or marked unread) | purple `#b48cff` | `#e9dcff` | the room's **total** unread count; a **7px dot** when there's no count (marked unread) | purple `.06` / purple |
+| unread (any unread, notifying or not, or marked unread) | purple `#a56cff` (raised from `#b48cff` 2026-11-04 to stand out more) | `#e9dcff` | the room's **total** unread count; a **7px dot** when there's no count (marked unread) | purple `.06` / purple |
 | mention (highlight) | red `#ff4d6d` | `#ffd6dc` | **"@"** only, no number | red `.06` / red |
 | DM unread | red | | a **7px red dot**, no number | red `.06` / red |
 | muted room with unread (`echo/unread.ts`) | grey `#b0acaa` | `#dedad8` | the count; **no glow** | none / none |

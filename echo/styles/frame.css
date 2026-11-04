@@ -121,7 +121,7 @@
     --echo-blue-far: rgb(92 187 255 / 40%);
     --echo-red-near: rgb(255 77 109 / 90%);
     --echo-red-far: rgb(255 77 109 / 45%);
-    --echo-ring-unread: 180 140 255;
+    --echo-ring-unread: 165 108 255;
     --echo-ring-unread-ink: #e9dcff;
     --echo-ring-mention: 255 77 109;
     --echo-ring-mention-ink: #ffd6dc;
@@ -177,7 +177,7 @@
   --echo-blue-far: rgb(92 187 255 / 40%);
   --echo-red-near: rgb(255 77 109 / 90%);
   --echo-red-far: rgb(255 77 109 / 45%);
-  --echo-ring-unread: 180 140 255;
+  --echo-ring-unread: 165 108 255;
   --echo-ring-unread-ink: #e9dcff;
   --echo-ring-mention: 255 77 109;
   --echo-ring-mention-ink: #ffd6dc;
