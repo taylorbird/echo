@@ -5,8 +5,10 @@
 #
 #   ECHO_IOS_TEAM=<team id> mise run echo:ios:device [device name]
 #
-# ECHO_IOS_TEAM is your Apple developer team ID (Xcode → Settings → Accounts, or the "(…)"
-# after your "Apple Development" identity in `security find-identity -v -p codesigning`).
+# ECHO_IOS_TEAM is your Apple developer team ID (Xcode → Settings → Accounts; the "(…)"
+# after a "Developer ID Application" identity in `security find-identity -v -p codesigning`;
+# or the OU of the "Apple Development" certificate). The "(…)" after "Apple Development" is
+# that certificate's own ID, not the team.
 # It is passed in rather than written into the project, which is public. Xcode must be
 # signed in to that team: the first build registers the app IDs, the app group and the
 # device there (-allowProvisioningUpdates). The phone needs Developer Mode on
