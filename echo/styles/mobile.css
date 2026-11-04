@@ -188,9 +188,35 @@
   .echo-m-rooms-header {
     align-items: center;
     display: flex;
-    gap: 0.5rem;
+    gap: 0.625rem;
     min-height: 3.5rem;
-    padding: 0.25rem 0.5rem 0 1rem;
+    padding: 0.25rem 0.5rem 0 0.75rem;
+  }
+
+  /* The place button: the open place's tile, which opens the space drawer. */
+  .echo-m-place-button {
+    align-items: center;
+    background: var(--echo-entry-selected);
+    border: 0;
+    border-radius: 0.7813rem;
+    color: var(--echo-text);
+    display: flex;
+    flex: none;
+    height: 2.5rem;
+    justify-content: center;
+    padding: 0.25rem;
+    width: 2.5rem;
+  }
+
+  .echo-m-place-button > svg {
+    height: 1.375rem;
+    width: 1.375rem;
+  }
+
+  :root .echo-m-place-button > .avatar-root {
+    --avatar-size: 2rem;
+
+    border-radius: 0.5rem;
   }
 
   .echo-m-rooms-header > h1 {
@@ -257,23 +283,12 @@
     position: relative;
   }
 
-  .echo-m-chip:has(.echo-m-chip-avatar) {
-    padding-left: 0.25rem;
-  }
-
   /* Selected: the desktop rail's selected tile (echo/styles/rail.css), not
      Sable's accent. */
   .echo-m-chip.selected {
     background: var(--echo-entry-selected);
     border-color: var(--echo-entry-selected);
     color: var(--echo-text);
-  }
-
-  .echo-m-chip .echo-m-chip-avatar {
-    --avatar-size: 1.5rem;
-
-    border-radius: 50%;
-    font-size: 0.6875rem;
   }
 
   /* Unread somewhere in that place: a dot after the label, in the unread
@@ -304,6 +319,213 @@
     list-style: none;
     margin: 0;
     padding: 0;
+  }
+
+  /* All chats' headings: Direct messages, then Rooms. */
+  .echo-m-section {
+    color: var(--echo-text-2);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0;
+    padding: 0.875rem 1rem 0.375rem;
+    text-transform: uppercase;
+  }
+
+  .echo-m-room-list + .echo-m-section {
+    border-top: 1px solid var(--echo-hairline);
+  }
+
+  /* The space drawer (echo/mobile/SpaceDrawer.svelte): the desktop rail's
+     places (rail.css) in a narrow panel over the list, on the rail's ground,
+     with its tiles, divider and glow pill. --echo-m-drawer-shown is how much
+     of the panel shows, 0 to 1: all of it when open, or what a swipe has
+     pulled. */
+  .echo-m-drawer {
+    inset: 0;
+    pointer-events: none;
+    position: fixed;
+    z-index: var(--layer-float);
+  }
+
+  .echo-m-drawer.open {
+    pointer-events: auto;
+  }
+
+  .echo-m-drawer-scrim {
+    background: rgb(0 0 0 / 45%);
+    border: 0;
+    inset: 0;
+    opacity: var(--echo-m-drawer-shown, 0);
+    padding: 0;
+    position: absolute;
+  }
+
+  .echo-m-drawer-panel {
+    background: var(--echo-rail);
+    border-right: 1px solid var(--echo-hairline);
+    box-shadow: 8px 0 24px rgb(0 0 0 / 35%);
+    box-sizing: content-box;
+    color: var(--echo-text-2);
+    inset-block: 0;
+    left: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--safe-top) 0 var(--safe-bottom) var(--safe-left);
+    position: absolute;
+    transform: translate3d(calc((var(--echo-m-drawer-shown, 0) - 1) * 100%), 0, 0);
+    width: 5rem;
+  }
+
+  :root:not([data-reduced-motion='on']) .echo-m-drawer:not(.moving) .echo-m-drawer-panel,
+  :root:not([data-reduced-motion='on']) .echo-m-drawer:not(.moving) .echo-m-drawer-scrim {
+    /* stylelint-disable-next-line defensive-css/require-prefers-reduced-motion */
+    transition:
+      transform 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 0.28s;
+  }
+
+  .echo-m-drawer-list,
+  .echo-m-folder > ul {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem 0;
+  }
+
+  .echo-m-drawer-list > li {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Engraved, as on the rail (SPEC §3.4). */
+  .echo-m-drawer-separator {
+    background: rgb(0 0 0 / 40%);
+    block-size: 1px;
+    box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
+    margin: 0.5rem auto;
+    width: 2.5rem;
+  }
+
+  /* Tiles: the rail's 3.125rem, the avatar inside 2.5rem (SPEC §3.2). */
+  .echo-m-tile {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0.7813rem;
+    color: inherit;
+    display: flex;
+    height: 3.125rem;
+    justify-content: center;
+    margin: 0.3125rem auto;
+    padding: 0.3125rem;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    width: 3.125rem;
+  }
+
+  .echo-m-tile:active {
+    background: var(--echo-entry-hover);
+  }
+
+  .echo-m-tile[aria-current='page'] {
+    background: var(--echo-entry-selected);
+    color: var(--echo-text);
+  }
+
+  .echo-m-tile > svg {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+
+  :root .echo-m-tile > .avatar-root {
+    --avatar-size: 2.5rem;
+
+    border-radius: 0.625rem;
+  }
+
+  /* The glow pill: the rail's "you are here" mark, at the panel's edge. */
+  .echo-m-tile[aria-current='page']::before {
+    background: var(--echo-accent-glow);
+    border-radius: 999px;
+    box-shadow:
+      0 0 6px var(--echo-accent-near),
+      0 0 14px var(--echo-accent-far);
+    content: '';
+    height: 1.5625rem;
+    inset-block: 0;
+    left: -0.875rem;
+    margin-block: auto;
+    position: absolute;
+    width: 0.1875rem;
+  }
+
+  /* A tile's unread badge, at its top right as on the rail. */
+  :root .echo-m-tile > .unread-badge {
+    position: absolute;
+    right: -0.125rem;
+    top: -0.125rem;
+  }
+
+  /* A closed folder: its spaces' avatars in a 2×2 grid. */
+  .echo-m-folder-tile {
+    background: var(--echo-entry-hover);
+  }
+
+  .echo-m-folder-grid {
+    display: grid;
+    gap: 0.125rem;
+    grid-template-columns: repeat(2, 1.125rem);
+  }
+
+  :root .echo-m-folder-grid > .avatar-root {
+    --avatar-size: 1.125rem;
+
+    border-radius: 0.3125rem;
+    font-size: 0.5625rem;
+  }
+
+  /* An open folder: a card holding its caret and its spaces. */
+  .echo-m-folder.open {
+    background: var(--echo-band);
+    border-radius: 0.9375rem;
+    margin: 0.3125rem auto;
+    padding: 0.25rem 0;
+    width: 3.75rem;
+  }
+
+  .echo-m-folder-caret {
+    align-items: center;
+    align-self: center;
+    background: none;
+    border: 0;
+    color: var(--echo-text-2);
+    display: flex;
+    height: 1.75rem;
+    justify-content: center;
+    width: 3.125rem;
+  }
+
+  .echo-m-folder-caret > svg {
+    height: 1rem;
+    width: 1rem;
+  }
+
+  .echo-m-folder > ul {
+    padding: 0;
+  }
+
+  .echo-m-sr {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
   }
 
   /* Rows (SPEC §4.3): full-bleed, a round avatar, two lines, a hairline under
@@ -473,16 +695,6 @@
 
   .echo-m-room.unread .echo-m-room-time {
     color: var(--echo-text);
-  }
-
-  /* The open room, when the list shows over it. Outranks the tiers above. */
-  .echo-m-room-list > .echo-m-room:has([aria-current='page']) {
-    --echo-bar: var(--echo-room-glow);
-    --echo-bar-near: var(--echo-room-near);
-    --echo-bar-far: var(--echo-room-far);
-
-    /* Half the desktop's wash: a full-width phone row carries it heavily. */
-    background: rgb(var(--echo-warm-rgb) / 10%);
   }
 
   /* Badges (SPEC §4.4): the desktop's ring (echo/components/RoomRing.svelte),
