@@ -17,10 +17,16 @@ can live here instead.
   their own screens, sharing Sable's core and stores). `Shell.svelte` is where Sable mounts its
   phone drawer: on a phone with echo on it mounts `PhoneShell.svelte` instead — the room list
   screen (`RoomListScreen.svelte`) with the open page pushed over it, swiped back from the left
-  edge — and anywhere else Sable's drawer as before. The list switches places (all, DMs, rooms,
-  a space) with chips under its title; Sable's bottom bar stays for search, inbox and account.
+  edge — and anywhere else Sable's drawer as before. A place (Home or a space) is picked in
+  `SpaceDrawer.svelte`, the desktop rail's places in a panel that slides over the list (a swipe
+  from the left edge, or the place button by the title); the chips under the title are the
+  rail's sub-filters (All, Rooms, DMs, Recent). Sable's bottom bar stays for search, inbox and
+  account. Inside a space the DMs chip shows the space's DM rooms only, not `space-dms.ts`'s
+  DMs with its members.
 - `ios/` — the iOS app: `prepare.mjs` writes echo's copy of Sable's Xcode template and icon
-  catalog before `tauri ios init`; `sim.sh` runs the dev build, or with `--bundled` the self-contained one, in a named simulator.
+  catalog before `tauri ios init` (iPhones portrait only); `sim.sh` runs the dev build, or with
+  `--bundled` the self-contained one, in a named simulator; `device.sh` signs and installs the
+  self-contained one on a connected iPhone.
 - `tauri.echo.ios.conf.json` — merged after `tauri.echo.conf.json` for iOS: the dev bundle ID,
   echo's Xcode template, no development team, Vite on port 3027.
 - `components/` — the few pieces of echo's UI that CSS can't draw, each mounted from Sable's
@@ -170,6 +176,13 @@ Fonts are in `static/fonts/echo/`, since that's where Vite serves static files f
   Without Simulator.app the app runs headless; `xcrun simctl io booted screenshot` sees it.
 - `mise run echo:ios:build` — an unsigned debug build for the simulator (same runtime caveat;
   `echo:ios:sim --bundled` works around it).
+- `ECHO_IOS_TEAM=<team id> mise run echo:ios:device [name]` — the self-contained app on a
+  connected iPhone (the first paired one without a name), signed with your Apple Development
+  identity, installed and launched (`ios/device.sh`). The phone needs Developer Mode on. Xcode
+  registers the app IDs and the device, but their capabilities must be turned on in the
+  developer portal once: App Groups (`group.<bundle id>`), Data Protection (Complete Until First
+  User Authentication), Communication Notifications and Push Notifications, on the app's ID and
+  on its `.notifications` extension's.
 - `echo/release.sh <version|patch|minor>` — a signed, notarized release published to
   `taylorbird/echo` with its updater feed (`latest.json`). Write `echo/RELEASE_NOTES.md` first.
 
