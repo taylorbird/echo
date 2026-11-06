@@ -29,8 +29,8 @@
    never a pulse. Under reduced motion only the flat fill stays. */
 @media (width >= 48rem) {
   :root .skeleton.skeleton {
-    --echo-sk-base: rgb(var(--echo-warm-rgb) / 7%);
-    --echo-sk-highlight: rgb(var(--echo-warm-rgb) / 16%);
+    --echo-sk-base: color-mix(in srgb, var(--echo-warm) 7%, transparent);
+    --echo-sk-highlight: color-mix(in srgb, var(--echo-warm) 16%, transparent);
 
     background-color: var(--echo-sk-base);
   }

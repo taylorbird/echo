@@ -298,8 +298,8 @@
   }
 
   :root .timeline-content .reactions > .reaction[aria-pressed='true'] {
-    background: rgb(var(--echo-warm-rgb) / 12%);
-    border-color: rgb(var(--echo-warm-rgb) / 55%);
+    background: color-mix(in srgb, var(--echo-warm) 12%, transparent);
+    border-color: color-mix(in srgb, var(--echo-warm) 55%, transparent);
   }
 
   /* Tooltip size: text reactions ("RETRY") read as labels, not headlines.

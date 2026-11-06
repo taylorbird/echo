@@ -416,7 +416,7 @@
   .echo-m-tiles-separator {
     background: rgb(0 0 0 / 40%);
     block-size: 1px;
-    box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--echo-warm) 8%, transparent);
     margin: 0.5rem auto;
     width: 2.5rem;
   }
@@ -551,7 +551,7 @@
 
   .echo-m-tiles.row .echo-m-tiles-separator {
     block-size: 1.5rem;
-    box-shadow: 1px 0 0 rgb(var(--echo-warm-rgb) / 8%);
+    box-shadow: 1px 0 0 color-mix(in srgb, var(--echo-warm) 8%, transparent);
     margin: 0 0.5rem;
     width: 1px;
   }
@@ -738,11 +738,15 @@
      from the ring's data-bar (echo/ring.ts), as on the desktop. A muted room's
      grey ring and a reaction popping into a quiet row leave the row as it is. */
   .echo-m-room:has(.echo-ring[data-bar]) {
-    --echo-bar: rgb(var(--echo-row-tier));
-    --echo-bar-near: rgb(var(--echo-row-tier) / calc(var(--echo-ring-glow) * 2));
-    --echo-bar-far: rgb(var(--echo-row-tier) / var(--echo-ring-glow));
+    --echo-bar: var(--echo-row-tier);
+    --echo-bar-near: color-mix(
+      in srgb,
+      var(--echo-row-tier) calc(var(--echo-ring-glow) * 2),
+      transparent
+    );
+    --echo-bar-far: color-mix(in srgb, var(--echo-row-tier) var(--echo-ring-glow), transparent);
 
-    background: rgb(var(--echo-row-tier) / var(--echo-ring-wash));
+    background: color-mix(in srgb, var(--echo-row-tier) var(--echo-ring-wash), transparent);
   }
 
   .echo-m-room:has(.echo-ring[data-bar='unread']) {
@@ -771,11 +775,11 @@
     --echo-tier-ink: var(--echo-ring-unread-ink);
 
     align-items: center;
-    background: rgb(var(--echo-tier) / 18%);
+    background: color-mix(in srgb, var(--echo-tier) 18%, transparent);
     border-radius: 0.875rem;
     box-shadow:
-      0 0 0 1px rgb(var(--echo-tier) / 60%),
-      0 0 10px rgb(var(--echo-tier) / var(--echo-ring-glow));
+      0 0 0 1px color-mix(in srgb, var(--echo-tier) 60%, transparent),
+      0 0 10px color-mix(in srgb, var(--echo-tier) var(--echo-ring-glow), transparent);
     color: var(--echo-tier-ink);
     display: inline-flex;
     flex: none;
@@ -804,11 +808,11 @@
     --echo-tier: var(--echo-ring-muted);
     --echo-tier-ink: var(--echo-ring-muted-ink);
 
-    box-shadow: 0 0 0 1px rgb(var(--echo-tier) / 60%);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--echo-tier) 60%, transparent);
   }
 
   :root .echo-m-room-status > .echo-ring > .echo-ring-dot {
-    background: rgb(var(--echo-tier));
+    background: var(--echo-tier);
     border-radius: 50%;
     height: 7px;
     width: 7px;

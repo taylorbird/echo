@@ -170,7 +170,7 @@
   .echo-sub-divider {
     align-self: center;
     background: rgb(0 0 0 / 40%);
-    box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--echo-warm) 8%, transparent);
     flex: none;
     height: 1px;
     margin: 0.4375rem 0 0.3125rem;

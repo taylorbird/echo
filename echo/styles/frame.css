@@ -13,7 +13,7 @@
 /* Tokens. Names follow echo's own (SPEC §1.2), prefixed so they never collide
    with Sable's. Light first; dark below. */
 :root {
-  --echo-warm-rgb: 254 205 178;
+  --echo-warm: rgb(254 205 178);
   --echo-accent-glow: #ffe484;
   --echo-accent-near: rgb(255 228 132 / 75%);
   --echo-accent-far: rgb(255 228 132 / 35%);
@@ -40,8 +40,8 @@
   --echo-band: hsl(0deg 0% 89% / 95%);
   --echo-entry-hover: rgb(0 0 0 / 7.5%);
   --echo-entry-selected: rgb(0 0 0 / 12.5%);
-  --echo-entry-active: rgb(var(--echo-warm-rgb) / 24%);
-  --echo-row-hairline: rgb(var(--echo-warm-rgb) / 8%);
+  --echo-entry-active: color-mix(in srgb, var(--echo-warm) 24%, transparent);
+  --echo-row-hairline: color-mix(in srgb, var(--echo-warm) 8%, transparent);
   --echo-section-ink: var(--echo-text);
   --echo-kind-glyph: currentcolor;
   --echo-kind-glyph-opacity: 0.65;
@@ -59,6 +59,8 @@
   --echo-primary-dark: #00b24a;
   --echo-on-primary: #fff;
   --echo-header-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+  --echo-pane-shadow: rgb(0 0 0 / 60%);
+  --echo-pane-edge: rgb(255 255 255 / 7%);
   --echo-blue-near: transparent;
   --echo-blue-far: transparent;
   --echo-red-near: transparent;
@@ -66,13 +68,13 @@
 
   /* The room list's badge rings (SPEC §4.4): each tier as an RGB triplet, so
      roomlist.css mixes its fill, outline, glow, bar and wash from one colour. */
-  --echo-ring-unread: 124 77 255;
+  --echo-ring-unread: rgb(124 77 255);
   --echo-ring-unread-ink: #3f2296;
-  --echo-ring-mention: 214 32 66;
+  --echo-ring-mention: rgb(214 32 66);
   --echo-ring-mention-ink: #8a0f27;
-  --echo-ring-muted: 110 106 104;
+  --echo-ring-muted: rgb(110 106 104);
   --echo-ring-muted-ink: #4a4644;
-  --echo-ring-reaction: 0 120 212;
+  --echo-ring-reaction: rgb(0 120 212);
   --echo-ring-reaction-ink: #004a82;
   --echo-ring-glow: 0%;
   --echo-ring-wash: 0%;
@@ -80,16 +82,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --echo-warm-rgb: 240 226 216;
+    --echo-warm: rgb(240 226 216);
     --echo-text: #efe7e1;
     --echo-text-2: #b0acaa;
     --echo-text-3: #6d7686;
     --echo-text-semi: #ffb59a;
     --echo-chat: #28282d;
     --echo-border: #46464e;
-    --echo-hairline: rgb(var(--echo-warm-rgb) / 9%);
-    --echo-hover: rgb(var(--echo-warm-rgb) / 10%);
-    --echo-button-hover: rgb(var(--echo-warm-rgb) / 20%);
+    --echo-hairline: color-mix(in srgb, var(--echo-warm) 9%, transparent);
+    --echo-hover: color-mix(in srgb, var(--echo-warm) 10%, transparent);
+    --echo-button-hover: color-mix(in srgb, var(--echo-warm) 20%, transparent);
     --echo-composer: #35353a;
     --echo-timeline-hover: #35353a;
     --echo-timeline-highlight: rgb(255 228 132 / 15%);
@@ -98,9 +100,9 @@
     --echo-modal-shadow: rgb(0 0 0 / 30%);
     --echo-rail: #17171b;
     --echo-roomlist: #202024;
-    --echo-band: color-mix(in oklab, #2b2b33 85%, rgb(var(--echo-warm-rgb)));
-    --echo-entry-hover: rgb(var(--echo-warm-rgb) / 10%);
-    --echo-entry-selected: rgb(var(--echo-warm-rgb) / 15%);
+    --echo-band: color-mix(in oklab, #2b2b33 85%, var(--echo-warm));
+    --echo-entry-hover: color-mix(in srgb, var(--echo-warm) 10%, transparent);
+    --echo-entry-selected: color-mix(in srgb, var(--echo-warm) 15%, transparent);
     --echo-section-ink: color-mix(in oklab, #bd93f9 45%, var(--echo-text));
     --echo-kind-glyph: #bd93f9;
     --echo-kind-glyph-opacity: 0.9;
@@ -121,13 +123,13 @@
     --echo-blue-far: rgb(92 187 255 / 40%);
     --echo-red-near: rgb(255 77 109 / 90%);
     --echo-red-far: rgb(255 77 109 / 45%);
-    --echo-ring-unread: 165 108 255;
+    --echo-ring-unread: rgb(165 108 255);
     --echo-ring-unread-ink: #e9dcff;
-    --echo-ring-mention: 255 77 109;
+    --echo-ring-mention: rgb(255 77 109);
     --echo-ring-mention-ink: #ffd6dc;
-    --echo-ring-muted: 176 172 170;
+    --echo-ring-muted: rgb(176 172 170);
     --echo-ring-muted-ink: #dedad8;
-    --echo-ring-reaction: 92 187 255;
+    --echo-ring-reaction: rgb(92 187 255);
     --echo-ring-reaction-ink: #cfeaff;
     --echo-ring-glow: 35%;
     --echo-ring-wash: 6%;
@@ -136,16 +138,16 @@
 
 /* A pinned dark theme must win even when the operating system is light. */
 :root.dark {
-  --echo-warm-rgb: 240 226 216;
+  --echo-warm: rgb(240 226 216);
   --echo-text: #efe7e1;
   --echo-text-2: #b0acaa;
   --echo-text-3: #6d7686;
   --echo-text-semi: #ffb59a;
   --echo-chat: #28282d;
   --echo-border: #46464e;
-  --echo-hairline: rgb(var(--echo-warm-rgb) / 9%);
-  --echo-hover: rgb(var(--echo-warm-rgb) / 10%);
-  --echo-button-hover: rgb(var(--echo-warm-rgb) / 20%);
+  --echo-hairline: color-mix(in srgb, var(--echo-warm) 9%, transparent);
+  --echo-hover: color-mix(in srgb, var(--echo-warm) 10%, transparent);
+  --echo-button-hover: color-mix(in srgb, var(--echo-warm) 20%, transparent);
   --echo-composer: #35353a;
   --echo-timeline-hover: #35353a;
   --echo-timeline-highlight: rgb(255 228 132 / 15%);
@@ -154,9 +156,9 @@
   --echo-modal-shadow: rgb(0 0 0 / 30%);
   --echo-rail: #17171b;
   --echo-roomlist: #202024;
-  --echo-band: color-mix(in oklab, #2b2b33 85%, rgb(var(--echo-warm-rgb)));
-  --echo-entry-hover: rgb(var(--echo-warm-rgb) / 10%);
-  --echo-entry-selected: rgb(var(--echo-warm-rgb) / 15%);
+  --echo-band: color-mix(in oklab, #2b2b33 85%, var(--echo-warm));
+  --echo-entry-hover: color-mix(in srgb, var(--echo-warm) 10%, transparent);
+  --echo-entry-selected: color-mix(in srgb, var(--echo-warm) 15%, transparent);
   --echo-section-ink: color-mix(in oklab, #bd93f9 45%, var(--echo-text));
   --echo-kind-glyph: #bd93f9;
   --echo-kind-glyph-opacity: 0.9;
@@ -177,13 +179,13 @@
   --echo-blue-far: rgb(92 187 255 / 40%);
   --echo-red-near: rgb(255 77 109 / 90%);
   --echo-red-far: rgb(255 77 109 / 45%);
-  --echo-ring-unread: 165 108 255;
+  --echo-ring-unread: rgb(165 108 255);
   --echo-ring-unread-ink: #e9dcff;
-  --echo-ring-mention: 255 77 109;
+  --echo-ring-mention: rgb(255 77 109);
   --echo-ring-mention-ink: #ffd6dc;
-  --echo-ring-muted: 176 172 170;
+  --echo-ring-muted: rgb(176 172 170);
   --echo-ring-muted-ink: #dedad8;
-  --echo-ring-reaction: 92 187 255;
+  --echo-ring-reaction: rgb(92 187 255);
   --echo-ring-reaction-ink: #cfeaff;
   --echo-ring-glow: 35%;
   --echo-ring-wash: 6%;
@@ -248,7 +250,7 @@
 
   :root[data-echo-app] .content-panel > .content {
     background: var(--echo-chat);
-    box-shadow: inset 10px 0 10px -10px rgb(0 0 0 / 60%);
+    box-shadow: inset 10px 0 10px -10px var(--echo-pane-shadow);
   }
 
   /* Down to the window's bottom edge whatever 100dvh works out to, so no
@@ -263,16 +265,16 @@
   :root[data-echo-app] .sidebar .room-nav {
     border-right: 0;
     box-shadow:
-      1px 0 0 rgb(255 255 255 / 7%),
-      8px 0 24px rgb(0 0 0 / 60%);
+      1px 0 0 var(--echo-pane-edge),
+      8px 0 24px var(--echo-pane-shadow);
     z-index: 3;
   }
 
   :root[data-echo-app] .room-view aside:not(.member-user-list) {
     border-left: 0;
     box-shadow:
-      -1px 0 0 rgb(255 255 255 / 7%),
-      -8px 0 24px rgb(0 0 0 / 60%);
+      -1px 0 0 var(--echo-pane-edge),
+      -8px 0 24px var(--echo-pane-shadow);
     z-index: 3;
   }
 

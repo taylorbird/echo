@@ -29,7 +29,7 @@
   :root .sidebar .rail-separator {
     background: rgb(0 0 0 / 40%);
     block-size: 1px;
-    box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--echo-warm) 8%, transparent);
     margin: 0.5rem auto;
     width: 2.5rem;
   }
@@ -214,7 +214,7 @@
   :root .rail .folder-card .echo-rail-band-inner::after {
     align-self: center;
     background: rgb(0 0 0 / 40%);
-    box-shadow: 0 1px 0 rgb(var(--echo-warm-rgb) / 8%);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--echo-warm) 8%, transparent);
     content: '';
     flex: none;
     height: 1px;

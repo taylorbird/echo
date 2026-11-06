@@ -100,12 +100,12 @@
   /* Scrim (SPEC §9.1): a plain dim in the browser; in the app, a lighter dim
      with the window behind it blurred. */
   :root .dialog-backdrop[data-dialog-overlay] {
-    background: rgb(0 0 0 / 75%);
+    background: var(--echo-scrim, rgb(0 0 0 / 75%));
   }
 
   :root[data-echo-app] .dialog-backdrop[data-dialog-overlay] {
     backdrop-filter: blur(20px) saturate(115%);
-    background: rgb(0 0 0 / 50%);
+    background: var(--echo-scrim-app, rgb(0 0 0 / 50%));
   }
 
   /* Dialog boxes: the base colour at a 1rem radius. */
