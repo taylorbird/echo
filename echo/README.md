@@ -193,6 +193,8 @@ body.sable-remote-theme {
 | `src/lib/auth/redirect.ts` | `nativeRedirectUri` returns `echoNativeRedirectUri(…)` (`echo/auth.ts`) first when there is one, and its import (three lines) |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomRing {room} />` (`echo/components/RoomRing.svelte`) first in each row's badge lane (`.room-status`) |
 | `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels; `echoPhoneLayoutSettings` in the Appearance panels |
+| `src/lib/features/settings/CustomThemes.svelte` | `toasts` imported as `echoThemeToasts` (`echo/theme-notice.svelte.ts`): theme changes confirm inline in echo, by Sable's toast otherwise; `<EchoThemeNotice hidden={catalogOpen} />` (`echo/components/ThemeNotice.svelte`) under the buttons |
+| `src/lib/features/settings/ThemeCatalog.svelte` | `<EchoThemeNotice bar />` as the catalog's last child: the confirmation in its bottom bar |
 | `crates/sable-core/src/lib.rs` | `#[path = "../../../echo/core/reactions.rs"] mod echo_reactions;` (two lines) |
 | `crates/sable-core/src/accounts.rs` | `self.echo_watch_reactions(&client, generation);` with Sable's other watchers |
 | `crates/sable-core/src/protocol.rs` | a `CoreEvent::Echo { event }` variant carrying echo's own JSON events (five lines; `src/generated/protocol.ts` regenerated with `mise run generate:types`) |

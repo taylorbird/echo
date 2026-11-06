@@ -28,6 +28,7 @@
     type CatalogFilter,
   } from '#lib/settings/theme-catalog.js';
   import { scrollHint } from '#lib/ui/scroll-hint.js';
+  import EchoThemeNotice from '../../../../echo/components/ThemeNotice.svelte';
 
   interface Props {
     open?: boolean;
@@ -389,6 +390,7 @@
         </span>
       </div>
     {/if}
+    <EchoThemeNotice bar />
   </div>
 </DialogFrame>
 

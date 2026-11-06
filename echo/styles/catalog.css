@@ -1,0 +1,114 @@
+/* echo: the theme catalog (Settings → Appearance → Theme catalog), drawn like
+   echo's settings window: the same ground, lines, type and controls. The
+   confirmation after a change sits in the catalog's bottom bar
+   (echo/components/ThemeNotice.svelte), not in a corner toast.
+
+   Sable's catalog pulls its sticky header and bottom bar out to the dialog's
+   edges by its own inset; echo's dialogs use a different padding, so the
+   dialog takes the catalog's inset here and the bands meet the edges again. */
+
+@media (width >= 48rem) {
+  :root .dialog-content.dialog-content-verification:has(.catalog) {
+    padding: 1.5rem;
+  }
+
+  :root .dialog-content-verification .catalog {
+    --catalog-inset: 1.5rem;
+
+    width: min(48rem, calc(100vw - 4rem));
+  }
+
+  /* Header and bottom bar on the dialog's own colour, as the settings page is. */
+  :root .catalog .catalog-head,
+  :root .catalog .preview-bar {
+    background: var(--echo-chat);
+    border-color: var(--echo-border);
+    color: var(--echo-text);
+  }
+
+  :root .catalog .catalog-head h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  /* Tabs: the settings window's underlined tabs (Profile: Edit / Preview). */
+  :root .catalog .tabs {
+    border-color: var(--echo-border);
+  }
+
+  :root .catalog .tab {
+    color: var(--echo-text-2);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  :root .catalog .tab:hover,
+  :root .catalog .tab[aria-selected='true'] {
+    color: var(--echo-text);
+  }
+
+  :root .catalog .tab-count {
+    background: var(--echo-hover);
+    color: var(--echo-text-2);
+  }
+
+  /* Filters: echo's squared controls instead of pills. */
+  :root .catalog .chip {
+    border-color: var(--echo-border);
+    border-radius: 0.375rem;
+    color: var(--echo-text-2);
+  }
+
+  :root .catalog .chip:hover {
+    background: var(--echo-hover);
+    color: var(--echo-text);
+  }
+
+  :root .catalog .chip[aria-pressed='true'] {
+    background: var(--echo-entry-selected);
+    border-color: transparent;
+    color: var(--echo-text);
+  }
+
+  /* The trust note: a quiet line, not a warning banner. */
+  :root .catalog .catalog-group > .alert {
+    background: transparent;
+    border: 1px solid var(--echo-border);
+    border-radius: 0.5rem;
+    color: var(--echo-text-2);
+    font-size: var(--font-size-small);
+  }
+
+  :root .catalog .catalog-hint,
+  :root .catalog .empty {
+    color: var(--echo-text-2);
+  }
+
+  /* Tiles: echo's lines and secondary text. */
+  :root .catalog .tile .preview,
+  :root .custom-themes .tile .preview {
+    box-shadow: 0 0 0 1px var(--echo-border);
+  }
+
+  :root .catalog .tile.selected .preview,
+  :root .custom-themes .tile.selected .preview {
+    box-shadow: 0 0 0 2px var(--primary-main);
+  }
+
+  :root .catalog .tile-hit:focus-visible .preview,
+  :root .custom-themes .tile-hit:focus-visible .preview {
+    box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring);
+  }
+
+  :root .catalog .tile .tile-detail {
+    color: var(--echo-text-2);
+  }
+
+  :root .catalog .tweak + .tweak {
+    border-color: var(--echo-border);
+  }
+
+  :root .catalog .tweak-detail {
+    color: var(--echo-text-2);
+  }
+}

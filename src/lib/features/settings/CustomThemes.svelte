@@ -31,7 +31,8 @@
   import { pickFiles } from '#lib/platform/files.js';
   import { systemDark } from '#lib/platform/system-theme.js';
   import { i18n, t } from '#lib/i18n.js';
-  import { toasts } from '#lib/ui/toasts.svelte.js';
+  import { echoThemeToasts as toasts } from '../../../../echo/theme-notice.svelte.js';
+  import EchoThemeNotice from '../../../../echo/components/ThemeNotice.svelte';
   import Button from '#lib/ui/primitives/Button.svelte';
   import IconButton from '#lib/ui/primitives/IconButton.svelte';
   import StatusBadge from '#lib/ui/primitives/StatusBadge.svelte';
@@ -424,6 +425,7 @@
     {/if}
   </div>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
+  <EchoThemeNotice hidden={catalogOpen} />
 
   {#if !onboarding && customThemes.tweaks.length > 0}
     <div class="tweaks-block">
