@@ -14,6 +14,8 @@
   :root {
     --echo-m-top: var(--echo-rail);
     --echo-m-top-rule: var(--echo-border);
+    --echo-m-shadow: rgb(0 0 0 / 35%);
+    --echo-m-scrim: rgb(0 0 0 / 45%);
   }
 
   :root.dark {
@@ -105,7 +107,7 @@
     background: var(--echo-chat);
     box-shadow:
       -1px 0 0 var(--echo-hairline),
-      -12px 0 32px rgb(0 0 0 / 35%);
+      -12px 0 32px var(--echo-m-shadow);
     color: var(--echo-text);
     transform: translate3d(var(--echo-m-drag, 0), 0, 0);
     z-index: 1;
@@ -355,7 +357,7 @@
   }
 
   .echo-m-drawer-scrim {
-    background: rgb(0 0 0 / 45%);
+    background: var(--echo-m-scrim);
     border: 0;
     inset: 0;
     opacity: var(--echo-m-drawer-shown, 0);
@@ -366,7 +368,7 @@
   .echo-m-drawer-panel {
     background: var(--echo-rail);
     border-right: 1px solid var(--echo-hairline);
-    box-shadow: 8px 0 24px rgb(0 0 0 / 35%);
+    box-shadow: 8px 0 24px var(--echo-m-shadow);
     box-sizing: content-box;
     color: var(--echo-text-2);
     inset-block: 0;

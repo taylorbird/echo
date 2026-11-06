@@ -134,6 +134,8 @@ most likely to want:
 | `--echo-sender-0` … `-9` | Sender names (echo hashes over ten) | the theme's `--mx-uc-1…8`, else Sable's own colours |
 | `--echo-timeline-highlight` | Messages that mention you | `--warn-main` at 16% |
 | `--echo-pane-shadow`, `--echo-pane-edge` | The panes' raised shadow and light edge | `--shadow-color`, the text colour at 7% |
+| `--echo-m-top`, `--echo-m-top-rule` | Phone: the room list's header band and its rule | `--surface-var-container`, `--bg-container-line` |
+| `--echo-m-shadow`, `--echo-m-scrim` | Phone: the sliding screens' and drawer's shadow, the dim behind the drawer | `--shadow-color` at 60%, `--overlay` |
 
 The full list is `styles/themes.css`. An example:
 

@@ -26,6 +26,8 @@
   --echo-composer: var(--surface-container-hover);
   --echo-m-top: var(--surface-var-container);
   --echo-m-top-rule: var(--bg-container-line);
+  --echo-m-shadow: color-mix(in srgb, var(--shadow-color) 60%, transparent);
+  --echo-m-scrim: var(--overlay);
 
   /* Text. Secondary shades are the text colour at lower strength, which works
      over any background, including a gradient or a translucent one. */
