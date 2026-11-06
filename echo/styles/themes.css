@@ -1,0 +1,117 @@
+/* echo: Sable themes. See the Themes section of echo/README.md.
+
+   With no theme loaded, echo draws its own look (frame.css and the other files
+   here) and nothing below applies. A Sable theme (.sable.css, Settings →
+   Appearance) sets Sable's tokens on body.remote-theme. This file then fills
+   every echo colour token from those, so echo's own parts (rail, room list,
+   rings, sender names, glows) follow the theme instead of keeping echo's
+   colours. echo's tokens live on :root, so values set on body win for
+   everything inside it.
+
+   Extensions: a theme may also set any --echo-* token itself (or the same name
+   with Sable's legacy --sable- prefix, which Sable renames on load). :where()
+   keeps this file at zero specificity, so the theme's own value always wins.
+   Sable ignores tokens it doesn't know, so one file works in both apps.
+
+   Every colour token echo defines must be filled here; echo/themes.test.ts
+   fails when one isn't. */
+
+:where(body.remote-theme) {
+  /* Ground and panes. */
+  --echo-warm: var(--bg-on-container);
+  --echo-chat: var(--surface-container);
+  --echo-roomlist: var(--bg-container);
+  --echo-rail: var(--surface-var-container);
+  --echo-band: var(--sec-container);
+  --echo-composer: var(--surface-container-hover);
+  --echo-m-top: var(--surface-var-container);
+  --echo-m-top-rule: var(--bg-container-line);
+
+  /* Text. Secondary shades are the text colour at lower strength, which works
+     over any background, including a gradient or a translucent one. */
+  --echo-text: var(--surface-on-container);
+  --echo-text-2: color-mix(in srgb, var(--surface-on-container) 62%, transparent);
+  --echo-text-3: color-mix(in srgb, var(--surface-on-container) 45%, transparent);
+  --echo-text-semi: color-mix(in srgb, var(--bg-on-container) 75%, transparent);
+  --echo-room-name: var(--bg-on-container);
+  --echo-preview: color-mix(in srgb, var(--bg-on-container) 70%, transparent);
+  --echo-reply-border: color-mix(in srgb, var(--surface-on-container) 35%, transparent);
+
+  /* Lines, hovers, selection. */
+  --echo-border: var(--bg-container-line);
+  --echo-hairline: color-mix(in srgb, var(--bg-container-line) 55%, transparent);
+  --echo-row-hairline: color-mix(in srgb, var(--bg-container-line) 40%, transparent);
+  --echo-hover: color-mix(in srgb, var(--bg-on-container) 8%, transparent);
+  --echo-button-hover: color-mix(in srgb, var(--bg-on-container) 18%, transparent);
+  --echo-entry-hover: color-mix(in srgb, var(--bg-on-container) 8%, transparent);
+  --echo-entry-selected: var(--bg-container-active);
+  --echo-entry-active: color-mix(in srgb, var(--primary-main) 24%, transparent);
+  --echo-timeline-hover: color-mix(in srgb, var(--surface-on-container) 6%, transparent);
+  --echo-timeline-highlight: color-mix(in srgb, var(--warn-main) 16%, transparent);
+  --echo-code-bg: var(--sec-container);
+  --echo-pill-bg: var(--sec-container-active);
+
+  /* Depth. */
+  --echo-modal-shadow: var(--shadow-color);
+  --echo-header-shadow: 0 4px 12px color-mix(in srgb, var(--shadow-color) 60%, transparent);
+  --echo-pane-shadow: var(--shadow-color);
+  --echo-pane-edge: color-mix(in srgb, var(--bg-on-container) 7%, transparent);
+  --echo-scrim: var(--overlay);
+  --echo-scrim-app: var(--overlay);
+
+  /* Accent. echo's extras (section titles, room glyphs, the rail pill, the
+     open room's glow) take the theme's primary colour. */
+  --echo-primary: var(--primary-main);
+  --echo-primary-dark: var(--primary-main-active);
+  --echo-on-primary: var(--primary-on-main);
+  --echo-section-ink: var(--primary-main);
+  --echo-kind-glyph: var(--primary-main);
+  --echo-kind-glyph-opacity: 0.9;
+  --echo-accent-glow: var(--primary-main);
+  --echo-accent-near: color-mix(in srgb, var(--primary-main) 75%, transparent);
+  --echo-accent-far: color-mix(in srgb, var(--primary-main) 35%, transparent);
+  --echo-room-glow: var(--primary-main);
+  --echo-room-near: color-mix(in srgb, var(--primary-main) 75%, transparent);
+  --echo-room-far: color-mix(in srgb, var(--primary-main) 35%, transparent);
+  --echo-blue-near: color-mix(in srgb, var(--primary-main) 75%, transparent);
+  --echo-blue-far: color-mix(in srgb, var(--primary-main) 40%, transparent);
+  --echo-red-near: color-mix(in srgb, var(--crit-main) 90%, transparent);
+  --echo-red-far: color-mix(in srgb, var(--crit-main) 45%, transparent);
+
+  /* Unread: rings, bars and badges. Unread is the theme's primary, a mention
+     its critical colour, a reaction its success colour, muted its secondary. */
+  --echo-ring-unread: var(--primary-main);
+  --echo-ring-unread-ink: color-mix(in srgb, var(--primary-main) 55%, var(--bg-on-container));
+  --echo-ring-mention: var(--crit-main);
+  --echo-ring-mention-ink: color-mix(in srgb, var(--crit-main) 55%, var(--bg-on-container));
+  --echo-ring-reaction: var(--success-main);
+  --echo-ring-reaction-ink: color-mix(in srgb, var(--success-main) 55%, var(--bg-on-container));
+  --echo-ring-muted: var(--sec-main);
+  --echo-ring-muted-ink: color-mix(in srgb, var(--sec-main) 55%, var(--bg-on-container));
+  --echo-ring-glow: 35%;
+  --echo-ring-wash: 6%;
+  --echo-unread-message: var(--sec-main);
+  --echo-unread-notify: var(--primary-main);
+  --echo-unread-highlight: var(--crit-main);
+  --echo-unread-ink: var(--primary-on-main);
+  --echo-unread-highlight-ink: var(--crit-on-main);
+  --echo-unread-wash: color-mix(in srgb, var(--primary-main) 6%, transparent);
+  --echo-highlight-wash: color-mix(in srgb, var(--crit-main) 6%, transparent);
+  --echo-space-message: var(--sec-main);
+  --echo-space-highlight: var(--crit-main);
+  --echo-space-ink: var(--sec-on-main);
+
+  /* Sender names: echo's ten-colour palette steps aside, so Sable's own rule
+     applies (echo/sender-color.ts falls back to it): the theme's --mx-uc-1…8,
+     else its primary, secondary, success, warning and critical colours. */
+  --echo-sender-0: initial;
+  --echo-sender-1: initial;
+  --echo-sender-2: initial;
+  --echo-sender-3: initial;
+  --echo-sender-4: initial;
+  --echo-sender-5: initial;
+  --echo-sender-6: initial;
+  --echo-sender-7: initial;
+  --echo-sender-8: initial;
+  --echo-sender-9: initial;
+}

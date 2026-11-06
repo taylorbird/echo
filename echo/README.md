@@ -103,6 +103,56 @@ can live here instead.
 
 Fonts are in `static/fonts/echo/`, since that's where Vite serves static files from.
 
+## Themes
+
+echo's own look is the default theme: with no theme loaded, echo draws the colours in
+`styles/frame.css` and the other `styles/` files. Sable themes (`.sable.css` files, Settings →
+Appearance, from Sable's catalog or a file) work as they do in Sable. A theme sets Sable's
+tokens (`--bg-container`, `--primary-main` and so on) on `body.remote-theme`, and
+`styles/themes.css` fills every echo colour from them: the rail, room list, chat pane, badge
+rings, sender names, glows, shadows and dialog dims. `themes.test.ts` fails when an echo
+colour token has no line there.
+
+**echo extensions.** A theme can also set echo's own tokens, in the same block as its Sable
+tokens. Sable ignores names it doesn't know, so one file works in both apps. Write them as
+`--echo-*` (or `--sable-echo-*`; Sable renames `--sable-` names on load). The ones a theme is
+most likely to want:
+
+| Token | What it colours | Filled from, when the theme doesn't set it |
+| --- | --- | --- |
+| `--echo-rail` | Space rail | `--surface-var-container` |
+| `--echo-roomlist` | Room list and room header | `--bg-container` |
+| `--echo-chat` | Chat pane | `--surface-container` |
+| `--echo-composer` | Message box | `--surface-container-hover` |
+| `--echo-band` | Rail sub-filter band | `--sec-container` |
+| `--echo-room-name`, `--echo-preview` | Room list text | `--bg-on-container` |
+| `--echo-section-ink`, `--echo-kind-glyph` | Section titles, room glyphs | `--primary-main` |
+| `--echo-accent-glow`, `--echo-room-glow` | Rail pill, open room's bar | `--primary-main` |
+| `--echo-ring-unread`, `-mention`, `-reaction`, `-muted` | Badge rings (any colour) | primary, crit, success, sec |
+| `--echo-ring-*-ink` | Text inside each ring | the ring colour mixed with the text colour |
+| `--echo-ring-glow`, `--echo-ring-wash` | Ring glow and row tint strength (`0%` turns off) | `35%`, `6%` |
+| `--echo-sender-0` … `-9` | Sender names (echo hashes over ten) | the theme's `--mx-uc-1…8`, else Sable's own colours |
+| `--echo-timeline-highlight` | Messages that mention you | `--warn-main` at 16% |
+| `--echo-pane-shadow`, `--echo-pane-edge` | The panes' raised shadow and light edge | `--shadow-color`, the text colour at 7% |
+
+The full list is `styles/themes.css`. An example:
+
+```css
+/*
+@sable-theme
+name: Catppuccin Mocha for echo
+kind: dark
+*/
+body.sable-remote-theme {
+  --sable-bg-container: #181825;
+  /* … the rest of the Sable tokens … */
+
+  --echo-rail: #11111b;
+  --echo-ring-mention: #f38ba8;
+  --echo-ring-glow: 0%;
+}
+```
+
 ## Hooks into Sable's files
 
 | File | Hook |
