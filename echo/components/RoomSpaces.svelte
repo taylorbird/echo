@@ -1,7 +1,7 @@
 <!-- echo: a room's spaces at the right edge of its row in All chats (Home), so a
      room's place shows without opening the space: the avatar of each rail space
      that lists it, stacked when there is more than one (echo/row-spaces.ts). A
-     room outside every space shows nothing. Hooked into Sable's RoomNav.svelte
+     room or DM outside every space shows its section's generic glyph. Hooked into Sable's RoomNav.svelte
      after the badge lane; drawn by echo/styles/roomlist.css, desktop only. Off in
      Settings → echo → Room list (echo/space-icons.svelte.ts). -->
 <script lang="ts">
@@ -25,9 +25,11 @@
   // Sable's component tests render RoomNav without echo's layer (echo/active.ts).
   const active = echoActive();
 
+  let shown = $derived(
+    active && room !== undefined && echoSpaceIcons.show && page.url.pathname.startsWith('/home')
+  );
   let spaces = $derived.by(() => {
-    if (!active || !room || !echoSpaceIcons.show) return [];
-    if (!page.url.pathname.startsWith('/home')) return [];
+    if (!shown || !room) return [];
     const rooms = roomList.rooms;
     return rowSpaces(
       room,
@@ -39,7 +41,14 @@
   let label = $derived(spaces.map((space) => space.name ?? space.room_id).join(', '));
 </script>
 
-{#if spaces.length > 0}
+{#if shown && spaces.length === 0}
+  <!-- In no space: the generic glyph of its section, a room's or a DM's, so
+       every row's lane holds something. -->
+  <span class="echo-row-spaces" role="img" aria-label="Not in a space" title="Not in a space">
+    <span class="echo-row-space echo-row-space-none" data-kind={room?.is_direct ? 'dm' : 'room'}
+    ></span>
+  </span>
+{:else if spaces.length > 0}
   <span class="echo-row-spaces" role="img" aria-label={`In ${label}`} title={label}>
     {#each spaces as space (space.room_id)}
       <Avatar
