@@ -1,9 +1,5 @@
 <!-- Notes for the release being cut; echo/release-electron.sh reads this. -->
 
-echo 1.5 works with Sable themes.
+echo 1.5.1 tidies up notifications on the Mac.
 
-- Themes from Sable's catalog, or your own `.sable.css` files, now colour all of echo: the space rail, the room list, the chat, unread badges and sender names. With no theme, echo looks the same as before. Pick one in Settings → Appearance → Theme catalog.
-- Theme authors can also set echo's own colours in the same file. Sable ignores them, so one file works in both apps. The echo README lists them.
-- The theme catalog now looks like the rest of echo's settings. After you choose a theme, the confirmation and Undo appear in the catalog instead of in the corner of the window.
-- Unread badges are a brighter purple in dark mode.
-- A very narrow window now uses echo's phone layout.
+- When several messages arrive in a room, its notification now shows the latest one and how many others there are, such as "New message from Fiona (+3 more)". Before, the messages were stacked inside one notification, and macOS drew the extra lines outside it.
