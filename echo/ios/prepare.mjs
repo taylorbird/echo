@@ -2,23 +2,28 @@
 //
 // `node echo/ios/prepare.mjs template`, before `tauri ios init`: Sable's Xcode template
 // (src-tauri/ios-project.yml) points at Sable's icon catalog and names Sable in the
-// permission prompts. Rather than hook it, this writes a copy with echo's icon catalog
-// and name into echo/ios/build/ (gitignored), which echo/tauri.echo.ios.conf.json names
-// as the template. Each swap must find its anchor, so an upstream change to the
-// template fails here instead of shipping Sable's.
+// permission prompts. Rather than hook it, this writes a copy with echo's icon and name
+// into echo/ios/build/ (gitignored), which echo/tauri.echo.ios.conf.json names as the
+// template. Each swap must find its anchor, so an upstream change to the template fails
+// here instead of shipping Sable's.
+//
+// echo's iOS icon is the Icon Composer file the Mac app also uses (echo/icons/echo.icon),
+// copied in as AppIcon.icon so it is the target's AppIcon. It is full-bleed and layered;
+// iOS draws its own shape and glass over it. (The PNGs the template used to get were the
+// Mac's: a rounded square inset on a transparent canvas, which iOS showed with a border.)
 //
 // `node echo/ios/prepare.mjs icons`, after it: `tauri ios init` fills the generated
-// project's own catalog with Tauri's default icon; echo's replaces it.
+// project's own catalog with Tauri's default AppIcon set, which would clash with echo's
+// AppIcon.icon by name, so this removes it.
 
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(import.meta.dirname, '../..');
 const out = join(root, 'echo/ios/build');
 const sableTemplate = join(root, 'src-tauri/ios-project.yml');
-const sableIconSet = join(root, 'src-tauri/icons/ios/AppIcons.xcassets/AppIcon.appiconset');
 const generatedIconSet = join(root, 'src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset');
-const echoIcons = join(root, 'echo/icons/ios');
+const echoIcon = join(root, 'echo/icons/echo.icon');
 
 function swap(text, from, to) {
   if (!(typeof from === 'string' ? text.includes(from) : from.test(text))) {
@@ -27,20 +32,13 @@ function swap(text, from, to) {
   return text.replaceAll(from, to);
 }
 
-// echo's icons are `tauri icon` output, named as Sable's and Tauri's.
-function copyEchoIcons(iconSet) {
-  for (const file of readdirSync(echoIcons)) {
-    if (file.endsWith('.png')) copyFileSync(join(echoIcons, file), join(iconSet, file));
-  }
-}
-
 function writeTemplate() {
   let template = readFileSync(sableTemplate, 'utf8');
   // The project lives in src-tauri/gen/apple, so paths climb three levels to the repo.
   template = swap(
     template,
     '- path: ../../icons/ios/AppIcons.xcassets',
-    '- path: ../../../echo/ios/build/AppIcons.xcassets'
+    '- path: ../../../echo/ios/build/AppIcon.icon'
   );
   // echo has one icon: Sable's alternate (pride) icons and their aliases stay Sable's.
   template = swap(template, /\n *# APP-ICON ALIASES START[\s\S]*?# APP-ICON ALIASES END/g, '');
@@ -57,21 +55,14 @@ function writeTemplate() {
   );
 
   rmSync(out, { recursive: true, force: true });
-  const iconSet = join(out, 'AppIcons.xcassets/AppIcon.appiconset');
-  mkdirSync(iconSet, { recursive: true });
+  cpSync(echoIcon, join(out, 'AppIcon.icon'), { recursive: true });
   writeFileSync(join(out, 'project.yml'), template);
-  copyFileSync(join(sableIconSet, 'Contents.json'), join(iconSet, 'Contents.json'));
-  writeFileSync(
-    join(out, 'AppIcons.xcassets/Contents.json'),
-    `${JSON.stringify({ info: { version: 1, author: 'xcode' } }, null, 2)}\n`
-  );
-  copyEchoIcons(iconSet);
-  console.log('Wrote echo/ios/build/project.yml and AppIcons.xcassets');
+  console.log('Wrote echo/ios/build/project.yml and AppIcon.icon');
 }
 
 const step = process.argv[2];
 if (step === 'template') writeTemplate();
 else if (step === 'icons') {
-  copyEchoIcons(generatedIconSet);
-  console.log('Copied echo icons into src-tauri/gen/apple/Assets.xcassets');
+  rmSync(generatedIconSet, { recursive: true, force: true });
+  console.log("Removed Tauri's default AppIcon set from src-tauri/gen/apple/Assets.xcassets");
 } else throw new Error('usage: node echo/ios/prepare.mjs <template|icons>');
