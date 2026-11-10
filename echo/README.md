@@ -77,6 +77,12 @@ can live here instead.
   preload passes in (`echoRedirectScheme`).
 - `settings.ts` — echo's own settings as panels in Sable's settings pages (the reaction
   settings, under Notifications). Kept on this device.
+- `settings-category.ts` — echo's own category in the settings list, "echo" (`/settings/echo`),
+  for settings that belong to no Sable page. Its "Room list" panel is
+  `components/EchoSettings.svelte` (desktop only).
+- `row-spaces.ts`, `space-icons.svelte.ts`, `components/RoomSpaces.svelte` — in All chats, the
+  avatar of each rail space a room or DM is in, at the right edge of its row (a DM counts as in
+  a space by `space-dms.ts`'s rule). On by default; Settings → echo → Room list turns it off.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
   the Sable project itself keep its name. In tests it follows `active.ts`, so Sable's own
   component tests see Sable's text. `echoAppName` is the name where Sable writes it in markup.
@@ -194,7 +200,9 @@ body.sable-remote-theme {
 | `electron/package.mjs` | the builder config is `process.env.SABLE_BUILDER_CONFIG ?? …`: `build.sh` passes `echo/electron/electron-builder.echo.ts` |
 | `src/lib/auth/redirect.ts` | `nativeRedirectUri` returns `echoNativeRedirectUri(…)` (`echo/auth.ts`) first when there is one, and its import (three lines) |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomRing {room} />` (`echo/components/RoomRing.svelte`) first in each row's badge lane (`.room-status`) |
-| `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels; `echoPhoneLayoutSettings` in the Appearance panels |
+| `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels; `echoPhoneLayoutSettings` in the Appearance panels; `echo: [echoRoomListSettings]`, the panels of echo's own category |
+| `src/lib/settings/registry.ts` | `...echoSettingsCategories` (`echo/settings-category.ts`) before the developer category: echo's own "echo" category; and its import |
+| `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomSpaces {room} />` (`echo/components/RoomSpaces.svelte`) after each row's badge lane: its spaces in All chats |
 | `src/lib/features/settings/CustomThemes.svelte` | `toasts` imported as `echoThemeToasts` (`echo/theme-notice.svelte.ts`): theme changes confirm inline in echo, by Sable's toast otherwise; `<EchoThemeNotice hidden={catalogOpen} />` (`echo/components/ThemeNotice.svelte`) under the buttons |
 | `src/lib/features/settings/ThemeCatalog.svelte` | `<EchoThemeNotice bar />` as the catalog's last child: the confirmation in its bottom bar |
 | `crates/sable-core/src/lib.rs` | `#[path = "../../../echo/core/reactions.rs"] mod echo_reactions;` (two lines) |

@@ -14,6 +14,7 @@ import type { NavSectionKind } from '#lib/features/sidebar/nav-section.js';
 import { roomRow, type RoomNavRow } from '#lib/features/sidebar/nav-rows.js';
 import { BREAKPOINTS } from '#lib/ui/breakpoints.js';
 import { echoActive } from './active.js';
+import { spaceAndBelow } from './row-spaces.js';
 
 // Phones keep Sable's UI until echo has its own (echo/README.md).
 const desktop = new MediaQuery(BREAKPOINTS.appLayout);
@@ -54,20 +55,21 @@ function membersOf(core: CoreClient, spaceId: string): ReadonlySet<string> | und
   return spaceMembers.get(spaceId);
 }
 
-/** The space and every joined space below it. */
-function spaceAndBelow(space: RoomListItemView, byId: Map<string, RoomListItemView>): string[] {
-  const seen = new Set<string>([space.room_id]);
-  const queue = [space];
-  for (let next = queue.shift(); next; next = queue.shift()) {
-    for (const child of next.space_children) {
-      const room = byId.get(child.room_id);
-      if (room?.room_kind !== 'space' || room.state !== 'joined' || seen.has(room.room_id))
-        continue;
-      seen.add(room.room_id);
-      queue.push(room);
-    }
+/**
+ * Everyone in the space or a joined space below it, as far as fetched so far.
+ * Reading it asks for the members it lacks; they arrive reactively.
+ */
+export function spacePeople(
+  core: CoreClient,
+  space: RoomListItemView,
+  rooms: readonly RoomListItemView[]
+): ReadonlySet<string> {
+  const byId = new Map(rooms.map((room) => [room.room_id, room]));
+  const people = new Set<string>();
+  for (const holder of spaceAndBelow(space, byId)) {
+    for (const person of membersOf(core, holder.room_id) ?? []) people.add(person);
   }
-  return [...seen];
+  return people;
 }
 
 interface Section {
@@ -95,11 +97,7 @@ export function echoSectionRooms(rows: RoomNavRow[], context: Section): RoomNavR
   }
 
   if (section === 'space' && space) {
-    const byId = new Map(rooms.map((room) => [room.room_id, room]));
-    const people = new Set<string>();
-    for (const spaceId of spaceAndBelow(space, byId)) {
-      for (const person of membersOf(core, spaceId) ?? []) people.add(person);
-    }
+    const people = spacePeople(core, space, rooms);
     const listed = new Set(rows.map((row) => row.roomId));
     const shared = directs.filter(
       (room) =>

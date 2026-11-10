@@ -38,7 +38,11 @@ import DeveloperSentry from '#lib/features/settings/DeveloperSentry.svelte';
 import DeveloperServerFeatures from '#lib/features/settings/DeveloperServerFeatures.svelte';
 import DeveloperSyncDiagnostics from '#lib/features/settings/DeveloperSyncDiagnostics.svelte';
 import SoundVolumeSettings from '../call/SoundVolumeSettings.svelte';
-import { echoPhoneLayoutSettings, echoReactionSettings } from '../../../../echo/settings.js';
+import {
+  echoPhoneLayoutSettings,
+  echoReactionSettings,
+  echoRoomListSettings,
+} from '../../../../echo/settings.js';
 
 export interface CategoryPanel {
   component: Component;
@@ -94,6 +98,7 @@ export const categoryPanels: Record<string, CategoryPanel[]> = {
   ],
   privacy: [{ component: MediaPreviewPrivacy, section: 'blurring', start: true }],
   personas: [{ component: PersonaSettings }],
+  echo: [echoRoomListSettings],
   [SETTINGS_ACCOUNT_SECTION]: [
     { component: SettingsSyncStatus, section: 'sync', when: () => preferences.settingsSync },
     {

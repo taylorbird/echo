@@ -19,6 +19,7 @@ import { panelTargets } from './registry/panels';
 import { personasCategory } from './registry/personas';
 import { privacyCategory } from './registry/privacy';
 import { timelineCategory } from './registry/timeline';
+import { echoSettingsCategories } from '../../../echo/settings-category.js';
 
 export { enterSettingLabels } from './registry/composer';
 
@@ -268,6 +269,7 @@ const categories: SettingsCategory[] = [
   },
   personasCategory,
   ...desktopCategories,
+  ...echoSettingsCategories,
   developerCategory,
 ];
 
