@@ -341,6 +341,47 @@
     width: 1.25rem;
   }
 
+  /* Rooms and DMs without a picture all get the same quiet disc, holding the
+     glyph their section heading uses (two people for a room, one for a DM,
+     in the heading's ink), instead of Sable's initials, its kind glyph or an
+     empty lane. Sable draws a picture-less row three ways: an Avatar with
+     initials, a .glyph disc, or a bare .room-icon lane when room pictures are
+     off; each is caught here. */
+  :root .room-list:not(.collapsed) .room-row {
+    --echo-row-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E");
+  }
+
+  :root .room-list:not(.collapsed) .room-row:has(.echo-dm) {
+    --echo-row-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
+  }
+
+  :root .room-list:not(.collapsed) .room-avatar > .room-avatar-icon:not(:has(.avatar-image)),
+  :root .room-list:not(.collapsed) .room-row > .room-icon {
+    background: var(--echo-entry-hover);
+    border-radius: 50%;
+    position: relative;
+  }
+
+  :root .room-list:not(.collapsed) .room-row > .room-icon {
+    flex: 0 0 2.5rem;
+    height: 2.5rem;
+    margin: 0.25rem 0.75rem 0.25rem 0.25rem;
+    width: 2.5rem;
+  }
+
+  :root .room-list:not(.collapsed) .room-avatar > .room-avatar-icon:not(:has(.avatar-image))::before,
+  :root .room-list:not(.collapsed) .room-row > .room-icon::before {
+    background: var(--echo-section-ink);
+    content: '';
+    height: 1.25rem;
+    inset: 0;
+    margin: auto;
+    mask: var(--echo-row-glyph) center / contain no-repeat;
+    opacity: 0.85;
+    position: absolute;
+    width: 1.25rem;
+  }
+
   /* No ring on the open room's avatar: the bar already says it. */
   :root .room-list .room-row .room-avatar-icon.room-avatar-icon::after {
     content: none;
@@ -541,4 +582,13 @@
   :root .echo-row-spaces > .echo-row-space + .echo-row-space {
     margin-top: -0.375rem;
   }
+
+  /* The picture-less disc's own content (initials, Sable's glyph) gives way to
+     the heading glyph drawn over it above. */
+  /* stylelint-disable no-descending-specificity */
+  :root .room-list:not(.collapsed) .room-avatar-icon:not(:has(.avatar-image)) > *,
+  :root .room-list:not(.collapsed) .room-icon > * {
+    visibility: hidden;
+  }
+  /* stylelint-enable no-descending-specificity */
 }
