@@ -50,8 +50,12 @@ can live here instead.
   it or a space below it, the rooms outside spaces list every DM. Desktop only.
 - `places.ts` — where a room opens, as echo-gomuks did it: Home is one more place in the rail,
   so a room opens in the place that's open when it lists the room (Home lists every chat, a
-  space its rooms and the DMs `space-dms.ts` adds), otherwise in its space or Home, never in the
-  rooms outside spaces or direct messages, whose rail tiles echo hides (`styles/rail.css`).
+  space its rooms and the DMs `space-dms.ts` adds, the rooms outside spaces — the globe tile —
+  those rooms and every DM), otherwise in its space or Home, never in direct messages, whose
+  rail tile echo hides (`styles/rail.css`). Sable's flows that land on `/rooms` by `goto`
+  (sign-in, account switching) go on to Home (`components/EmptyPane.svelte`); the tile stays.
+- `outside-spaces.ts` — the rooms outside spaces' globe: their rail tile and, in All chats, the
+  space lane of a row in no space.
   Start-up with no room to restore lands in Home, and Sable's flows that open a DM at
   `/direct/<id>` (New chat, a DM invite) go on to it in Home (`components/DirectRoom.svelte`).
   Desktop only.
@@ -191,6 +195,7 @@ body.sable-remote-theme {
 | `src/routes/(app)/direct/[roomId]/+page.svelte` | `RoomOrForumPage` imported from `echo/components/DirectRoom.svelte`: on to the room in Home |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `folderOpen` returns `echoFolderOpen(…) ?? …`, and the folder's tile and caret try `echoEnterFolder(…)` / `echoLeaveFolder(…)` before Sable's toggle (`echo/folders.ts`) |
 | `src/lib/features/sidebar/NavigationRail.svelte` | `...echoCreateEntries()` (`echo/create-menu.ts`) first in the create menu: New chat |
+| `src/lib/features/sidebar/NavigationRail.svelte` | the rooms outside spaces' tile icon is `echoUnspacedIcon(…)` (`echo/outside-spaces.ts`): the globe; and its import |
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
 | `electron/src/updater.ts` | `echoUseUpdateFeed(autoUpdater)` after Sable's `setFeedURL` (`echo/electron/updater.ts`): echo's feed in echo builds |
 | `electron/src/main.ts` | `echoBranded(…)` around the core's `serviceName` and the screen-recording dialog's text (`echo/electron/app.ts`) |

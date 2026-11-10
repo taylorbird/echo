@@ -4,14 +4,14 @@
      HomeLanding's props and stands in for it: Home's and the rooms outside
      spaces' pages import this instead. On phones or with echo off it renders
      Sable's HomeLanding unchanged.
-     While Home exists the rooms outside spaces are no place of their own
-     (echo/styles/rail.css hides their tile), so their page goes on to Home:
-     sign-in, account switching and the other Sable flows that land on /rooms
-     arrive there. -->
+     The rooms outside spaces are a place of their own (their rail tile, the
+     globe), but sign-in, account switching and the other Sable flows land on
+     /rooms by goto, so those go on to Home. Arriving by a link (the tile) or
+     Back stays. -->
 <script lang="ts">
   import type { ComponentProps } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
-  import { goto } from '$app/navigation';
+  import { afterNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import HomeLanding from '#lib/features/home/HomeLanding.svelte';
   import { i18n } from '#lib/i18n.js';
@@ -24,7 +24,8 @@
 
   let empty = $derived(echoActive() && appLayout.current);
 
-  $effect(() => {
+  afterNavigate((navigation) => {
+    if (navigation.type === 'link' || navigation.type === 'popstate') return;
     if (empty && props.titleKey === 'nav.unspaced' && preferences.showHome) {
       void goto(resolve('/(app)/home'), { replace: true });
     }

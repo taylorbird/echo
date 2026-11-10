@@ -129,12 +129,13 @@
     display: none;
   }
 
-  /* Home is every chat, as in echo-gomuks: the rooms outside spaces and the
-     direct messages are no places of their own, so their tiles go while Home
-     has one. Their routes still work; rooms open in Home (echo/places.ts). */
+  /* Home is every chat; the rooms outside spaces are a place too, with every
+     DM in it (echo/space-dms.ts), under the globe (SPEC §3, item 2). Direct
+     messages are no place of their own, so Sable's DM tile goes while Home has
+     one. Its route still works; DMs open in Home (echo/places.ts). */
   :root[data-echo='on']
     .rail-stack:has(a[href^='/home'])
-    .rail-section-anchor:has(a:is([href^='/rooms'], [href^='/direct'])) {
+    .rail-section-anchor:has(a[href^='/direct']) {
     display: none;
   }
 

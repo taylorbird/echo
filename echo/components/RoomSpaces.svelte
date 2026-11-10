@@ -1,17 +1,17 @@
 <!-- echo: a room's spaces at the right edge of its row in All chats (Home), so a
      room's place shows without opening the space: the avatar of each rail space
      that lists it, stacked when there is more than one (echo/row-spaces.ts). A
-     room or DM outside every space shows All chats' stack glyph. Hooked into Sable's RoomNav.svelte
+     room or DM outside every space shows the outside-spaces globe. Hooked into Sable's RoomNav.svelte
      after the badge lane; drawn by echo/styles/roomlist.css, desktop only. Off in
      Settings → echo → Room list (echo/space-icons.svelte.ts). -->
 <script lang="ts">
-  import StackIcon from 'phosphor-svelte/lib/StackIcon';
   import { page } from '$app/state';
   import type { RoomListItemView } from '#src/generated/protocol';
   import { useCoreClient } from '#lib/core/context.js';
   import { roomAvatarUrl, useRoomList } from '#lib/rooms/room-list.svelte.js';
   import Avatar from '#lib/ui/primitives/Avatar.svelte';
   import { echoActive } from '../active.js';
+  import { OutsideSpacesIcon } from '../outside-spaces.js';
   import { rowSpaces } from '../row-spaces.js';
   import { spacePeople } from '../space-dms.js';
   import { echoSpaceIcons } from '../space-icons.svelte.js';
@@ -43,11 +43,11 @@
 </script>
 
 {#if shown && spaces.length === 0}
-  <!-- In no space: All chats' own stack glyph (the rail band's "All chats"
-       filter, components/RailBand.svelte), so every row's lane holds something. -->
-  <span class="echo-row-spaces" role="img" aria-label="Not in a space" title="Not in a space">
+  <!-- In no space: the rooms outside spaces' globe, as on their rail tile
+       (echo/outside-spaces.ts), so every row's lane holds something. -->
+  <span class="echo-row-spaces" role="img" aria-label="Outside spaces" title="Outside spaces">
     <span class="echo-row-space echo-row-space-none"
-      ><StackIcon size="0.75rem" weight="bold" /></span
+      ><OutsideSpacesIcon size="0.75rem" weight="bold" /></span
     >
   </span>
 {:else if spaces.length > 0}

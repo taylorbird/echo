@@ -36,7 +36,6 @@
   import { page } from '$app/state';
   import { findRoomByPathId, roomPathParam, useRoomList } from '#lib/rooms/room-list.svelte.js';
   import { hasUnread } from '#lib/rooms/unread.js';
-  import { preferences } from '#lib/settings/preferences.svelte.js';
   import Avatar from '#lib/ui/primitives/Avatar.svelte';
   import UnreadBadge from '#lib/ui/primitives/UnreadBadge.svelte';
   import { echoActive } from '../active.js';
@@ -59,11 +58,9 @@
 
   // Every place that parts the rail gets the same four (SPEC §3.5): home, the
   // rooms outside spaces, and each space, whose DMs echo/space-dms.ts adds.
-  // The rooms outside spaces only while Home is off: with Home their tile is
-  // hidden (echo/styles/rail.css), and a band under it would be an empty strip.
   let partable = $derived(
     item.section === 'home' ||
-      (item.section === 'unspaced' && !preferences.showHome) ||
+      item.section === 'unspaced' ||
       (item.initial !== undefined && item.dm !== true)
   );
   const filters: Filter[] = [ALL, ROOMS, DMS, RECENT];

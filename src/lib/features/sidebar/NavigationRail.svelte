@@ -47,6 +47,7 @@
   import EchoRailBand from '../../../../echo/components/RailBand.svelte';
   import { echoCreateEntries } from '../../../../echo/create-menu.js';
   import { echoEnterFolder, echoFolderOpen, echoLeaveFolder } from '../../../../echo/folders.js';
+  import { echoUnspacedIcon } from '../../../../echo/outside-spaces.js';
   import ChecksIcon from 'phosphor-svelte/lib/ChecksIcon';
   import CompassIcon from 'phosphor-svelte/lib/CompassIcon';
   import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
@@ -179,7 +180,7 @@
       href: roomsRoot,
       activePrefix: '/rooms',
       navigateHref: sectionHref(ROOMS_PATHS_KEY, roomsRoot),
-      icon: preferences.showHome ? HashIcon : HouseIcon,
+      icon: echoUnspacedIcon(preferences.showHome ? HashIcon : HouseIcon),
       label: 'nav.unspaced',
       unread: unspacedUnread,
       section: 'unspaced',

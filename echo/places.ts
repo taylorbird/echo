@@ -1,9 +1,10 @@
 // Where a room opens, as echo-gomuks did it (gomuks web/src/ui/MainScreen.tsx):
 // the rail's places are views of one list of chats, so a room opens in the
 // place you are in when that place lists it — Home lists every chat, a space
-// its rooms and the DMs echo/space-dms.ts adds to it — and otherwise in its
-// space, or Home. Sable sends DMs to /direct and the rooms outside spaces to
-// /rooms, places echo's rail doesn't show (echo/styles/rail.css). Hooked into
+// its rooms and the DMs echo/space-dms.ts adds to it, the rooms outside spaces
+// (/rooms, the globe) those rooms and every DM — and otherwise in its space, or
+// Home. Sable sends DMs to /direct, a place echo's rail doesn't show
+// (echo/styles/rail.css). Hooked into
 // Sable's roomSectionPath (src/lib/rooms/permalink.ts), which notifications,
 // Cmd-K, permalinks and the rest open rooms through, and into RoomNav.svelte's
 // links for the DMs a space lists. Desktop only.
@@ -53,6 +54,11 @@ export function echoRoomPath(
 
   if (place === 'home' && preferences.showHome) {
     return resolve('/(app)/home/[roomId]', { roomId });
+  }
+
+  // The rooms outside spaces list those rooms and every DM (echo/space-dms.ts).
+  if (place === 'rooms' && (room.is_direct || !inSomeSpace(rooms, room.room_id))) {
+    return resolve('/(app)/rooms/[roomId]', { roomId });
   }
 
   if (place === 'space') {
