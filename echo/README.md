@@ -210,6 +210,7 @@ body.sable-remote-theme {
 | `crates/sable-core/src/media.rs` | the avatar fetcher's `user_agent(echo_brand::APP_NAME)` |
 | `src/lib/features/settings/AboutSettings.svelte` | the heading is `echoAppName('Sable')` (`echo/branding.ts`): "echo" |
 | `src/lib/ui/TitleBar.svelte` | the title is `echoAppName('Sable')` (`echo/branding.ts`), as on the About page |
+| `src/lib/features/notifications/notifications.svelte.ts` | a notification's body is `echoNotificationBody(lines, summarise)` (`echo/notification-body.ts`): the latest message and "(+N more)" on one line, where Sable stacks up to five lines that macOS draws outside the banner; and its import |
 | `src/lib/features/room/timeline/TimelineItem.svelte` | not a hook but a fix to Sable: clicking a sender's name mentions them by their room name (`roomIdentity.name`), not your private MSC4529 nickname for them, which went out in the message's text. Upstream has moved this to `message-sender.svelte.ts` (`mention`) with the same bug: carry it there on the next merge |
 
 ## Running

@@ -14,6 +14,7 @@ import { parsePushPayload, webPushValidation } from '#lib/notifications/push-pay
 import { enabled, line, tag, title } from './present';
 import { retireReadAlerts, retireRoomAlerts } from './retire';
 import { playNotificationSound } from './sound';
+import { echoNotificationBody } from '../../../../echo/notification-body.js';
 
 export const settingsChanges = $state({ version: 0 });
 
@@ -257,7 +258,7 @@ export class NotificationCenter {
     if (core === null || open === null) return;
 
     const options = {
-      body: summarise(lines),
+      body: echoNotificationBody(lines, summarise),
       tag: tag(view),
       icon: await avatar(core, view),
       silent: true,
