@@ -583,31 +583,16 @@
     margin-top: -0.375rem;
   }
 
-  /* In no space: the same square, empty, holding its section heading's glyph
-     (two people for a room, one for a DM). */
+  /* In no space: the same square, holding All chats' stack glyph. */
   :root .room-list .echo-row-spaces > .echo-row-space-none {
-    --echo-row-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E");
-
+    align-items: center;
     background: var(--echo-entry-hover);
     box-shadow: none;
+    color: var(--echo-section-ink);
+    display: flex;
     height: 1.0625rem;
-    position: relative;
+    justify-content: center;
     width: 1.0625rem;
-  }
-
-  :root .room-list .echo-row-spaces > .echo-row-space-none[data-kind='dm'] {
-    --echo-row-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
-  }
-
-  :root .room-list .echo-row-spaces > .echo-row-space-none::before {
-    background: var(--echo-section-ink);
-    content: '';
-    height: 0.75rem;
-    inset: 0;
-    margin: auto;
-    mask: var(--echo-row-glyph) center / contain no-repeat;
-    position: absolute;
-    width: 0.75rem;
   }
 
   /* The picture-less disc's own content (initials, Sable's glyph) gives way to

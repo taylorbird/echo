@@ -1,10 +1,11 @@
 <!-- echo: a room's spaces at the right edge of its row in All chats (Home), so a
      room's place shows without opening the space: the avatar of each rail space
      that lists it, stacked when there is more than one (echo/row-spaces.ts). A
-     room or DM outside every space shows its section's generic glyph. Hooked into Sable's RoomNav.svelte
+     room or DM outside every space shows All chats' stack glyph. Hooked into Sable's RoomNav.svelte
      after the badge lane; drawn by echo/styles/roomlist.css, desktop only. Off in
      Settings → echo → Room list (echo/space-icons.svelte.ts). -->
 <script lang="ts">
+  import StackIcon from 'phosphor-svelte/lib/StackIcon';
   import { page } from '$app/state';
   import type { RoomListItemView } from '#src/generated/protocol';
   import { useCoreClient } from '#lib/core/context.js';
@@ -42,11 +43,12 @@
 </script>
 
 {#if shown && spaces.length === 0}
-  <!-- In no space: the generic glyph of its section, a room's or a DM's, so
-       every row's lane holds something. -->
+  <!-- In no space: All chats' own stack glyph (the rail band's "All chats"
+       filter, components/RailBand.svelte), so every row's lane holds something. -->
   <span class="echo-row-spaces" role="img" aria-label="Not in a space" title="Not in a space">
-    <span class="echo-row-space echo-row-space-none" data-kind={room?.is_direct ? 'dm' : 'room'}
-    ></span>
+    <span class="echo-row-space echo-row-space-none"
+      ><StackIcon size="0.75rem" weight="bold" /></span
+    >
   </span>
 {:else if spaces.length > 0}
   <span class="echo-row-spaces" role="img" aria-label={`In ${label}`} title={label}>
