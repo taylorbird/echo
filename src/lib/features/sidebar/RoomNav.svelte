@@ -81,7 +81,6 @@
   import { PeerProfiles } from './peer-profiles.svelte.js';
   import EchoRoomPreview from '../../../../echo/components/RoomPreview.svelte';
   import EchoRoomRing from '../../../../echo/components/RoomRing.svelte';
-  import EchoRoomSpaces from '../../../../echo/components/RoomSpaces.svelte';
   import { echoSectionRooms } from '../../../../echo/space-dms.js';
   import { echoRoomPath } from '../../../../echo/places.js';
   import { publishVisibleRoomOrder } from './visible-rooms.svelte.js';
@@ -712,7 +711,6 @@
                 </span>
               {/if}
             </span>
-            <EchoRoomSpaces {room} />
           {:else if !typing}
             <UnreadBadge
               class="room-collapsed-badge"

@@ -1,9 +1,9 @@
-<!-- echo: a room's spaces at the right edge of its row in All chats (Home), so a
-     room's place shows without opening the space: the avatar of each rail space
-     that lists it, stacked when there is more than one (echo/row-spaces.ts). A
-     room or DM outside every space shows the outside-spaces globe. Hooked into Sable's RoomNav.svelte
-     after the badge lane; drawn by echo/styles/roomlist.css, desktop only. Off in
-     Settings → echo → Room list (echo/space-icons.svelte.ts). -->
+<!-- echo: a room's spaces on its name line in All chats (Home), just after the
+     DM/room kind glyph, so a room's place shows without opening the space: the
+     avatar of each rail space that lists it, overlapping when there is more than
+     one (echo/row-spaces.ts). A room or DM outside every space shows the
+     outside-spaces globe. Drawn by RoomPreview.svelte and echo/styles/roomlist.css,
+     desktop only. Off in Settings → echo → Room list (echo/space-icons.svelte.ts). -->
 <script lang="ts">
   import { page } from '$app/state';
   import type { RoomListItemView } from '#src/generated/protocol';

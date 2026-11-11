@@ -2,7 +2,8 @@
      list (echo/design/SPEC.md §4.3). Hooked into Sable's RoomNav.svelte. It also
      marks a direct message's row (`.echo-dm`), which the rail's sub-filters
      read: a DM's link doesn't always say what it is.
-     It also draws the conversation-kind glyph after the name (SPEC §4.3). While
+     It also draws the conversation-kind glyph after the name (SPEC §4.3), and
+     in All chats the room's spaces after that (RoomSpaces.svelte). While
      someone's reaction to your message pops in (echo/reactions.svelte.ts,
      SPEC §4.6) the preview says who reacted to what. -->
 <script lang="ts">
@@ -17,6 +18,7 @@
   import { echoActive } from '../active.js';
   import { connectEchoReactions, echoReactions } from '../reactions.svelte.js';
   import { mutedRoom } from '../unread.js';
+  import RoomSpaces from './RoomSpaces.svelte';
 
   interface Props {
     room: RoomListItemView | undefined;
@@ -103,6 +105,7 @@
     {/if}
   </svg>
 {/if}
+<RoomSpaces {room} />
 {#if reaction || (latest && latest.body)}
   <span class="echo-room-preview">
     {#if reaction}
