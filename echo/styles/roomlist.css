@@ -560,25 +560,46 @@
      its inner side, so they read as the list's edge rather than another badge.
      The gutter is the scroll area's background, unbroken past headings and
      between rows; each row's lane is the gutter's width, flush right. */
+
+  /* The gutter is the list's own colour taken 40% toward black, so it stands
+     out under any theme (a theme's rail colour can match its list). It is
+     painted on the room lists, which end where the rows do (the scroll area
+     also spans its scrollbar), and carried past each heading by its ::after. */
   :root .room-nav:has(.echo-row-spaces) {
     --echo-gutter: 2.125rem;
-  }
-
-  :root .room-nav-content:has(.echo-row-spaces) {
-    background-image: linear-gradient(
+    --echo-gutter-bg: color-mix(in oklab, var(--echo-roomlist), black 40%);
+    --echo-gutter-paint: linear-gradient(
       to left,
-      var(--echo-rail) var(--echo-gutter),
+      var(--echo-gutter-bg) var(--echo-gutter),
       var(--echo-hairline) var(--echo-gutter),
       var(--echo-hairline) calc(var(--echo-gutter) + 1px),
       transparent calc(var(--echo-gutter) + 1px)
     );
   }
 
-  /* Headings stop short of the gutter. */
-  /* stylelint-disable-next-line no-descending-specificity */
+  :root .room-nav:has(.echo-row-spaces) .room-list:not(.collapsed) {
+    background-image: var(--echo-gutter-paint);
+  }
+
+  /* Headings stop short of the gutter; their ::after carries it past them,
+     from the gap above to the list below. */
+  /* stylelint-disable no-descending-specificity */
   :root .room-nav:has(.echo-row-spaces) .rooms-heading {
+    position: relative;
     width: calc(100% - 1rem - var(--echo-gutter));
   }
+
+  :root .room-nav:has(.echo-row-spaces) .rooms-heading::after {
+    background-image: var(--echo-gutter-paint);
+    bottom: 0;
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    right: calc(-0.5rem - var(--echo-gutter) - 1px);
+    top: -0.25rem;
+    width: calc(var(--echo-gutter) + 1px);
+  }
+  /* stylelint-enable no-descending-specificity */
 
   :root
     .room-list:not(.collapsed)
@@ -604,7 +625,7 @@
     --avatar-size: 1.0625rem;
 
     border-radius: 0.3125rem;
-    box-shadow: 0 0 0 2px var(--echo-rail);
+    box-shadow: 0 0 0 2px var(--echo-gutter-bg);
     flex: none;
     font-size: 0.5625rem;
     font-weight: 700;
