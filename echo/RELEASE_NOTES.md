@@ -1,5 +1,8 @@
 <!-- Notes for the release being cut; echo/release-electron.sh reads this. -->
 
-echo 1.5.1 tidies up notifications on the Mac.
+echo 1.6 shows where your chats live.
 
-- When several messages arrive in a room, its notification now shows the latest one and how many others there are, such as "New message from Fiona (+3 more)". Before, the messages were stacked inside one notification, and macOS drew the extra lines outside it.
+- In All chats, each room and DM shows the spaces it belongs to, as small space icons just after its name. A chat outside every space shows a globe. A DM counts as in a space when the other person is a member of it.
+- Rooms outside spaces are back as their own place in the rail, under the globe, with every DM in them too, as in the original echo.
+- Rooms and DMs without a picture now show a simple people icon instead of initials.
+- Settings has a new "echo" page for echo's own features. You can turn the space icons off there (Room list → Show space icons in All chats).
