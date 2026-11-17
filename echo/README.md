@@ -203,7 +203,7 @@ body.sable-remote-theme {
 | `electron/src/preload.ts` | `echoRedirectScheme: ECHO_SCHEME` (`echo/electron/app.ts`) in the `sableElectron` bridge, and its import (two lines) |
 | `electron/package.mjs` | the builder config is `process.env.SABLE_BUILDER_CONFIG ?? …`: `build.sh` passes `echo/electron/electron-builder.echo.ts` |
 | `src/lib/auth/redirect.ts` | `nativeRedirectUri` returns `echoNativeRedirectUri(…)` (`echo/auth.ts`) first when there is one, and its import (three lines) |
-| `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomSpaces {room} />` (`echo/components/RoomSpaces.svelte`) after each row's avatar: its spaces on the avatar's edge |
+| `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomSpaces {room} />` (`echo/components/RoomSpaces.svelte`) after each row's avatar, in the expanded list only: its spaces on the avatar's edge |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomRing {room} />` (`echo/components/RoomRing.svelte`) first in each row's badge lane (`.room-status`) |
 | `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels; `echoPhoneLayoutSettings` in the Appearance panels; `echo: [echoRoomListSettings]`, the panels of echo's own category |
 | `src/lib/settings/registry.ts` | `...echoSettingsCategories` (`echo/settings-category.ts`) before the developer category: echo's own "echo" category; and its import |

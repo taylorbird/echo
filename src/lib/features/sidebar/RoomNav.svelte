@@ -642,8 +642,8 @@
               />
             </span>
           {/if}
-          <EchoRoomSpaces {room} />
           {#if !collapsed}
+            <EchoRoomSpaces {room} />
             <span class="room-text">
               <span class="room-name">{name}</span>
               <EchoRoomPreview {room} profiles={peerProfiles} />

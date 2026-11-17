@@ -5,8 +5,6 @@
 import GlobeIcon from 'phosphor-svelte/lib/GlobeIcon';
 import { echoActive } from './active.js';
 
-export const OutsideSpacesIcon = GlobeIcon;
-
 /** The rooms outside spaces' rail icon: echo's globe, or Sable's own with echo off. */
 export function echoUnspacedIcon<T>(sable: T): T | typeof GlobeIcon {
   return echoActive() ? GlobeIcon : sable;
