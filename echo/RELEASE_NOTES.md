@@ -1,8 +1,6 @@
 <!-- Notes for the release being cut; echo/release-electron.sh reads this. -->
 
-echo 1.6 shows where your chats live.
+echo 1.6.1 moves the space icons onto the avatars.
 
-- In All chats, each room and DM shows the spaces it belongs to, as small space icons just after its name. A chat outside every space shows a globe. A DM counts as in a space when the other person is a member of it.
-- Rooms outside spaces are back as their own place in the rail, under the globe, with every DM in them too, as in the original echo.
-- Rooms and DMs without a picture now show a simple people icon instead of initials.
-- Settings has a new "echo" page for echo's own features. You can turn the space icons off there (Room list → Show space icons in All chats).
+- In All chats, the spaces a room or DM belongs to now sit as small circles on the edge of its picture, instead of after its name. A chat in more than one space shows a circle for each, up to three. Chats outside every space show none.
+- Settings → echo now shows in the Settings sidebar, under Interface. In 1.6.0 you could only reach it by searching.
