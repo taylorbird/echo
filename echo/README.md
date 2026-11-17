@@ -54,8 +54,7 @@ can live here instead.
   those rooms and every DM), otherwise in its space or Home, never in direct messages, whose
   rail tile echo hides (`styles/rail.css`). Sable's flows that land on `/rooms` by `goto`
   (sign-in, account switching) go on to Home (`components/EmptyPane.svelte`); the tile stays.
-- `outside-spaces.ts` — the rooms outside spaces' globe: their rail tile and, in All chats, the
-  space lane of a row in no space.
+- `outside-spaces.ts` — the rooms outside spaces' globe on their rail tile.
   Start-up with no room to restore lands in Home, and Sable's flows that open a DM at
   `/direct/<id>` (New chat, a DM invite) go on to it in Home (`components/DirectRoom.svelte`).
   Desktop only.
@@ -85,8 +84,8 @@ can live here instead.
   for settings that belong to no Sable page. Its "Room list" panel is
   `components/EchoSettings.svelte` (desktop only).
 - `row-spaces.ts`, `space-icons.svelte.ts`, `components/RoomSpaces.svelte` — in All chats, the
-  avatar of each rail space a room or DM is in, on its name line after the DM/room glyph (a DM counts as in
-  a space by `space-dms.ts`'s rule). On by default; Settings → echo → Room list turns it off.
+  avatar of each rail space a room or DM is in, as small circles on the edge of the row's avatar (a DM
+  counts as in a space by `space-dms.ts`'s rule). On by default; Settings → echo → Room list turns it off.
 - `branding.ts` — swaps "Sable" for "echo" in every locale bundle as it loads. Strings about
   the Sable project itself keep its name. In tests it follows `active.ts`, so Sable's own
   component tests see Sable's text. `echoAppName` is the name where Sable writes it in markup.
@@ -204,6 +203,7 @@ body.sable-remote-theme {
 | `electron/src/preload.ts` | `echoRedirectScheme: ECHO_SCHEME` (`echo/electron/app.ts`) in the `sableElectron` bridge, and its import (two lines) |
 | `electron/package.mjs` | the builder config is `process.env.SABLE_BUILDER_CONFIG ?? …`: `build.sh` passes `echo/electron/electron-builder.echo.ts` |
 | `src/lib/auth/redirect.ts` | `nativeRedirectUri` returns `echoNativeRedirectUri(…)` (`echo/auth.ts`) first when there is one, and its import (three lines) |
+| `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomSpaces {room} />` (`echo/components/RoomSpaces.svelte`) after each row's avatar: its spaces on the avatar's edge |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomRing {room} />` (`echo/components/RoomRing.svelte`) first in each row's badge lane (`.room-status`) |
 | `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels; `echoPhoneLayoutSettings` in the Appearance panels; `echo: [echoRoomListSettings]`, the panels of echo's own category |
 | `src/lib/settings/registry.ts` | `...echoSettingsCategories` (`echo/settings-category.ts`) before the developer category: echo's own "echo" category; and its import |

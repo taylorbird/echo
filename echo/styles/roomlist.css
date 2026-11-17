@@ -349,6 +349,25 @@
      off; each is caught here. */
   :root .room-list:not(.collapsed) .room-row {
     --echo-row-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E");
+
+    /* The space circles on the avatar's edge (RoomSpaces, below). */
+    --echo-orbit-size: 0.9375rem;
+    --echo-orbit-hole: calc(var(--echo-orbit-size) / 2 + 2px);
+    --echo-orbit-1: radial-gradient(
+      circle at calc(50% + 50% * cos(45deg)) calc(50% + 50% * sin(45deg)),
+      transparent var(--echo-orbit-hole),
+      #000 calc(var(--echo-orbit-hole) + 0.5px)
+    );
+    --echo-orbit-2: radial-gradient(
+      circle at calc(50% + 50% * cos(-8deg)) calc(50% + 50% * sin(-8deg)),
+      transparent var(--echo-orbit-hole),
+      #000 calc(var(--echo-orbit-hole) + 0.5px)
+    );
+    --echo-orbit-3: radial-gradient(
+      circle at calc(50% + 50% * cos(-61deg)) calc(50% + 50% * sin(-61deg)),
+      transparent var(--echo-orbit-hole),
+      #000 calc(var(--echo-orbit-hole) + 0.5px)
+    );
   }
 
   :root .room-list:not(.collapsed) .room-row:has(.echo-dm) {
@@ -369,7 +388,10 @@
     width: 2.5rem;
   }
 
-  :root .room-list:not(.collapsed) .room-avatar > .room-avatar-icon:not(:has(.avatar-image))::before,
+  :root
+    .room-list:not(.collapsed)
+    .room-avatar
+    > .room-avatar-icon:not(:has(.avatar-image))::before,
   :root .room-list:not(.collapsed) .room-row > .room-icon::before {
     background: var(--echo-section-ink);
     content: '';
@@ -555,49 +577,58 @@
   }
   /* stylelint-enable no-descending-specificity */
 
-  /* The rows' spaces in All chats (echo/components/RoomSpaces.svelte): on the
-     name line, just after the DM/room kind glyph, in the name grid's third
-     column. Each space's avatar is a small rounded square (places are
-     squircles, SPEC §1.3); a second one overlaps the first from the right, cut
-     out by a ring of the list's colour. */
-  :root .room-list:not(.collapsed) .room-text:has(> .echo-row-spaces) {
-    grid-template-columns: minmax(0, max-content) auto 1fr;
-  }
-
-  :root .room-list:not(.collapsed) .room-text > .echo-row-spaces {
-    align-items: center;
-    display: flex;
-    grid-column: 3;
-    grid-row: 1;
-    margin-left: -0.25rem;
-    place-self: center start;
+  /* The rows' spaces in All chats (echo/components/RoomSpaces.svelte): small
+     circles riding the edge of the row's avatar, the first at the bottom
+     right, a second further round on the right, a third at the top right.
+     RoomSpaces sits in the row just after the avatar lane as a zero-width box
+     as tall as the lane (its gap cancelled), so the avatar's 2.5rem disc is
+     at (-3.25rem, .25rem) from it. Each circle's centre is on the disc's rim
+     at its angle. */
+  :root .room-list:not(.collapsed) .room-row > .echo-row-spaces {
+    align-self: center;
+    display: block;
+    flex: 0 0 0;
+    height: 3rem;
+    margin-left: calc(-1 * var(--space-200));
+    position: relative;
+    width: 0;
   }
 
   :root .room-list .echo-row-spaces > .echo-row-space {
-    --avatar-size: 1rem;
+    --avatar-size: var(--echo-orbit-size);
+    --echo-orbit-angle: 45deg;
 
-    border-radius: 0.3125rem;
-    box-shadow: 0 0 0 2px var(--echo-roomlist);
+    border-radius: 50%;
     flex: none;
     font-size: 0.5rem;
     font-weight: 700;
+    left: calc(-2rem + 1.25rem * cos(var(--echo-orbit-angle)) - var(--echo-orbit-size) / 2);
+    position: absolute;
+    top: calc(1.5rem + 1.25rem * sin(var(--echo-orbit-angle)) - var(--echo-orbit-size) / 2);
   }
 
-  :root .echo-row-spaces > .echo-row-space + .echo-row-space {
-    margin-left: -0.3125rem;
+  :root .room-list .echo-row-spaces > .echo-row-space:nth-child(2) {
+    --echo-orbit-angle: -8deg;
   }
 
-  /* In no space: the rooms outside spaces' globe, in the kind glyph's colour. */
-  :root .room-list .echo-row-spaces > .echo-row-space-none {
-    align-items: center;
-    background: none;
-    box-shadow: none;
-    color: var(--echo-kind-glyph);
-    display: flex;
-    height: 1rem;
-    justify-content: center;
-    opacity: var(--echo-kind-glyph-opacity);
-    width: 1rem;
+  :root .room-list .echo-row-spaces > .echo-row-space:nth-child(3) {
+    --echo-orbit-angle: -61deg;
+  }
+
+  /* The avatar is cut away round each circle, a 2px gap that shows whatever
+     is behind the row (hover, the open room's wash, a ring's wash). */
+  :root .room-row:has(> .echo-row-spaces[data-count='1']) :is(.room-avatar-icon, .room-icon) {
+    mask: var(--echo-orbit-1);
+  }
+
+  :root .room-row:has(> .echo-row-spaces[data-count='2']) :is(.room-avatar-icon, .room-icon) {
+    mask: var(--echo-orbit-1), var(--echo-orbit-2);
+    mask-composite: intersect;
+  }
+
+  :root .room-row:has(> .echo-row-spaces[data-count='3']) :is(.room-avatar-icon, .room-icon) {
+    mask: var(--echo-orbit-1), var(--echo-orbit-2), var(--echo-orbit-3);
+    mask-composite: intersect;
   }
 
   /* The picture-less disc's own content (initials, Sable's glyph) gives way to

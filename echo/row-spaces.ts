@@ -1,5 +1,5 @@
-// Which of the rail's spaces a room-list row belongs to, for the space icons at
-// the right edge of each row in All chats (components/RoomSpaces.svelte).
+// Which of the rail's spaces a room-list row belongs to, for the space circles
+// on the edge of each row's avatar in All chats (components/RoomSpaces.svelte).
 //
 // - A room belongs to the top-level spaces it sits in, directly or through a
 //   joined subspace: the spaces whose rail tile would list it.

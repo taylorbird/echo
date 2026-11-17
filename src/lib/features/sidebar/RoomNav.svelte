@@ -81,6 +81,7 @@
   import { PeerProfiles } from './peer-profiles.svelte.js';
   import EchoRoomPreview from '../../../../echo/components/RoomPreview.svelte';
   import EchoRoomRing from '../../../../echo/components/RoomRing.svelte';
+  import EchoRoomSpaces from '../../../../echo/components/RoomSpaces.svelte';
   import { echoSectionRooms } from '../../../../echo/space-dms.js';
   import { echoRoomPath } from '../../../../echo/places.js';
   import { publishVisibleRoomOrder } from './visible-rooms.svelte.js';
@@ -641,6 +642,7 @@
               />
             </span>
           {/if}
+          <EchoRoomSpaces {room} />
           {#if !collapsed}
             <span class="room-text">
               <span class="room-name">{name}</span>
