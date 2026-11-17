@@ -53,6 +53,7 @@ export const settingsNavGroups: SettingsNavGroup[] = [
       'media',
       'timeline',
       'desktop',
+      'echo', // echo's own category (echo/settings-category.ts); skipped where it isn't registered
     ],
   },
   {
