@@ -47,6 +47,7 @@
   import EchoRoomPreview from '../components/RoomPreview.svelte';
   import EchoRoomRing from '../components/RoomRing.svelte';
   import { spacePeople } from '../space-dms.js';
+  import { FILTERS } from './filters.js';
   import { filterSections, inSomeSpace } from './lists.js';
   import { phoneLayout } from './layout.svelte.js';
   import { readPlace, samePlace, writePlace, type Filter, type Place } from './place.js';
@@ -119,6 +120,9 @@
         ? i18n.t('nav.unspaced')
         : i18n.t('nav.home')
   );
+
+  // The breadcrumb after the title: the picked view, unless it's All chats.
+  let view = $derived(filter === 'all' ? undefined : FILTERS.find((f) => f.value === filter));
 
   // A new place starts at All chats, as on the desktop.
   function choose(next: Place): void {
@@ -236,6 +240,19 @@
     touchEnd(true);
   }}
 >
+  {#snippet heading()}
+    <div class="echo-m-title">
+      <h1>{title}</h1>
+      {#if view}
+        <span class="echo-m-crumb"
+          ><span aria-hidden="true">/</span>
+          <view.icon aria-hidden="true" />
+          {view.label}</span
+        >
+      {/if}
+    </div>
+  {/snippet}
+
   {#snippet newChatButton()}
     <button
       type="button"
@@ -250,7 +267,7 @@
   {#if phoneLayout.spacesOnTop}
     <div class="echo-m-rooms-top">
       <header class="echo-m-rooms-header">
-        <h1>{title}</h1>
+        {@render heading()}
         {@render newChatButton()}
       </header>
       <nav class="echo-m-strip" aria-label="Spaces" bind:this={strip}>
@@ -258,27 +275,29 @@
       </nav>
     </div>
   {:else}
-    <header class="echo-m-rooms-header">
-      <button
-        type="button"
-        class="echo-m-place-button"
-        aria-label="Spaces"
-        aria-expanded={drawerOpen}
-        onclick={() => {
-          drawerOpen = true;
-        }}
-      >
-        {#if place.kind === 'space' && space !== undefined}
-          <Avatar id={space.room_id} src={space.avatar_url} name={space.name} size="small" />
-        {:else if place.kind === 'unspaced'}
-          <GlobeIcon weight="fill" />
-        {:else}
-          <HouseIcon weight="fill" />
-        {/if}
-      </button>
-      <h1>{title}</h1>
-      {@render newChatButton()}
-    </header>
+    <div class="echo-m-rooms-top drawer-mode">
+      <header class="echo-m-rooms-header">
+        <button
+          type="button"
+          class="echo-m-place-button"
+          aria-label="Spaces"
+          aria-expanded={drawerOpen}
+          onclick={() => {
+            drawerOpen = true;
+          }}
+        >
+          {#if place.kind === 'space' && space !== undefined}
+            <Avatar id={space.room_id} src={space.avatar_url} name={space.name} size="small" />
+          {:else if place.kind === 'unspaced'}
+            <GlobeIcon weight="fill" />
+          {:else}
+            <HouseIcon weight="fill" />
+          {/if}
+        </button>
+        {@render heading()}
+        {@render newChatButton()}
+      </header>
+    </div>
   {/if}
 
   <div class="echo-m-scroll">
