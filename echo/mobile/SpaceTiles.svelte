@@ -1,26 +1,32 @@
 <!-- The desktop rail's places (SPEC §3) as a list of tiles, shared by the
      phone's space strip (RoomListScreen.svelte, a row under the title) and its
-     space drawer (SpaceDrawer.svelte, a column). Home, a divider, then the
+     space drawer (SpaceDrawer.svelte, a column). Home, the rooms outside
+     spaces (the globe, echo/outside-spaces.ts), a divider, then the
      spaces and space folders in the sidebar's own order (Sable's account data,
      as the rail reads it), each with its unread badge; the open place carries
      the rail's glow pill. A folder shows its spaces' avatars in a 2×2 grid
      while closed and opens in place, and it is open while one of its spaces
-     is, as on the desktop (echo/folders.ts). Styles: echo/styles/mobile.css. -->
+     is, as on the desktop (echo/folders.ts). In the drawer the open place
+     parts as the desktop's rail does: its band (PlaceBand.svelte) carries
+     the unread DMs and the sub-filters. Styles: echo/styles/mobile.css. -->
 <script lang="ts">
   import type { RoomListItemView } from '#src/generated/protocol';
   import CaretLeftIcon from 'phosphor-svelte/lib/CaretLeftIcon';
   import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
+  import GlobeIcon from 'phosphor-svelte/lib/GlobeIcon';
   import HouseIcon from 'phosphor-svelte/lib/HouseIcon';
   import { i18n } from '#lib/i18n.js';
   import { isActiveSpace } from '#lib/features/sidebar/nav-rooms.js';
   import { useRoomList } from '#lib/rooms/room-list.svelte.js';
   import { addUnread, spaceUnreadTotals } from '#lib/rooms/spaces.js';
-  import { NO_UNREAD, type UnreadCount } from '#lib/rooms/unread.js';
+  import { hasUnread, NO_UNREAD, type UnreadCount } from '#lib/rooms/unread.js';
   import { folderName, layoutSpaceIds, mergeSpaces } from '#lib/spaces/sidebar-layout.js';
   import { useSpaceSidebar } from '#lib/spaces/sidebar-layout.svelte.js';
   import Avatar from '#lib/ui/primitives/Avatar.svelte';
   import UnreadBadge from '#lib/ui/primitives/UnreadBadge.svelte';
-  import type { Place } from './place.js';
+  import PlaceBand from './PlaceBand.svelte';
+  import { inSomeSpace } from './lists.js';
+  import type { Filter, Place } from './place.js';
 
   interface Props {
     place: Place;
@@ -31,9 +37,15 @@
     idPrefix: string;
     /** A folder opened by hand closes again when this turns false. */
     shown?: boolean;
+    /** The open place's band: the drawer passes it, the strip doesn't. */
+    band?: {
+      filter: Filter;
+      onFilter: (filter: Filter) => void;
+      onOpenRoom: (room: RoomListItemView) => void;
+    };
   }
 
-  let { place, onChoose, direction, idPrefix, shown = true }: Props = $props();
+  let { place, onChoose, direction, idPrefix, shown = true, band }: Props = $props();
 
   const roomList = useRoomList();
   const sidebar = useSpaceSidebar();
@@ -68,7 +80,40 @@
       })
   );
 
+  let unspacedUnread = $derived(
+    roomList.rooms
+      .filter(
+        (room) =>
+          room.state === 'joined' &&
+          room.room_kind !== 'space' &&
+          (room.is_direct || !inSomeSpace(roomList.rooms, room.room_id))
+      )
+      .reduce((total, room) => addUnread(total, roomList.badgeUnreadFor(room)), {
+        unread: 0,
+        highlight: 0,
+      })
+  );
+
   let currentSpace = $derived(place.kind === 'space' ? place.spaceId : null);
+
+  // Up to three unread one-to-one DMs, newest first, for the band (SPEC §3.6).
+  let unreadDms = $derived(
+    band === undefined
+      ? []
+      : roomList.rooms
+          .filter(
+            (room) =>
+              room.state === 'joined' &&
+              room.is_direct &&
+              room.direct_targets.length === 1 &&
+              hasUnread(roomList.badgeUnreadFor(room))
+          )
+          .toSorted(
+            (left, right) =>
+              (right.latest_event?.timestamp ?? 0) - (left.latest_event?.timestamp ?? 0)
+          )
+          .slice(0, 3)
+  );
 
   // A folder is open while one of its spaces is; another one can be opened by
   // hand to pick from it.
@@ -95,11 +140,22 @@
   }
 </script>
 
+{#snippet placeBand(current: boolean)}
+  {#if band && current}
+    <PlaceBand
+      filter={band.filter}
+      {unreadDms}
+      onFilter={band.onFilter}
+      onOpenRoom={band.onOpenRoom}
+    />
+  {/if}
+{/snippet}
+
 {#snippet spaceTile(space: RoomListItemView, inFolder: boolean)}
   {@const counts = spaceUnread.get(space.room_id) ?? NO_UNREAD}
   {@const current = currentSpace === space.room_id}
   {@const labelId = `${idPrefix}-${space.room_id}`}
-  <li>
+  <li class={{ banded: band !== undefined && current }}>
     <button
       type="button"
       class={['echo-m-tile', { 'in-folder': inFolder }]}
@@ -116,11 +172,12 @@
     {#if badgeLabel(counts)}
       <span id={labelId} class="echo-m-sr">{badgeLabel(counts)}</span>
     {/if}
+    {@render placeBand(current)}
   </li>
 {/snippet}
 
 <ul class={['echo-m-tiles', direction]}>
-  <li>
+  <li class={{ banded: band !== undefined && place.kind === 'home' }}>
     <button
       type="button"
       class="echo-m-tile echo-m-tile-home"
@@ -133,6 +190,22 @@
       <HouseIcon weight={place.kind === 'home' ? 'fill' : 'regular'} />
       <UnreadBadge counts={homeUnread} aria-hidden="true" />
     </button>
+    {@render placeBand(place.kind === 'home')}
+  </li>
+  <li class={{ banded: band !== undefined && place.kind === 'unspaced' }}>
+    <button
+      type="button"
+      class="echo-m-tile echo-m-tile-home"
+      aria-current={place.kind === 'unspaced' ? 'page' : undefined}
+      aria-label={i18n.t('nav.unspaced')}
+      onclick={() => {
+        onChoose({ kind: 'unspaced' });
+      }}
+    >
+      <GlobeIcon weight={place.kind === 'unspaced' ? 'fill' : 'regular'} />
+      <UnreadBadge counts={unspacedUnread} aria-hidden="true" />
+    </button>
+    {@render placeBand(place.kind === 'unspaced')}
   </li>
   <li class="echo-m-tiles-separator" role="separator"></li>
   {#each entries as entry (entry.kind === 'folder' ? entry.id : entry.room_id)}

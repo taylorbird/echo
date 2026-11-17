@@ -1,11 +1,13 @@
 <!-- echo's space drawer on a phone: the space strip's tiles
      (SpaceTiles.svelte) in a narrow column that slides over the room list
      from the left. RoomListScreen.svelte opens it with a swipe from the left
-     edge, and passes `pull` while that swipe is under way. A tap on the scrim,
+     edge, and passes `pull` while that swipe is under way. The open place
+     carries its band (PlaceBand.svelte): unread DMs and the sub-filters. A tap on the scrim,
      a swipe back left or Escape closes it. Styles: echo/styles/mobile.css. -->
 <script lang="ts">
+  import type { RoomListItemView } from '#src/generated/protocol';
   import { i18n } from '#lib/i18n.js';
-  import type { Place } from './place.js';
+  import type { Filter, Place } from './place.js';
   import SpaceTiles from './SpaceTiles.svelte';
 
   interface Props {
@@ -15,9 +17,12 @@
     place: Place;
     onChoose: (place: Place) => void;
     onClose: () => void;
+    filter: Filter;
+    onFilter: (filter: Filter) => void;
+    onOpenRoom: (room: RoomListItemView) => void;
   }
 
-  let { open, pull, place, onChoose, onClose }: Props = $props();
+  let { open, pull, place, onChoose, onClose, filter, onFilter, onOpenRoom }: Props = $props();
 
   // The swipe back: a drag left on the open panel closes it past a third.
   let push = $state<number | null>(null);
@@ -89,6 +94,13 @@
     ontouchend={touchEnd}
     ontouchcancel={touchEnd}
   >
-    <SpaceTiles {place} {onChoose} direction="column" idPrefix="echo-m-drawer" shown={open} />
+    <SpaceTiles
+      {place}
+      {onChoose}
+      direction="column"
+      idPrefix="echo-m-drawer"
+      shown={open}
+      band={{ filter, onFilter, onOpenRoom }}
+    />
   </nav>
 </div>
