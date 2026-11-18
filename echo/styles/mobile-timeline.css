@@ -61,10 +61,13 @@
     z-index: 1;
   }
 
+  /* The room's picture between the back button and its name. Sable hides it
+     below 48rem; echo shows it, as the room list does. */
   .echo-m-content .room-header .prefix > .room-avatar {
     --avatar-size: 2.25rem;
 
     border-radius: 50%;
+    display: inline-flex;
     font-size: 1rem;
   }
 

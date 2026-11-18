@@ -24,7 +24,11 @@
   --echo-rail: var(--surface-var-container);
   --echo-band: var(--sec-container);
   --echo-composer: var(--surface-container-hover);
-  --echo-m-top: var(--surface-var-container);
+
+  /* The phone's top and bottom bars: a step darker than the list, whatever
+     the theme. Themes often set --surface-var-container to the list's own
+     colour, which left the bars indistinguishable from it. */
+  --echo-m-top: color-mix(in oklab, var(--bg-container) 80%, black);
   --echo-m-top-rule: var(--bg-container-line);
   --echo-m-shadow: color-mix(in srgb, var(--shadow-color) 60%, transparent);
   --echo-m-scrim: var(--overlay);

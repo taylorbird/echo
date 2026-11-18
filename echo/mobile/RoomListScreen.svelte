@@ -92,10 +92,16 @@
   });
 
   let sections = $derived(
-    filterSections(inPlace, filter, {
-      rooms: i18n.t('nav.rooms'),
-      dms: i18n.t('common.directMessages'),
-    })
+    filterSections(
+      inPlace,
+      filter,
+      {
+        mentions: 'Mentions',
+        rooms: i18n.t('nav.rooms'),
+        dms: i18n.t('common.directMessages'),
+      },
+      roomList.badgeUnreadFor
+    )
   );
   let empty = $derived(sections.length === 0);
 
@@ -121,7 +127,7 @@
         : i18n.t('nav.home')
   );
 
-  // The breadcrumb after the title: the picked view, unless it's All chats.
+  // The line under the title: the picked view and its glyph, unless it's All chats.
   let view = $derived(filter === 'all' ? undefined : FILTERS.find((f) => f.value === filter));
 
   // A new place starts at All chats, as on the desktop.
@@ -243,13 +249,10 @@
   {#snippet heading()}
     <div class="echo-m-title">
       <h1>{title}</h1>
-      {#if view}
-        <span class="echo-m-crumb"
-          ><span aria-hidden="true">/</span>
-          <view.icon aria-hidden="true" />
-          {view.label}</span
-        >
-      {/if}
+      <!-- Always there, empty for All chats, so the title never moves. -->
+      <span class="echo-m-crumb" aria-hidden={view ? undefined : 'true'}>
+        {#if view}{view.label} <view.icon aria-hidden="true" />{/if}
+      </span>
     </div>
   {/snippet}
 

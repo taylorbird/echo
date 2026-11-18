@@ -19,15 +19,15 @@
   }
 
   :root.dark {
-    --echo-m-top: #121215;
-    --echo-m-top-rule: #46464e;
+    --echo-m-top: #19191d;
+    --echo-m-top-rule: #3a3a41;
   }
 }
 
 @media (width < 48rem) and (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --echo-m-top: #121215;
-    --echo-m-top-rule: #46464e;
+    --echo-m-top: #19191d;
+    --echo-m-top-rule: #3a3a41;
   }
 }
 
@@ -189,6 +189,10 @@
   /* Straight across: Sable rounds the bar's top corners, which bent the
      hairline above into a rounded rectangle. :root so this outranks Sable's
      scoped rule whatever the stylesheet order. */
+
+  /* Shorter than Sable's: the icons sit lower, down into the band beside the
+     home indicator (two thirds of the bottom inset), and in from the sides so
+     the outer ones clear the screen's rounded corners. */
   :root .echo-m-tabs .mobile-tools {
     --surface-container: var(--echo-m-top);
 
@@ -196,6 +200,8 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    min-height: 0;
+    padding: 1rem 1.5rem calc(var(--edge-inset-bottom) * 0.65);
   }
 
   /* The open tab: the desktop rail's selected tile behind it, in the text
@@ -240,7 +246,7 @@
   }
 
   .echo-m-rooms-top.drawer-mode > .echo-m-rooms-header {
-    padding-bottom: 0.5rem;
+    padding-bottom: 0.75rem;
   }
 
   /* The place button (spaces in the drawer): the open place's tile, which
@@ -270,36 +276,44 @@
     border-radius: 0.5rem;
   }
 
-  /* The title and, for a view other than All chats, its breadcrumb:
-     "Home / [icon] Direct messages". A long place name gives way first. */
+  /* The title and, for a view other than All chats, the view on a line of
+     its own under it, its glyph after it in the rooms' kind-glyph colour. */
+
+  /* The title and the view line under it. The line is always there (empty
+     for All chats), so the header's height and the title's place never
+     change. The view line is indented a little under the title, as its
+     child. */
   .echo-m-title {
-    align-items: baseline;
     display: flex;
     flex: 1;
-    gap: 0.5rem;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 3.5rem;
     min-width: 0;
   }
 
   .echo-m-crumb {
     align-items: center;
-    align-self: center;
     color: var(--echo-text-2);
-    display: inline-flex;
-    flex: none;
-    font-size: 1.0625rem;
+    display: flex;
+    font-size: 0.8125rem;
     font-weight: 600;
     gap: 0.3125rem;
+    line-height: 1.2;
+    min-height: 1.2em;
+    padding-left: 0.375rem;
     white-space: nowrap;
   }
 
   .echo-m-crumb > svg {
-    height: 1rem;
-    width: 1rem;
+    color: var(--echo-kind-glyph);
+    flex: none;
+    height: 0.8125rem;
+    width: 0.8125rem;
   }
 
   .echo-m-title > h1 {
     color: var(--echo-room-name);
-    flex: 0 1 auto;
     font-size: 1.75rem;
     font-weight: 700;
     letter-spacing: -0.01em;

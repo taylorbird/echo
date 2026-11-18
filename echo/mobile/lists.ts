@@ -5,8 +5,12 @@
 // - a space lists its rooms and the DMs whose other person is in it.
 // All chats groups Rooms over Direct messages; Rooms and Direct messages keep
 // their one section; Recent is one headerless list. Newest first throughout.
+// Above them, Mentions holds what is waiting for you: DMs with unread
+// messages and rooms that mention you. They move there rather than showing
+// twice (SPEC §4.2's Unread section). Recent stays one plain list.
 
 import type { RoomListItemView } from '#src/generated/protocol';
+import { hasUnread, type RoomUnread } from '#lib/rooms/unread.js';
 import type { Filter } from './place.js';
 
 /** Whether a joined space holds the room as a child (Sable's rooms outside spaces). */
@@ -27,22 +31,41 @@ export function newestFirst(rooms: readonly RoomListItemView[]): RoomListItemVie
 }
 
 export interface ListSection {
-  key: 'rooms' | 'dms' | 'recent';
+  key: 'mentions' | 'rooms' | 'dms' | 'recent';
   /** Null for Recent's headerless list. */
   label: string | null;
   rows: RoomListItemView[];
 }
 
+/** Whether a chat is waiting for you: a DM with anything unread, or a room that mentions you. */
+export function waiting(room: RoomListItemView, counts: RoomUnread): boolean {
+  const count = counts(room);
+  return room.is_direct ? hasUnread(count) : count.highlight > 0;
+}
+
 /** The place's chats as the filter shows them, empty sections dropped. */
 export function filterSections(
-  chats: readonly RoomListItemView[],
+  all: readonly RoomListItemView[],
   filter: Filter,
-  labels: { rooms: string; dms: string }
+  labels: { mentions: string; rooms: string; dms: string },
+  counts: RoomUnread
 ): ListSection[] {
+  const shown =
+    filter === 'rooms'
+      ? all.filter((room) => !room.is_direct)
+      : filter === 'dms'
+        ? all.filter((room) => room.is_direct)
+        : all;
   if (filter === 'recent') {
-    const recent: ListSection = { key: 'recent', label: null, rows: newestFirst(chats) };
+    const recent: ListSection = { key: 'recent', label: null, rows: newestFirst(shown) };
     return [recent].filter((section) => section.rows.length > 0);
   }
+  const mentions: ListSection = {
+    key: 'mentions',
+    label: labels.mentions,
+    rows: newestFirst(shown.filter((room) => waiting(room, counts))),
+  };
+  const chats = shown.filter((room) => !waiting(room, counts));
   const rooms: ListSection = {
     key: 'rooms',
     label: labels.rooms,
@@ -53,6 +76,5 @@ export function filterSections(
     label: labels.dms,
     rows: newestFirst(chats.filter((room) => room.is_direct)),
   };
-  const shown = filter === 'rooms' ? [rooms] : filter === 'dms' ? [dms] : [rooms, dms];
-  return shown.filter((section) => section.rows.length > 0);
+  return [mentions, rooms, dms].filter((section) => section.rows.length > 0);
 }
