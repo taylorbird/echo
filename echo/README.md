@@ -196,7 +196,7 @@ body.sable-remote-theme {
 | `src/lib/features/sidebar/NavigationRail.svelte` | `...echoCreateEntries()` (`echo/create-menu.ts`) first in the create menu: New chat |
 | `src/lib/features/sidebar/NavigationRail.svelte` | the rooms outside spaces' tile icon is `echoUnspacedIcon(…)` (`echo/outside-spaces.ts`): the globe; and its import |
 | `src/lib/rooms/room-list.svelte.ts` | `badgeUnreadFor` starts from `echoBadgeCounts(room)` (`echo/unread.ts`) instead of `roomUnread(room)` |
-| `electron/src/updater.ts` | `echoUseUpdateFeed(autoUpdater)` after Sable's `setFeedURL` (`echo/electron/updater.ts`): echo's feed in echo builds |
+| `electron/src/updater.ts` | `echoUseUpdateFeed(autoUpdater)` after Sable's `setFeedURL` (`echo/electron/updater.ts`): echo's feed in echo builds, background download and install on quit, and a log at `~/Library/Logs/echo/<identifier>-updater.log` |
 | `electron/src/main.ts` | `echoBranded(…)` around the core's `serviceName` and the screen-recording dialog's text (`echo/electron/app.ts`) |
 | `electron/src/main.ts` | `DEEP_LINK_SCHEMES` is `echoDeepLinkSchemes() ?? (…)` (`echo/electron/app.ts`): only the build's own scheme |
 | `electron/src/main.ts` | `registerDeepLinks` skips `setAsDefaultProtocolClient` when `ECHO_BUILD`: the Info.plist declaration routes echo's schemes |

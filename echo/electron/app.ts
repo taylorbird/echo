@@ -12,6 +12,9 @@ const identifier =
   (typeof process === 'object' ? process.env.SABLE_IDENTIFIER : undefined) ??
   (typeof __SABLE_IDENTIFIER__ === 'string' ? __SABLE_IDENTIFIER__ : '');
 
+/** This build's identifier (dev.tbird.echo, .dev or .test), or Sable's own. */
+export const BUILD_IDENTIFIER = identifier;
+
 /** The released app, as opposed to a dev or test build. */
 export const ECHO_RELEASE = identifier === 'dev.tbird.echo';
 export const ECHO_BUILD = ECHO_RELEASE || identifier.startsWith('dev.tbird.echo.');
