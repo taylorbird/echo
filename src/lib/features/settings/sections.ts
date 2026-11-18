@@ -11,6 +11,7 @@ import {
   SETTINGS_EMOTES_SECTION,
 } from '#lib/settings/registry.js';
 import { supportsKeyboardShortcuts } from '#lib/platform/os.js';
+import { echoSettingsNavGroups } from '../../../../echo/settings-category.js';
 
 import AccountSettings from './AccountSettings.svelte';
 import AboutSettings from './AboutSettings.svelte';
@@ -53,7 +54,6 @@ export const settingsNavGroups: SettingsNavGroup[] = [
       'media',
       'timeline',
       'desktop',
-      'echo', // echo's own category (echo/settings-category.ts); skipped where it isn't registered
     ],
   },
   {
@@ -61,6 +61,7 @@ export const settingsNavGroups: SettingsNavGroup[] = [
     label: 'settings.navGroups.behavior',
     sections: ['notifications', 'calls', 'sounds', 'developer'],
   },
+  ...echoSettingsNavGroups, // echo's own group, before About (echo/settings-category.ts)
   { id: 'about', sections: ['about'] },
 ];
 

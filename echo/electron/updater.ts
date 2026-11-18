@@ -7,11 +7,11 @@
 // release. One feed: echo has no nightly channel, so Sable's stable/nightly
 // choice is hidden (echo/styles/frame.css) and overridden here.
 //
-// Behaviour: echo updates itself, as echo-gomuks did. Sable only downloads
-// when you press Install in the rail's Alerts popover and only installs on
-// Restart, so an update nobody clicked never arrived. Here a found update
-// downloads in the background and installs when echo quits; the alert still
-// offers Restart to apply it now.
+// Behaviour: Sable's. An update downloads when you press Install (in echo's
+// update notice, echo/components/UpdateNotice.svelte, or Sable's Alerts
+// popover), or by itself with Settings → echo → "Update without asking"
+// (echo/updates.svelte.ts). The one change: a downloaded update also installs
+// when echo quits, rather than waiting for Restart.
 //
 // Log: electron-updater only logs to the console, which a Finder-launched app
 // has nowhere to keep, so its log goes to ~/Library/Logs/echo/<identifier>-updater.log.
@@ -35,7 +35,6 @@ interface UpdateLog {
 
 interface EchoUpdater {
   setFeedURL(options: { provider: 'generic'; url: string; channel: string }): void;
-  autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
   logger: UpdateLog | null;
   on(event: 'error', listener: (error: Error) => void): unknown;
@@ -66,7 +65,6 @@ export function echoUseUpdateFeed(updater: EchoUpdater): void {
   // Dev and test builds can point at a local feed to try an update.
   const url = (!ECHO_RELEASE && process.env.ECHO_UPDATE_FEED) || ECHO_UPDATE_FEED;
   updater.setFeedURL({ provider: 'generic', url, channel: 'latest' });
-  updater.autoDownload = true;
   updater.autoInstallOnAppQuit = true;
   if (configured.has(updater)) return;
   configured.add(updater);

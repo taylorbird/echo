@@ -1,6 +1,5 @@
 <!-- echo: where the phone's room list keeps its spaces (echo/mobile/layout.svelte.ts),
-     a card in Sable's Appearance settings, hooked into its category panels
-     (src/lib/features/settings/category-panels.ts) by echo/settings.ts. Phones
+     in Settings → echo (echo/settings.ts; under Appearance until 1.7). Phones
      only, like the room list it changes. Kept on this device, not in Sable's
      synced preferences. -->
 <script lang="ts">
@@ -12,11 +11,7 @@
   const ON_TOP = 'Spaces along the top';
 </script>
 
-<section class="settings-form" aria-labelledby="echo-phone-layout">
-  <div class="settings-heading-row">
-    <h3 id="echo-phone-layout" data-settings-outline>Room list</h3>
-  </div>
-
+<section class="settings-form">
   <ul class="settings-rows">
     <SettingsRow
       id="echo-spaces-on-top"

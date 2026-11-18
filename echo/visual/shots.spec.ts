@@ -561,7 +561,7 @@ const phoneSpace: View = {
   },
 };
 
-// Settings → Appearance → "Spaces along the top" (echo/mobile/layout.svelte.ts):
+// Settings → echo → "Spaces along the top" (echo/mobile/layout.svelte.ts):
 // the strip under the title instead of the drawer. Read once at start-up, so
 // set before a reload.
 const SPACES_ON_TOP = 'echo-mobile-spaces-on-top';
@@ -634,12 +634,12 @@ const phoneTimeline: View = {
   },
 };
 
-// Settings → Appearance on a phone, scrolled to echo's "Spaces along the top"
-// switch (echo/components/PhoneLayoutSettings.svelte).
-const phoneAppearance: View = {
-  name: 'appearance',
+// Settings → echo on a phone, scrolled to its "Spaces along the top" switch
+// (echo/components/PhoneLayoutSettings.svelte; under Appearance until 1.7).
+const phoneEchoSettings: View = {
+  name: 'echo-settings',
   open: async (page) => {
-    await page.goto('/settings/appearance');
+    await page.goto('/settings/echo');
     const row = page.getByRole('switch', { name: 'Spaces along the top' });
     await expect(row).toBeAttached({ timeout: 15_000 });
     await row.scrollIntoViewIfNeeded();
@@ -680,7 +680,7 @@ for (const scheme of ['light', 'dark'] satisfies Scheme[]) {
         phoneStripFolder,
         phoneTimeline,
         phoneSettings,
-        phoneAppearance,
+        phoneEchoSettings,
       ]) {
         await capture(page, `phone-${scheme}-${view.name}`, view);
       }

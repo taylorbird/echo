@@ -11,11 +11,7 @@
   const SPACE_ICONS = 'Show space icons in All chats';
 </script>
 
-<section class="settings-form" aria-labelledby="echo-room-list">
-  <div class="settings-heading-row">
-    <h3 id="echo-room-list" data-settings-outline>Room list</h3>
-  </div>
-
+<section class="settings-form">
   <ul class="settings-rows">
     <SettingsRow
       id="echo-space-icons"

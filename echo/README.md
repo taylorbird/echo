@@ -205,8 +205,8 @@ body.sable-remote-theme {
 | `src/lib/auth/redirect.ts` | `nativeRedirectUri` returns `echoNativeRedirectUri(…)` (`echo/auth.ts`) first when there is one, and its import (three lines) |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomSpaces {room} />` (`echo/components/RoomSpaces.svelte`) after each row's avatar, in the expanded list only: its spaces on the avatar's edge |
 | `src/lib/features/sidebar/RoomNav.svelte` | `<EchoRoomRing {room} />` (`echo/components/RoomRing.svelte`) first in each row's badge lane (`.room-status`) |
-| `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels; `echoPhoneLayoutSettings` in the Appearance panels; `echo: [echoRoomListSettings]`, the panels of echo's own category |
-| `src/lib/features/settings/sections.ts` | `'echo'` after `'desktop'` in the Interface group of `settingsNavGroups`: echo's category in the settings sidebar |
+| `src/lib/features/settings/category-panels.ts` | `echoReactionSettings` (`echo/settings.ts`) in the Notifications panels; `echo: echoCategoryPanels`, the panels of echo's own category (room list, the phone's "Spaces along the top", and Updates) |
+| `src/lib/features/settings/sections.ts` | `...echoSettingsNavGroups` between the Behavior and About groups of `settingsNavGroups` (`echo/settings-category.ts`): echo's own group in the settings sidebar |
 | `src/lib/settings/registry.ts` | `...echoSettingsCategories` (`echo/settings-category.ts`) before the developer category: echo's own "echo" category; and its import |
 | `src/lib/features/settings/CustomThemes.svelte` | `toasts` imported as `echoThemeToasts` (`echo/theme-notice.svelte.ts`): theme changes confirm inline in echo, by Sable's toast otherwise; `<EchoThemeNotice hidden={catalogOpen} />` (`echo/components/ThemeNotice.svelte`) under the buttons |
 | `src/lib/features/settings/ThemeCatalog.svelte` | `<EchoThemeNotice bar />` as the catalog's last child: the confirmation in its bottom bar |

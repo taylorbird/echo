@@ -3,13 +3,17 @@
 
 import { isTauri } from '@tauri-apps/api/core';
 import { type as osType } from '@tauri-apps/plugin-os';
+import { mount } from 'svelte';
 import { electronBridge } from '#lib/platform/electron.js';
+import { supportsAutoUpdate } from '#lib/platform/updates.js';
 import { supportsDesktopWindow } from '#lib/platform/window-decorations.js';
 import { applyDeploymentDefaults } from '#lib/settings/preferences.svelte.js';
 import { BREAKPOINTS } from '#lib/ui/breakpoints.js';
 import { startEcho } from './active.js';
 import { closePanelOnEscape } from './panels.js';
 import { expandOnMarkerClick } from './sections.js';
+import UpdateNotice from './components/UpdateNotice.svelte';
+import { startEchoUpdates } from './updates.svelte.js';
 
 const browser = typeof document !== 'undefined';
 if (browser) startEcho();
@@ -109,3 +113,15 @@ if (browser) {
 
 if (browser) closePanelOnEscape();
 if (browser) expandOnMarkerClick();
+
+// The desktop app's updates: the bottom-right notice while one is available,
+// and "Update without asking" (echo/updates.svelte.ts). Sable's own check
+// finds them; its alert stays in the rail's Alerts popover too.
+if (browser && electronBridge() && supportsAutoUpdate()) {
+  startEchoUpdates();
+  const place = () => {
+    mount(UpdateNotice, { target: document.body });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', place);
+  else place();
+}

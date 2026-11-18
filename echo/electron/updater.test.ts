@@ -7,7 +7,6 @@ function fakeUpdater() {
   const listeners: ((error: Error) => void)[] = [];
   return {
     feeds: [] as { url: string }[],
-    autoDownload: false,
     autoInstallOnAppQuit: false,
     logger: null as unknown,
     listeners,
@@ -30,14 +29,13 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-test('an echo build downloads updates itself and installs them on quit', async () => {
+test('an echo build keeps manual downloads but installs a downloaded update on quit', async () => {
   const { echoUseUpdateFeed, ECHO_UPDATE_FEED } = await load('dev.tbird.echo');
   const updater = fakeUpdater();
   echoUseUpdateFeed(updater as never);
   expect(updater.feeds).toEqual([
     { provider: 'generic', url: ECHO_UPDATE_FEED, channel: 'latest' },
   ]);
-  expect(updater.autoDownload).toBe(true);
   expect(updater.autoInstallOnAppQuit).toBe(true);
   expect(updater.logger).not.toBeNull();
   expect(updater.listeners).toHaveLength(1);
@@ -52,13 +50,13 @@ test('re-applying the feed on a channel change adds no second error listener', a
   expect(updater.listeners).toHaveLength(1);
 });
 
-test("a plain Sable build keeps Sable's manual updates", async () => {
+test("a plain Sable build keeps Sable's updater as it is", async () => {
   const { echoUseUpdateFeed } = await load('moe.sable.next');
   const updater = fakeUpdater();
   echoUseUpdateFeed(updater as never);
   expect(updater.feeds).toEqual([]);
-  expect(updater.autoDownload).toBe(false);
   expect(updater.autoInstallOnAppQuit).toBe(false);
+  expect(updater.logger).toBeNull();
 });
 
 test('the updater log appends timestamped lines and never throws', async () => {
