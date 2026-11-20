@@ -324,7 +324,7 @@ The open "partable" entry (All chats, Outside spaces, or a space) **parts the ra
   2. `div.room-entry-right`: flex column, gap .125rem, `min-width: 0`.
      - `div.room-name`: **1.125rem / 600 / line-height 1.35, mixed case, no tracking**, flex with gap .625rem.
        - `span.room-name-text` ellipsizes.
-       - Then a **kind glyph** `svg.room-kind-icon`, .9375rem at opacity .65: `user` for a DM, `users` for an ad-hoc group named after its members, `messages-square` for a named room.
+       - Then a **kind glyph** `svg.room-kind-icon`, .9375rem at opacity .65: `phone` for a voice room, `user` for a DM, `users` for an ad-hoc group named after its members, `messages-square` for a named room.
        - Dark mode: glyph colour `var(--room-list-color, #bd93f9)` at opacity .9. This is the only place the accent appears at full strength.
        - Name colour: dark `--room-list-name-color: #ffffff` for every row and every state. Light mode inherits `--text-color`.
      - `div.message-preview`: .9rem, line-height 1.4, opacity .9, nowrap with ellipsis. Dark colour `#b9b3ae`.

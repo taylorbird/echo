@@ -60,11 +60,12 @@
     return shorten(display ?? userId.replace(/^@/, '').split(':')[0]);
   }
 
-  // What kind of conversation this is: a person for a one-to-one DM, two
-  // people for a group DM or an unnamed room named after its members, chat
-  // bubbles for a room with a real name or alias.
-  let kind = $derived.by((): 'dm' | 'group' | 'room' | null => {
+  // What kind of conversation this is: a phone for a voice room, a person for
+  // a one-to-one DM, two people for a group DM or an unnamed room named after
+  // its members, chat bubbles for a room with a real name or alias.
+  let kind = $derived.by((): 'voice' | 'dm' | 'group' | 'room' | null => {
     if (!room) return null;
+    if (room.room_kind === 'voice') return 'voice';
     if (room.is_direct) return room.direct_targets.length > 1 ? 'group' : 'dm';
     if (room.name === null && room.canonical_alias === null) return 'group';
     return 'room';
@@ -79,7 +80,7 @@
 
 {#if room?.is_direct}<span class="echo-dm" hidden></span>{/if}
 {#if kind}
-  <!-- Lucide user / users / messages-square, as echo drew them. -->
+  <!-- Lucide phone / user / users / messages-square, as echo drew them. -->
   <svg
     class="echo-room-kind"
     viewBox="0 0 24 24"
@@ -90,7 +91,11 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    {#if kind === 'dm'}
+    {#if kind === 'voice'}
+      <path
+        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+      />
+    {:else if kind === 'dm'}
       <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
     {:else if kind === 'group'}
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path
