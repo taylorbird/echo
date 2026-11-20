@@ -351,6 +351,13 @@
     opacity: 0.4;
   }
 
+  /* Until composer-glass.ts measures the dock (it reports a frame late), and
+     on pages without one, the dock counts as no height. Its inline value on
+     the screen overrides this. */
+  .echo-m-content {
+    --echo-m-composer-h: 0px;
+  }
+
   /* The glass composer sheet (2026-11-19, option D on the phone header
      canvas): the dock sits over the timeline along the bottom edge, a glass
      sheet with rounded top corners and a soft shadow above, so messages
