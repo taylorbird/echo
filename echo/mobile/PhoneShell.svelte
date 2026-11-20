@@ -18,6 +18,7 @@
   import PanelHeader from '#lib/ui/primitives/PanelHeader.svelte';
   import PanelHeaderButton from '#lib/ui/primitives/PanelHeaderButton.svelte';
   import RoomListScreen from './RoomListScreen.svelte';
+  import { trackComposerHeight } from './composer-glass.js';
 
   interface Props {
     children: Snippet;
@@ -56,6 +57,8 @@
 
   // The swipe back: a drag that starts at the left edge of the open page.
   let drag = $state<number | null>(null);
+  // The room list's glass tab bar floats over the list; the list pads its bottom by this.
+  let tabsHeight = $state(0);
   let gesture: { x: number; y: number; width: number; horizontal: boolean | null } | null = null;
 
   function touchStart(event: TouchEvent): void {
@@ -93,10 +96,15 @@
   class={['echo-m-shell', { 'list-open': listOpen, dragging: drag !== null }]}
   style:--echo-m-drag={drag === null ? undefined : `${String(drag)}px`}
 >
-  <section class="echo-m-screen echo-m-list" inert={!listOpen} aria-label={i18n.t('nav.primary')}>
+  <section
+    class="echo-m-screen echo-m-list"
+    style:--echo-m-tabs-h={`${String(tabsHeight)}px`}
+    inert={!listOpen}
+    aria-label={i18n.t('nav.primary')}
+  >
     <CoreHealthBanner />
     <RoomListScreen />
-    <div class="echo-m-tabs"><UserQuickTools mobile /></div>
+    <div class="echo-m-tabs" bind:clientHeight={tabsHeight}><UserQuickTools mobile /></div>
   </section>
   <!-- The touch handlers are the swipe back; the back button is the accessible way. -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -106,6 +114,7 @@
       { 'with-quick-tools': quickTools, 'with-back-bar': backBar },
     ]}
     inert={listOpen}
+    {@attach trackComposerHeight}
     ontouchstart={touchStart}
     ontouchmove={touchMove}
     ontouchend={() => {

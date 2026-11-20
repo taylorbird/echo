@@ -281,9 +281,13 @@
     --timeline-foot-height: 1.75rem;
   }
 
+  /* Glass, and raised above the floating composer (see the glass composer
+     below). */
   .echo-m-content .timeline-content .timeline-foot {
     align-items: end;
-    background: var(--echo-chat);
+    backdrop-filter: blur(12px);
+    background: color-mix(in oklab, var(--echo-chat) 60%, transparent);
+    inset-block-end: var(--echo-m-composer-h);
     padding: 0 0.75rem;
   }
 
@@ -301,24 +305,28 @@
     width: 0.1875rem;
   }
 
-  /* Composer (SPEC §7): a raised box, pinned above the keyboard and the home
-     indicator by the screen's bottom inset (mobile.css). */
+  /* Composer (SPEC §7): pinned above the keyboard and the home indicator by
+     the screen's bottom inset (mobile.css), inside the glass sheet below. A
+     size up from Sable's (2026-11-19): taller targets, so the field and its
+     buttons read as a bigger box. */
   .echo-m-content .room-view .composer-stack {
-    --composer-gutter: 0.5rem;
+    --composer-gutter: 0.375rem;
+    --target: 2.75rem;
 
-    margin: 0.25rem auto 0.375rem;
+    margin: 0 auto;
   }
 
+  /* The box itself is see-through: the sheet around it is the glass. */
   .echo-m-content .room-view .composer-shell > .composer {
-    background: var(--echo-composer);
-    border: 1px solid var(--echo-border);
-    border-radius: 1rem;
-    box-shadow: 0 0 1rem var(--echo-modal-shadow);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.875rem;
+    box-shadow: none;
     color: var(--echo-text);
   }
 
   .echo-m-content .room-view .composer-shell > .composer:has([contenteditable='true']:focus) {
-    border-color: var(--echo-border);
+    border-color: transparent;
   }
 
   .echo-m-content .room-view .composer-row [contenteditable] {
@@ -330,7 +338,91 @@
     opacity: 0.55;
   }
 
+  /* Send: the plain arrow in the kind-glyph purple (the new-chat button's
+     colour), with no disc behind it in any state; dimmer while there's
+     nothing to send. */
   .echo-m-content .composer-row .composer-after > .composer-send.icon-button {
-    opacity: 0.75;
+    background: transparent;
+    color: var(--echo-m-send);
+    opacity: 1;
+  }
+
+  .echo-m-content .composer-row .composer-after > .composer-send.icon-button:disabled {
+    opacity: 0.4;
+  }
+
+  /* The glass composer sheet (2026-11-19, option D on the phone header
+     canvas): the dock sits over the timeline along the bottom edge, a glass
+     sheet with rounded top corners and a soft shadow above, so messages
+     scroll under it as under the room list's bars (mobile.css). The dock
+     leaves the flow; everything that sat on the timeline's bottom edge (the
+     last row, the typing line, the jump-to-latest and loading pills) moves up
+     by the dock's height, --echo-m-composer-h, measured by
+     echo/mobile/composer-glass.ts. */
+  .echo-m-content .room-view .composer-dock {
+    backdrop-filter: blur(24px) saturate(180%);
+    background: color-mix(in oklab, var(--echo-composer) 56%, transparent);
+    border-radius: 1.375rem 1.375rem 0 0;
+    border-top: 1px solid color-mix(in oklab, var(--echo-border) 70%, transparent);
+    box-shadow:
+      0 -0.5rem 1.5rem rgb(0 0 0 / 35%),
+      inset 0 1px 0 rgb(255 255 255 / 6%);
+    inset: auto 0 0;
+    padding-top: 0.5rem;
+    position: absolute;
+    z-index: 3;
+  }
+
+  .echo-m-content .timeline-content .window-rows {
+    padding-block-end: calc(var(--timeline-foot-height) + var(--echo-m-composer-h));
+  }
+
+  .echo-m-content .timeline-content .jump-to-latest-motion {
+    bottom: calc(var(--timeline-foot-height) + var(--echo-m-composer-h) + var(--space-200));
+  }
+
+  .echo-m-content .timeline-content .future-loading {
+    inset-block-end: calc(var(--echo-m-composer-h) + var(--space-200));
+  }
+
+  /* Typing (the field has focus, so the keyboard is up): the sheet squares
+     its top corners, since it sits on the keyboard's own rounded top, and
+     fades down into the keyboard's ground so the two meet without a seam. */
+  .echo-m-content .room-view .composer-dock:has([contenteditable='true']:focus) {
+    background: linear-gradient(
+      color-mix(in oklab, var(--echo-composer) 56%, transparent) 65%,
+      var(--echo-m-keyboard)
+    );
+    border-radius: 0;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+  }
+
+  /* Behind the keyboard: the page's own ground shows in the keyboard's
+     rounded corners (the room view stops at the keyboard's top), so while
+     typing that strip takes the keyboard's colour too. The room view covers
+     the rest of the page with its own ground. */
+  .echo-m-content:has(.composer-dock [contenteditable='true']:focus) {
+    background: var(--echo-m-keyboard);
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .echo-m-content .room-view .composer-dock {
+      background: var(--echo-composer);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .echo-m-content .room-view .composer-dock,
+    .echo-m-content .timeline-content .timeline-foot {
+      backdrop-filter: none;
+    }
+
+    .echo-m-content .room-view .composer-dock {
+      background: var(--echo-composer);
+    }
+
+    .echo-m-content .timeline-content .timeline-foot {
+      background: var(--echo-chat);
+    }
   }
 }

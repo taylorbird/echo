@@ -16,11 +16,21 @@
     --echo-m-top-rule: var(--echo-border);
     --echo-m-shadow: rgb(0 0 0 / 35%);
     --echo-m-scrim: rgb(0 0 0 / 45%);
+
+    /* The send arrow: a stronger purple than the kind glyphs. */
+    --echo-m-send: #7c3aed;
+
+    /* iOS's keyboard ground, which the composer sheet fades into while the
+       keyboard is up (light value inferred, dark sampled from a screenshot,
+       2026-11-19). */
+    --echo-m-keyboard: #d1d3d9;
   }
 
   :root.dark {
     --echo-m-top: #19191d;
     --echo-m-top-rule: #3a3a41;
+    --echo-m-send: #a56cff;
+    --echo-m-keyboard: #23242a;
   }
 }
 
@@ -28,6 +38,8 @@
   :root:not(.light) {
     --echo-m-top: #19191d;
     --echo-m-top-rule: #3a3a41;
+    --echo-m-send: #a56cff;
+    --echo-m-keyboard: #23242a;
   }
 }
 
@@ -246,6 +258,7 @@
   }
 
   .echo-m-rooms-top.drawer-mode > .echo-m-rooms-header {
+    gap: 0.875rem;
     padding-bottom: 0.75rem;
   }
 
@@ -276,13 +289,8 @@
     border-radius: 0.5rem;
   }
 
-  /* The title and, for a view other than All chats, the view on a line of
-     its own under it, its glyph after it in the rooms' kind-glyph colour. */
-
-  /* The title and the view line under it. The line is always there (empty
-     for All chats), so the header's height and the title's place never
-     change. The view line is indented a little under the title, as its
-     child. */
+  /* The title: the place's name, the same whatever view is picked (the view
+     shows on the filter bar under the header). */
   .echo-m-title {
     display: flex;
     flex: 1;
@@ -292,24 +300,23 @@
     min-width: 0;
   }
 
-  .echo-m-crumb {
-    align-items: center;
-    color: var(--echo-text-2);
-    display: flex;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    gap: 0.3125rem;
-    line-height: 1.2;
-    min-height: 1.2em;
-    padding-left: 0.375rem;
-    white-space: nowrap;
+  /* A soft, short line between the place button and the title lockup
+     (option C, 2026-11-19): faint, about half the lockup's height, centred
+     on it, with the same gap on each side. */
+  .echo-m-rooms-top.drawer-mode .echo-m-title {
+    padding-left: calc(0.875rem + 1px);
+    position: relative;
   }
 
-  .echo-m-crumb > svg {
-    color: var(--echo-kind-glyph);
-    flex: none;
-    height: 0.8125rem;
-    width: 0.8125rem;
+  .echo-m-rooms-top.drawer-mode .echo-m-title::before {
+    background: color-mix(in oklab, var(--echo-text) 14%, transparent);
+    content: '';
+    height: 1.625rem;
+    left: 0;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
   }
 
   .echo-m-title > h1 {
@@ -324,12 +331,68 @@
     white-space: nowrap;
   }
 
-  .echo-m-icon-button {
+  /* The filter bar (2026-11-19): under the header, on the same glass, when
+     a view other than All chats is picked. Its glyph in the kind-glyph
+     colour, the view's name, and a clear button back to All chats. */
+  .echo-m-filterbar {
+    align-items: center;
+    border-top: 1px solid var(--echo-hairline);
+    color: var(--echo-text-2);
+    display: flex;
+    font-size: 0.875rem;
+    font-weight: 600;
+    gap: 0.5rem;
+    min-height: 2.25rem;
+    padding: 0 0.5rem 0 1rem;
+  }
+
+  .echo-m-filterbar > svg {
+    color: var(--echo-kind-glyph);
+    flex: none;
+    height: 0.9375rem;
+    width: 0.9375rem;
+  }
+
+  .echo-m-filterbar > span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .echo-m-filterbar-clear {
     align-items: center;
     background: none;
     border: 0;
-    border-radius: 0.5rem;
-    color: var(--echo-text);
+    border-radius: 50%;
+    color: var(--echo-text-2);
+    display: flex;
+    flex: none;
+    height: 2.25rem;
+    justify-content: center;
+    padding: 0;
+    width: 2.25rem;
+  }
+
+  .echo-m-filterbar-clear:active {
+    background: var(--echo-button-hover);
+  }
+
+  .echo-m-filterbar-clear > svg {
+    height: 1rem;
+    width: 1rem;
+  }
+
+  /* New chat, the header's one action (2026-11-19): tinted in the kind-glyph
+     colour on a soft disc of the same colour, so it reads as the thing to
+     tap. */
+  .echo-m-icon-button {
+    align-items: center;
+    background: color-mix(in oklab, var(--echo-kind-glyph) 18%, transparent);
+    border: 0;
+    border-radius: 50%;
+    color: var(--echo-kind-glyph);
     display: flex;
     flex: none;
     height: 2.75rem;
@@ -339,12 +402,19 @@
   }
 
   .echo-m-icon-button:active {
-    background: var(--echo-button-hover);
+    background: color-mix(in oklab, var(--echo-kind-glyph) 30%, transparent);
   }
 
   .echo-m-icon-button > svg {
-    height: 1.5rem;
-    width: 1.5rem;
+    height: 1.625rem;
+    width: 1.625rem;
+  }
+
+  /* Drawer mode pads the header's bottom more than its top, so the button
+     drops by half the difference to sit centred on the bar. */
+  .echo-m-rooms-top.drawer-mode .echo-m-icon-button {
+    position: relative;
+    top: 0.25rem;
   }
 
   /* The space strip: the rail's tiles in a row that scrolls sideways. */
@@ -419,7 +489,8 @@
   }
 
   .echo-m-drawer-panel {
-    background: var(--echo-rail);
+    backdrop-filter: blur(24px) saturate(180%);
+    background: color-mix(in oklab, var(--echo-rail) 56%, transparent);
     border-right: 1px solid var(--echo-hairline);
     box-shadow: 8px 0 24px var(--echo-m-shadow);
     box-sizing: content-box;
@@ -1006,6 +1077,87 @@
     border-bottom: 1px solid var(--echo-hairline);
     margin: 0 0 0.25rem;
     padding: 0.25rem 1rem 0.5rem;
+  }
+
+  /* Glass bars on the room list (2026-11-18): the header and the tab bar float
+     over the list, see-through with a blur, so rows scroll under them as in
+     iOS's Liquid Glass. The list reaches up under the status bar and down to
+     the screen's bottom edge, and pads itself by the bars' measured heights
+     (--echo-m-top-h on .echo-m-rooms, --echo-m-tabs-h on .echo-m-list, set
+     from the components). Both bars keep the shared --echo-m-top tint, with a
+     faint highlight along the inside of each rule for the glass's lit edge. */
+  .echo-m-list > .echo-m-rooms {
+    margin-top: calc(-1 * var(--safe-top));
+    position: relative;
+  }
+
+  .echo-m-list .echo-m-rooms-top {
+    backdrop-filter: blur(24px) saturate(180%);
+    background: color-mix(in oklab, var(--echo-m-top) 56%, transparent);
+    border-color: color-mix(in oklab, var(--echo-m-top-rule) 55%, transparent);
+    box-shadow: inset 0 -1px 0 rgb(255 255 255 / 4%);
+    inset: 0 calc(-1 * var(--safe-right)) auto calc(-1 * var(--safe-left));
+    margin: 0;
+    position: absolute;
+    z-index: 2;
+  }
+
+  .echo-m-list .echo-m-scroll {
+    padding-bottom: calc(var(--echo-m-tabs-h) + 1rem);
+    padding-top: var(--echo-m-top-h);
+    scroll-padding-block: var(--echo-m-top-h) var(--echo-m-tabs-h);
+  }
+
+  .echo-m-list > .echo-m-tabs {
+    backdrop-filter: blur(24px) saturate(180%);
+    background: color-mix(in oklab, var(--echo-m-top) 56%, transparent);
+    border-color: color-mix(in oklab, var(--echo-m-top-rule) 55%, transparent);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+    inset: auto var(--safe-right) 0 var(--safe-left);
+    position: absolute;
+    z-index: 2;
+  }
+
+  :root .echo-m-list > .echo-m-tabs .mobile-tools {
+    background: transparent;
+  }
+
+  /* No blur available, or the person asked for less transparency: the solid
+     bars as before. */
+  @supports not (backdrop-filter: blur(1px)) {
+    .echo-m-list .echo-m-rooms-top,
+    .echo-m-list > .echo-m-tabs {
+      background: var(--echo-m-top);
+      border-color: var(--echo-m-top-rule);
+    }
+
+    .echo-m-drawer-panel {
+      background: var(--echo-rail);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .echo-m-list .echo-m-rooms-top,
+    .echo-m-list > .echo-m-tabs {
+      backdrop-filter: none;
+      background: var(--echo-m-top);
+      border-color: var(--echo-m-top-rule);
+    }
+
+    .echo-m-drawer-panel {
+      backdrop-filter: none;
+      background: var(--echo-rail);
+    }
+  }
+
+  /* With Sable's health banner above the list, the banner holds the status
+     bar's band, so the list and its header start below it. */
+  .echo-m-list:has(> .banner) > .echo-m-rooms {
+    margin-top: 0;
+  }
+
+  .echo-m-list:has(> .banner) .echo-m-rooms-top {
+    padding-top: 0;
   }
 
   /* As in Sable's drawer: the back bar carries the page's title, so the

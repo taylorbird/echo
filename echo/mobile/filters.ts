@@ -1,6 +1,6 @@
 // The four sub-filters, as the desktop's parted rail has them (SPEC §3.5):
 // their order, names and glyphs, shared by the drawer's band
-// (PlaceBand.svelte) and the list header's breadcrumb (RoomListScreen.svelte).
+// (PlaceBand.svelte) and the list's filter bar (RoomListScreen.svelte).
 
 import ClockIcon from 'phosphor-svelte/lib/ClockIcon';
 import HashIcon from 'phosphor-svelte/lib/HashIcon';

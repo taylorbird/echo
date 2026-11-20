@@ -23,6 +23,7 @@
   import GlobeIcon from 'phosphor-svelte/lib/GlobeIcon';
   import HouseIcon from 'phosphor-svelte/lib/HouseIcon';
   import NotePencilIcon from 'phosphor-svelte/lib/NotePencilIcon';
+  import XIcon from 'phosphor-svelte/lib/XIcon';
   import { useCoreClient } from '#lib/core/context.js';
   import { goToPage } from '#lib/features/room/room-navigation.js';
   import { isDeclining } from '#lib/rooms/invites.svelte.js';
@@ -127,7 +128,7 @@
         : i18n.t('nav.home')
   );
 
-  // The line under the title: the picked view and its glyph, unless it's All chats.
+  // The filter bar under the header: the picked view and its glyph, unless it's All chats.
   let view = $derived(filter === 'all' ? undefined : FILTERS.find((f) => f.value === filter));
 
   // A new place starts at All chats, as on the desktop.
@@ -198,6 +199,8 @@
   // The space drawer, and the swipe from the left edge that pulls it open. A
   // swipe that starts on the strip scrolls the strip instead.
   const EDGE = 28;
+  // The glass header floats over the list; the list pads its top by this.
+  let topHeight = $state(0);
   let drawerOpen = $state(false);
   let pull = $state<number | null>(null);
   let gesture: { x: number; y: number; horizontal: boolean | null } | null = null;
@@ -237,6 +240,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="echo-m-rooms"
+  style:--echo-m-top-h={`${String(topHeight)}px`}
   ontouchstart={touchStart}
   ontouchmove={touchMove}
   ontouchend={() => {
@@ -249,11 +253,28 @@
   {#snippet heading()}
     <div class="echo-m-title">
       <h1>{title}</h1>
-      <!-- Always there, empty for All chats, so the title never moves. -->
-      <span class="echo-m-crumb" aria-hidden={view ? undefined : 'true'}>
-        {#if view}{view.label} <view.icon aria-hidden="true" />{/if}
-      </span>
     </div>
+  {/snippet}
+
+  <!-- The picked view, on its own bar under the header (2026-11-19), with a
+       way back to All chats; the header itself stays as All chats shows it. -->
+  {#snippet filterBar()}
+    {#if view}
+      <div class="echo-m-filterbar">
+        <view.icon aria-hidden="true" />
+        <span>{view.label}</span>
+        <button
+          type="button"
+          class="echo-m-filterbar-clear"
+          aria-label="Show all chats"
+          onclick={() => {
+            filter = 'all';
+          }}
+        >
+          <XIcon />
+        </button>
+      </div>
+    {/if}
   {/snippet}
 
   {#snippet newChatButton()}
@@ -268,7 +289,7 @@
   {/snippet}
 
   {#if phoneLayout.spacesOnTop}
-    <div class="echo-m-rooms-top">
+    <div class="echo-m-rooms-top" bind:clientHeight={topHeight}>
       <header class="echo-m-rooms-header">
         {@render heading()}
         {@render newChatButton()}
@@ -276,9 +297,10 @@
       <nav class="echo-m-strip" aria-label="Spaces" bind:this={strip}>
         <SpaceTiles {place} onChoose={choose} direction="row" idPrefix="echo-m-strip" />
       </nav>
+      {@render filterBar()}
     </div>
   {:else}
-    <div class="echo-m-rooms-top drawer-mode">
+    <div class="echo-m-rooms-top drawer-mode" bind:clientHeight={topHeight}>
       <header class="echo-m-rooms-header">
         <button
           type="button"
@@ -300,6 +322,7 @@
         {@render heading()}
         {@render newChatButton()}
       </header>
+      {@render filterBar()}
     </div>
   {/if}
 
